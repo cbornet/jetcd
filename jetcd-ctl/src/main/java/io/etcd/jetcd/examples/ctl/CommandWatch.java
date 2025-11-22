@@ -52,7 +52,7 @@ class CommandWatch implements Runnable {
     public void run() {
         CountDownLatch latch = new CountDownLatch(maxEvents != null ? maxEvents : Integer.MAX_VALUE);
 
-        try (Client client = Client.builder().endpoints(main.endpoints).build()) {
+        try (Client client = Client.builder(main.endpoints).build()) {
             ByteSequence watchKey = ByteSequence.from(key, StandardCharsets.UTF_8);
             WatchOption watchOpts = WatchOption.builder().withRevision(rev != null ? rev : 0).build();
 

@@ -25,6 +25,7 @@ import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.ClientBuilder;
 import io.etcd.jetcd.launcher.EtcdCluster;
+import io.etcd.jetcd.test.EtcdClusterEndpointResolver;
 import io.etcd.jetcd.test.EtcdClusterExtension;
 import io.etcd.jetcd.watch.WatchResponse;
 
@@ -86,10 +87,10 @@ public class TestUtil {
     }
 
     public static ClientBuilder client(EtcdClusterExtension extension) {
-        return Client.builder().target("cluster://" + extension.clusterName());
+        return Client.builder(EtcdClusterEndpointResolver.create(extension.cluster()));
     }
 
     public static ClientBuilder client(EtcdCluster cluster) {
-        return Client.builder().target("cluster://" + cluster.clusterName());
+        return Client.builder(EtcdClusterEndpointResolver.create(cluster));
     }
 }

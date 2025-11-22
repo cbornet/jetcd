@@ -22,6 +22,7 @@ import io.etcd.jetcd.Auth;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.api.AuthDisableRequest;
 import io.etcd.jetcd.api.AuthEnableRequest;
+import io.etcd.jetcd.api.AuthGrpcClient;
 import io.etcd.jetcd.api.AuthRoleAddRequest;
 import io.etcd.jetcd.api.AuthRoleDeleteRequest;
 import io.etcd.jetcd.api.AuthRoleGetRequest;
@@ -35,7 +36,6 @@ import io.etcd.jetcd.api.AuthUserGetRequest;
 import io.etcd.jetcd.api.AuthUserGrantRoleRequest;
 import io.etcd.jetcd.api.AuthUserListRequest;
 import io.etcd.jetcd.api.AuthUserRevokeRoleRequest;
-import io.etcd.jetcd.api.VertxAuthGrpc;
 import io.etcd.jetcd.auth.AuthDisableResponse;
 import io.etcd.jetcd.auth.AuthEnableResponse;
 import io.etcd.jetcd.auth.AuthRoleAddResponse;
@@ -62,19 +62,22 @@ import static java.util.Objects.requireNonNull;
  */
 final class AuthImpl extends Impl implements Auth {
 
-    private final VertxAuthGrpc.AuthVertxStub stub;
+    private final AuthGrpcClient client;
 
     AuthImpl(ClientConnectionManager connectionManager) {
         super(connectionManager);
 
-        this.stub = connectionManager.newStub(VertxAuthGrpc::newVertxStub);
+        io.etcd.jetcd.resolver.EndpointResolver endpointResolver = connectionManager.getEndpointResolver();
+        this.client = AuthGrpcClient.create(
+            connectionManager.getAuthenticatedGrpcClient(),
+            (io.vertx.core.net.SocketAddress) endpointResolver.getTarget());
     }
 
     @Override
     public CompletableFuture<AuthEnableResponse> authEnable() {
         AuthEnableRequest enableRequest = AuthEnableRequest.getDefaultInstance();
         return completable(
-            this.stub.authEnable(enableRequest),
+            client.authEnable(enableRequest),
             AuthEnableResponse::new);
     }
 
@@ -82,7 +85,7 @@ final class AuthImpl extends Impl implements Auth {
     public CompletableFuture<AuthDisableResponse> authDisable() {
         AuthDisableRequest disableRequest = AuthDisableRequest.getDefaultInstance();
         return completable(
-            this.stub.authDisable(disableRequest),
+            client.authDisable(disableRequest),
             AuthDisableResponse::new);
     }
 
@@ -97,7 +100,7 @@ final class AuthImpl extends Impl implements Auth {
             .build();
 
         return completable(
-            this.stub.userAdd(addRequest),
+            client.userAdd(addRequest),
             AuthUserAddResponse::new);
     }
 
@@ -110,7 +113,7 @@ final class AuthImpl extends Impl implements Auth {
             .build();
 
         return completable(
-            this.stub.userDelete(deleteRequest),
+            client.userDelete(deleteRequest),
             AuthUserDeleteResponse::new);
     }
 
@@ -125,7 +128,7 @@ final class AuthImpl extends Impl implements Auth {
             .build();
 
         return completable(
-            this.stub.userChangePassword(changePasswordRequest),
+            client.userChangePassword(changePasswordRequest),
             AuthUserChangePasswordResponse::new);
     }
 
@@ -138,7 +141,7 @@ final class AuthImpl extends Impl implements Auth {
             .build();
 
         return completable(
-            this.stub.userGet(userGetRequest),
+            client.userGet(userGetRequest),
             AuthUserGetResponse::new);
     }
 
@@ -147,7 +150,7 @@ final class AuthImpl extends Impl implements Auth {
         AuthUserListRequest userListRequest = AuthUserListRequest.getDefaultInstance();
 
         return completable(
-            this.stub.userList(userListRequest),
+            client.userList(userListRequest),
             AuthUserListResponse::new);
     }
 
@@ -162,7 +165,7 @@ final class AuthImpl extends Impl implements Auth {
             .build();
 
         return completable(
-            this.stub.userGrantRole(userGrantRoleRequest),
+            client.userGrantRole(userGrantRoleRequest),
             AuthUserGrantRoleResponse::new);
     }
 
@@ -177,7 +180,7 @@ final class AuthImpl extends Impl implements Auth {
             .build();
 
         return completable(
-            this.stub.userRevokeRole(userRevokeRoleRequest),
+            client.userRevokeRole(userRevokeRoleRequest),
             AuthUserRevokeRoleResponse::new);
     }
 
@@ -189,7 +192,7 @@ final class AuthImpl extends Impl implements Auth {
             .build();
 
         return completable(
-            this.stub.roleAdd(roleAddRequest),
+            client.roleAdd(roleAddRequest),
             AuthRoleAddResponse::new);
     }
 
@@ -229,7 +232,7 @@ final class AuthImpl extends Impl implements Auth {
             .build();
 
         return completable(
-            this.stub.roleGrantPermission(roleGrantPermissionRequest),
+            client.roleGrantPermission(roleGrantPermissionRequest),
             AuthRoleGrantPermissionResponse::new);
     }
 
@@ -242,7 +245,7 @@ final class AuthImpl extends Impl implements Auth {
             .build();
 
         return completable(
-            this.stub.roleGet(roleGetRequest),
+            client.roleGet(roleGetRequest),
             AuthRoleGetResponse::new);
     }
 
@@ -251,7 +254,7 @@ final class AuthImpl extends Impl implements Auth {
         AuthRoleListRequest roleListRequest = AuthRoleListRequest.getDefaultInstance();
 
         return completable(
-            this.stub.roleList(roleListRequest),
+            client.roleList(roleListRequest),
             AuthRoleListResponse::new);
     }
 
@@ -269,7 +272,7 @@ final class AuthImpl extends Impl implements Auth {
             .build();
 
         return completable(
-            this.stub.roleRevokePermission(roleRevokePermissionRequest),
+            client.roleRevokePermission(roleRevokePermissionRequest),
             AuthRoleRevokePermissionResponse::new);
     }
 
@@ -281,7 +284,7 @@ final class AuthImpl extends Impl implements Auth {
             .build();
 
         return completable(
-            this.stub.roleDelete(roleDeleteRequest),
+            client.roleDelete(roleDeleteRequest),
             AuthRoleDeleteResponse::new);
     }
 }

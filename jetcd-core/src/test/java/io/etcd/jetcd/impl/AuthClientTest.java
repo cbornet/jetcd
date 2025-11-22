@@ -116,13 +116,13 @@ public class AuthClientTest {
         userClient.getKVClient().get(userRoleKey).get();
 
         assertThatThrownBy(() -> authDisabledKVClient.put(rootRoleKey, rootRoleValue).get())
-            .hasMessageContaining("etcdserver: user name is empty");
+            .hasMessageContaining("INVALID_ARGUMENT");
         assertThatThrownBy(() -> authDisabledKVClient.put(userRoleKey, rootRoleValue).get())
-            .hasMessageContaining("etcdserver: user name is empty");
+            .hasMessageContaining("INVALID_ARGUMENT");
         assertThatThrownBy(() -> authDisabledKVClient.get(rootRoleKey).get())
-            .hasMessageContaining("etcdserver: user name is empty");
+            .hasMessageContaining("INVALID_ARGUMENT");
         assertThatThrownBy(() -> authDisabledKVClient.get(userRoleKey).get())
-            .hasMessageContaining("etcdserver: user name is empty");
+            .hasMessageContaining("INVALID_ARGUMENT");
 
         AuthRoleGetResponse roleGetResponse = userClient.getAuthClient().roleGet(rootRole).get();
         assertThat(roleGetResponse.getPermissions().size()).isNotEqualTo(0);

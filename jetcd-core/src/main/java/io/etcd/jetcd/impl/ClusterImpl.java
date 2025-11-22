@@ -22,12 +22,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import io.etcd.jetcd.Cluster;
+import io.etcd.jetcd.api.ClusterGrpcClient;
 import io.etcd.jetcd.api.MemberAddRequest;
 import io.etcd.jetcd.api.MemberListRequest;
 import io.etcd.jetcd.api.MemberPromoteRequest;
 import io.etcd.jetcd.api.MemberRemoveRequest;
 import io.etcd.jetcd.api.MemberUpdateRequest;
-import io.etcd.jetcd.api.VertxClusterGrpc;
 import io.etcd.jetcd.cluster.MemberAddResponse;
 import io.etcd.jetcd.cluster.MemberListResponse;
 import io.etcd.jetcd.cluster.MemberPromoteResponse;
@@ -39,12 +39,15 @@ import io.etcd.jetcd.cluster.MemberUpdateResponse;
  */
 final class ClusterImpl extends Impl implements Cluster {
 
-    private final VertxClusterGrpc.ClusterVertxStub stub;
+    private final ClusterGrpcClient client;
 
     ClusterImpl(ClientConnectionManager connectionManager) {
         super(connectionManager);
 
-        this.stub = connectionManager.newStub(VertxClusterGrpc::newVertxStub);
+        io.etcd.jetcd.resolver.EndpointResolver endpointResolver = connectionManager.getEndpointResolver();
+        this.client = ClusterGrpcClient.create(
+            connectionManager.getAuthenticatedGrpcClient(),
+            (io.vertx.core.net.SocketAddress) endpointResolver.getTarget());
     }
 
     /**
@@ -53,7 +56,7 @@ final class ClusterImpl extends Impl implements Cluster {
     @Override
     public CompletableFuture<MemberListResponse> listMember() {
         return completable(
-            this.stub.memberList(MemberListRequest.getDefaultInstance()),
+            client.memberList(MemberListRequest.getDefaultInstance()),
             MemberListResponse::new);
     }
 
@@ -81,7 +84,7 @@ final class ClusterImpl extends Impl implements Cluster {
             .build();
 
         return completable(
-            this.stub.memberAdd(memberAddRequest),
+            client.memberAdd(memberAddRequest),
             MemberAddResponse::new);
     }
 
@@ -97,7 +100,7 @@ final class ClusterImpl extends Impl implements Cluster {
             .build();
 
         return completable(
-            this.stub.memberRemove(memberRemoveRequest),
+            client.memberRemove(memberRemoveRequest),
             MemberRemoveResponse::new);
     }
 
@@ -115,7 +118,7 @@ final class ClusterImpl extends Impl implements Cluster {
             .build();
 
         return completable(
-            this.stub.memberUpdate(memberUpdateRequest),
+            client.memberUpdate(memberUpdateRequest),
             MemberUpdateResponse::new);
     }
 
@@ -132,7 +135,7 @@ final class ClusterImpl extends Impl implements Cluster {
             .build();
 
         return completable(
-            this.stub.memberPromote(memberPromoteRequest),
+            client.memberPromote(memberPromoteRequest),
             MemberPromoteResponse::new);
     }
 

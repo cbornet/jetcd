@@ -20,33 +20,34 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import io.grpc.Status;
+import io.vertx.grpc.common.GrpcStatus;
 
 /**
- * ErrorCode is a wrapper around grpc Error code.
+ * ErrorCode is a wrapper around gRPC Error code.
  *
  * <P>
  * Modification Notice:
  * This is a modification of ErrorCode.java from Google-cloud-spanner java api.
+ * Updated to use Vert.x GrpcStatus instead of grpc-java Status.
  */
 public enum ErrorCode {
 
-    CANCELLED(Status.CANCELLED),
-    UNKNOWN(Status.UNKNOWN),
-    INVALID_ARGUMENT(Status.INVALID_ARGUMENT),
-    DEADLINE_EXCEEDED(Status.DEADLINE_EXCEEDED),
-    NOT_FOUND(Status.NOT_FOUND),
-    ALREADY_EXISTS(Status.ALREADY_EXISTS),
-    PERMISSION_DENIED(Status.PERMISSION_DENIED),
-    UNAUTHENTICATED(Status.UNAUTHENTICATED),
-    RESOURCE_EXHAUSTED(Status.RESOURCE_EXHAUSTED),
-    FAILED_PRECONDITION(Status.FAILED_PRECONDITION),
-    ABORTED(Status.ABORTED),
-    OUT_OF_RANGE(Status.OUT_OF_RANGE),
-    UNIMPLEMENTED(Status.UNIMPLEMENTED),
-    INTERNAL(Status.INTERNAL),
-    UNAVAILABLE(Status.UNAVAILABLE),
-    DATA_LOSS(Status.DATA_LOSS),;
+    CANCELLED(GrpcStatus.CANCELLED),
+    UNKNOWN(GrpcStatus.UNKNOWN),
+    INVALID_ARGUMENT(GrpcStatus.INVALID_ARGUMENT),
+    DEADLINE_EXCEEDED(GrpcStatus.DEADLINE_EXCEEDED),
+    NOT_FOUND(GrpcStatus.NOT_FOUND),
+    ALREADY_EXISTS(GrpcStatus.ALREADY_EXISTS),
+    PERMISSION_DENIED(GrpcStatus.PERMISSION_DENIED),
+    UNAUTHENTICATED(GrpcStatus.UNAUTHENTICATED),
+    RESOURCE_EXHAUSTED(GrpcStatus.RESOURCE_EXHAUSTED),
+    FAILED_PRECONDITION(GrpcStatus.FAILED_PRECONDITION),
+    ABORTED(GrpcStatus.ABORTED),
+    OUT_OF_RANGE(GrpcStatus.OUT_OF_RANGE),
+    UNIMPLEMENTED(GrpcStatus.UNIMPLEMENTED),
+    INTERNAL(GrpcStatus.INTERNAL),
+    UNAVAILABLE(GrpcStatus.UNAVAILABLE),
+    DATA_LOSS(GrpcStatus.DATA_LOSS),;
 
     private static final Map<Integer, ErrorCode> errorByRpcCode;
 
@@ -58,14 +59,14 @@ public enum ErrorCode {
         errorByRpcCode = Collections.unmodifiableMap(realMap);
     }
 
-    private final Status.Code code;
+    private final int code;
 
-    ErrorCode(Status status) {
-        this.code = status.getCode();
+    ErrorCode(GrpcStatus status) {
+        this.code = status.code;
     }
 
     int getCode() {
-        return this.code.value();
+        return this.code;
     }
 
     /**
@@ -83,8 +84,8 @@ public enum ErrorCode {
     /**
      * Returns the error code corresponding to a gRPC status, or {@code UNKNOWN} if not recognized.
      */
-    static ErrorCode fromGrpcStatus(Status status) {
-        ErrorCode code = errorByRpcCode.get(status.getCode().value());
+    static ErrorCode fromGrpcStatus(GrpcStatus status) {
+        ErrorCode code = errorByRpcCode.get(status.code);
         return code == null ? UNKNOWN : code;
     }
 }

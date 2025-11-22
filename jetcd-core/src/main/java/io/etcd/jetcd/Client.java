@@ -16,6 +16,13 @@
 
 package io.etcd.jetcd;
 
+import java.net.URI;
+import java.util.Arrays;
+import java.util.Collection;
+
+import io.etcd.jetcd.resolver.EndpointResolver;
+import io.etcd.jetcd.resolver.EndpointResolvers;
+
 /**
  * Etcd Client.
  *
@@ -85,11 +92,50 @@ public interface Client extends AutoCloseable {
     void close();
 
     /**
-     * Returns a new {@link ClientBuilder}.
+     * Returns a new {@link ClientBuilder} preconfigured with static addresses.
      *
-     * @return the builder.
+     * @param  addresses etcd server addresses (host:port format)
+     * @return           the builder.
      */
-    static ClientBuilder builder() {
-        return new ClientBuilder();
+    static ClientBuilder builder(String... addresses) {
+        return new ClientBuilder(EndpointResolvers.endpoints(addresses));
+    }
+
+    /**
+     * Returns a new {@link ClientBuilder} preconfigured with static addresses from URIs.
+     * Supports both varargs and array usage: builder(uri1, uri2) or builder(uriArray)
+     *
+     * @param  addresses etcd server URIs
+     * @return           the builder.
+     */
+    static ClientBuilder builder(URI... addresses) {
+        String[] addressStrings = Arrays.stream(addresses)
+            .map(URI::toString)
+            .toArray(String[]::new);
+        return new ClientBuilder(EndpointResolvers.endpoints(addressStrings));
+    }
+
+    /**
+     * Returns a new {@link ClientBuilder} preconfigured with static addresses from a collection of URIs.
+     *
+     * @param  addresses collection of etcd server URIs
+     * @return           the builder.
+     */
+    static ClientBuilder builder(Collection<URI> addresses) {
+        String[] addressStrings = addresses.stream()
+            .map(URI::toString)
+            .toArray(String[]::new);
+        return new ClientBuilder(EndpointResolvers.endpoints(addressStrings));
+    }
+
+    /**
+     * Returns a new {@link ClientBuilder} with a custom endpoint resolver.
+     * Use this for advanced service discovery scenarios.
+     *
+     * @param  endpointResolver custom endpoint resolver
+     * @return                  the builder.
+     */
+    static ClientBuilder builder(EndpointResolver endpointResolver) {
+        return new ClientBuilder(endpointResolver);
     }
 }

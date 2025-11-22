@@ -10,8 +10,9 @@ import org.slf4j.LoggerFactory;
 
 import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
 import io.etcd.jetcd.support.Errors;
-import io.grpc.Status;
 import io.vertx.core.Future;
+import io.vertx.grpc.client.InvalidStatusException;
+import io.vertx.grpc.common.GrpcStatus;
 
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
@@ -109,7 +110,7 @@ abstract class Impl {
     protected <S, T> CompletableFuture<T> execute(
         Supplier<Future<S>> supplier,
         Function<S, T> resultConvert,
-        Predicate<Status> doRetry) {
+        Predicate<GrpcStatus> doRetry) {
 
         return Failsafe
             .with(retryPolicy(doRetry))
@@ -118,7 +119,7 @@ abstract class Impl {
             .thenApply(resultConvert);
     }
 
-    protected <S> RetryPolicy<S> retryPolicy(Predicate<Status> doRetry) {
+    protected <S> RetryPolicy<S> retryPolicy(Predicate<GrpcStatus> doRetry) {
         RetryPolicyBuilder<S> policy = RetryPolicy.<S> builder()
             .onFailure(e -> {
                 logger.warn("retry failure (attempt: {}, error: {})",
@@ -136,7 +137,7 @@ abstract class Impl {
                     e.getException() != null ? e.getException().getMessage() : "<none>");
             })
             .handleIf(throwable -> {
-                Status status = Status.fromThrowable(throwable);
+                GrpcStatus status = getGrpcStatus(throwable);
                 if (isInvalidTokenError(status)) {
                     connectionManager.authCredential().refresh();
                 }
@@ -156,5 +157,12 @@ abstract class Impl {
         }
 
         return policy.build();
+    }
+
+    private GrpcStatus getGrpcStatus(Throwable throwable) {
+        if (throwable instanceof InvalidStatusException) {
+            return ((InvalidStatusException) throwable).actualStatus();
+        }
+        return GrpcStatus.UNKNOWN;
     }
 }

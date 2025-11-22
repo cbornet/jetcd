@@ -22,7 +22,7 @@ import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.KV;
 import io.etcd.jetcd.Txn;
 import io.etcd.jetcd.api.CompactionRequest;
-import io.etcd.jetcd.api.VertxKVGrpc;
+import io.etcd.jetcd.api.KVGrpcClient;
 import io.etcd.jetcd.kv.CompactResponse;
 import io.etcd.jetcd.kv.DeleteResponse;
 import io.etcd.jetcd.kv.GetResponse;
@@ -43,13 +43,16 @@ import static java.util.Objects.requireNonNull;
  * Implementation of etcd kv client.
  */
 final class KVImpl extends Impl implements KV {
-    private final VertxKVGrpc.KVVertxStub stub;
+    private final KVGrpcClient client;
     private final ByteSequence namespace;
 
     KVImpl(ClientConnectionManager connectionManager) {
         super(connectionManager);
 
-        this.stub = connectionManager.newStub(VertxKVGrpc::newVertxStub);
+        io.etcd.jetcd.resolver.EndpointResolver endpointResolver = connectionManager.getEndpointResolver();
+        this.client = KVGrpcClient.create(
+            connectionManager.getAuthenticatedGrpcClient(),
+            (io.vertx.core.net.SocketAddress) endpointResolver.getTarget());
         this.namespace = connectionManager.getNamespace();
     }
 
@@ -64,7 +67,7 @@ final class KVImpl extends Impl implements KV {
         requireNonNull(value, "value should not be null");
         requireNonNull(option, "option should not be null");
         return execute(
-            () -> stub.put(Requests.mapPutRequest(key, value, option, namespace)),
+            () -> client.put(Requests.mapPutRequest(key, value, option, namespace)),
             response -> new PutResponse(response, namespace),
             option.isAutoRetry() ? Errors::isRetryableForSafeRedoOp : Errors::isRetryableForNoSafeRedoOp);
     }
@@ -80,7 +83,7 @@ final class KVImpl extends Impl implements KV {
         requireNonNull(option, "option should not be null");
 
         return execute(
-            () -> stub.range(Requests.mapRangeRequest(key, option, namespace)),
+            () -> client.range(Requests.mapRangeRequest(key, option, namespace)),
             response -> new GetResponse(response, namespace),
             Errors::isRetryableForSafeRedoOp);
     }
@@ -96,7 +99,7 @@ final class KVImpl extends Impl implements KV {
         requireNonNull(option, "option should not be null");
 
         return execute(
-            () -> stub.deleteRange(Requests.mapDeleteRequest(key, option, namespace)),
+            () -> client.deleteRange(Requests.mapDeleteRequest(key, option, namespace)),
             response -> new DeleteResponse(response, namespace),
             option.isAutoRetry() ? Errors::isRetryableForSafeRedoOp : Errors::isRetryableForNoSafeRedoOp);
     }
@@ -115,7 +118,7 @@ final class KVImpl extends Impl implements KV {
             .build();
 
         return execute(
-            () -> stub.compact(request),
+            () -> client.compact(request),
             CompactResponse::new,
             Errors::isRetryableForSafeRedoOp);
     }
@@ -129,7 +132,7 @@ final class KVImpl extends Impl implements KV {
     public Txn txn(TxnOption option) {
         return TxnImpl.newTxn(
             request -> execute(
-                () -> stub.txn(request),
+                () -> client.txn(request),
                 response -> new TxnResponse(response, namespace),
                 option.isAutoRetry() ? Errors::isRetryableForSafeRedoOp : Errors::isRetryableForNoSafeRedoOp),
             namespace);

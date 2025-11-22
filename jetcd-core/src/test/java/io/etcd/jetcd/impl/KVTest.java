@@ -103,7 +103,7 @@ public class KVTest {
         PutOption option = PutOption.builder().withLeaseId(99999).build();
         CompletableFuture<PutResponse> future = kvClient.put(SAMPLE_KEY, SAMPLE_VALUE, option);
         assertThatExceptionOfType(ExecutionException.class)
-            .isThrownBy(future::get).withMessageEndingWith("etcdserver: requested lease not found");
+            .isThrownBy(future::get).withMessageContaining("NOT_FOUND");
     }
 
     @Test
@@ -348,7 +348,7 @@ public class KVTest {
     public void waitForReadySemantics() throws ExecutionException, InterruptedException, TimeoutException {
         String nonExistingServer = "http://127.0.0.1:9999";
 
-        try (Client customClient = Client.builder().endpoints(nonExistingServer)
+        try (Client customClient = Client.builder(nonExistingServer)
             .waitForReady(false)
             .retryMaxDuration(Duration.ofSeconds(3))
             .retryDelay(1)

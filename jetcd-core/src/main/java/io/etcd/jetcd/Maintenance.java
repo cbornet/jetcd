@@ -18,10 +18,10 @@ package io.etcd.jetcd;
 
 import java.io.OutputStream;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 import io.etcd.jetcd.maintenance.*;
 import io.etcd.jetcd.support.CloseableClient;
-import io.grpc.stub.StreamObserver;
 
 /**
  * Interface of maintenance talking to etcd.
@@ -113,9 +113,39 @@ public interface Maintenance extends CloseableClient {
     /**
      * retrieves backend snapshot as as stream of chunks.
      *
-     * @param observer a stream of data chunks
+     * @param listener a listener for snapshot data chunks
      */
-    void snapshot(StreamObserver<SnapshotResponse> observer);
+    void snapshot(Listener listener);
+
+    /**
+     * retrieves backend snapshot as as stream of chunks.
+     *
+     * @param onNext the on next consumer
+     */
+    default void snapshot(Consumer<SnapshotResponse> onNext) {
+        snapshot(listener(onNext));
+    }
+
+    /**
+     * retrieves backend snapshot as as stream of chunks.
+     *
+     * @param onNext  the on next consumer
+     * @param onError the on error consumer
+     */
+    default void snapshot(Consumer<SnapshotResponse> onNext, Consumer<Throwable> onError) {
+        snapshot(listener(onNext, onError));
+    }
+
+    /**
+     * retrieves backend snapshot as as stream of chunks.
+     *
+     * @param onNext      the on next consumer
+     * @param onError     the on error consumer
+     * @param onCompleted the on completion runnable
+     */
+    default void snapshot(Consumer<SnapshotResponse> onNext, Consumer<Throwable> onError, Runnable onCompleted) {
+        snapshot(listener(onNext, onError, onCompleted));
+    }
 
     /**
      * moveLeader requests current leader to transfer its leadership to the transferee.
@@ -125,4 +155,58 @@ public interface Maintenance extends CloseableClient {
      * @return              the response result
      */
     CompletableFuture<MoveLeaderResponse> moveLeader(long transfereeID);
+
+    static Listener listener(Consumer<SnapshotResponse> onNext) {
+        return listener(onNext, t -> {
+        }, () -> {
+        });
+    }
+
+    static Listener listener(Consumer<SnapshotResponse> onNext, Consumer<Throwable> onError) {
+        return listener(onNext, onError, () -> {
+        });
+    }
+
+    static Listener listener(Consumer<SnapshotResponse> onNext, Consumer<Throwable> onError, Runnable onCompleted) {
+        return new Listener() {
+            @Override
+            public void onNext(SnapshotResponse response) {
+                onNext.accept(response);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                onError.accept(throwable);
+            }
+
+            @Override
+            public void onCompleted() {
+                onCompleted.run();
+            }
+        };
+    }
+
+    /**
+     * Listener for snapshot responses.
+     */
+    interface Listener {
+        /**
+         * Invoked on new snapshot responses.
+         *
+         * @param response the response.
+         */
+        void onNext(SnapshotResponse response);
+
+        /**
+         * Invoked on errors.
+         *
+         * @param throwable the error.
+         */
+        void onError(Throwable throwable);
+
+        /**
+         * Invoked on completion.
+         */
+        void onCompleted();
+    }
 }

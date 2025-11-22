@@ -21,10 +21,10 @@ import java.util.concurrent.CompletableFuture;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Election;
 import io.etcd.jetcd.api.CampaignRequest;
+import io.etcd.jetcd.api.ElectionGrpcClient;
 import io.etcd.jetcd.api.LeaderRequest;
 import io.etcd.jetcd.api.ProclaimRequest;
 import io.etcd.jetcd.api.ResignRequest;
-import io.etcd.jetcd.api.VertxElectionGrpc;
 import io.etcd.jetcd.election.CampaignResponse;
 import io.etcd.jetcd.election.LeaderKey;
 import io.etcd.jetcd.election.LeaderResponse;
@@ -34,7 +34,7 @@ import io.etcd.jetcd.election.ProclaimResponse;
 import io.etcd.jetcd.election.ResignResponse;
 import io.etcd.jetcd.support.Errors;
 import io.etcd.jetcd.support.Util;
-import io.grpc.StatusRuntimeException;
+import io.vertx.grpc.client.InvalidStatusException;
 
 import com.google.protobuf.ByteString;
 
@@ -42,16 +42,20 @@ import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdExceptio
 import static java.util.Objects.requireNonNull;
 
 final class ElectionImpl extends Impl implements Election {
-    private final VertxElectionGrpc.ElectionVertxStub stub;
+    private final ElectionGrpcClient client;
     private final ByteSequence namespace;
 
     ElectionImpl(ClientConnectionManager connectionManager) {
         super(connectionManager);
 
-        this.stub = connectionManager.newStub(VertxElectionGrpc::newVertxStub);
+        io.etcd.jetcd.resolver.EndpointResolver endpointResolver = connectionManager.getEndpointResolver();
+        this.client = ElectionGrpcClient.create(
+            connectionManager.getAuthenticatedGrpcClient(),
+            (io.vertx.core.net.SocketAddress) endpointResolver.getTarget());
         this.namespace = connectionManager.getNamespace();
     }
 
+    // TODO: Add require leader support for Vert.x client
     // Election operations are done in a context where a client is trying to implement
     // some fault tolerance related use case; in that type of context, it makes sense to always
     // apply require leader, since we don't want a client connected to a non-raft-leader server
@@ -69,9 +73,6 @@ final class ElectionImpl extends Impl implements Election {
     // In the paragraph above when we say "raft-leader" we are talking about the etcd server that is a leader
     // of the etcd servers cluster according to raft, we are not talking about the client that
     // happens to be the leader of an election using the election API in this file.
-    private VertxElectionGrpc.ElectionVertxStub stubWithLeader() {
-        return Util.applyRequireLeader(true, stub);
-    }
 
     @Override
     public CompletableFuture<CampaignResponse> campaign(ByteSequence electionName, long leaseId, ByteSequence proposal) {
@@ -86,7 +87,7 @@ final class ElectionImpl extends Impl implements Election {
 
         return wrapConvertException(
             execute(
-                () -> stubWithLeader().campaign(request),
+                () -> client.campaign(request),
                 CampaignResponse::new,
                 Errors::isRetryableForNoSafeRedoOp));
     }
@@ -109,7 +110,7 @@ final class ElectionImpl extends Impl implements Election {
 
         return wrapConvertException(
             execute(
-                () -> stubWithLeader().proclaim(request),
+                () -> client.proclaim(request),
                 ProclaimResponse::new,
                 Errors::isRetryableForNoSafeRedoOp));
     }
@@ -124,7 +125,7 @@ final class ElectionImpl extends Impl implements Election {
 
         return wrapConvertException(
             execute(
-                () -> stubWithLeader().leader(request),
+                () -> client.leader(request),
                 response -> new LeaderResponse(response, namespace),
                 Errors::isRetryableForNoSafeRedoOp));
     }
@@ -138,10 +139,15 @@ final class ElectionImpl extends Impl implements Election {
             .setName(Util.prefixNamespace(electionName, namespace))
             .build();
 
-        stubWithLeader().observeWithHandler(request,
-            value -> listener.onNext(new LeaderResponse(value, namespace)),
-            ignored -> listener.onCompleted(),
-            error -> listener.onError(toEtcdException(error)));
+        client.observe(request).onComplete(ar -> {
+            if (ar.failed()) {
+                listener.onError(toEtcdException(ar.cause()));
+            } else {
+                ar.result().handler(value -> listener.onNext(new LeaderResponse(value, namespace)));
+                ar.result().endHandler(ignored -> listener.onCompleted());
+                ar.result().exceptionHandler(error -> listener.onError(toEtcdException(error)));
+            }
+        });
     }
 
     @Override
@@ -160,7 +166,7 @@ final class ElectionImpl extends Impl implements Election {
 
         return wrapConvertException(
             execute(
-                () -> stubWithLeader().resign(request),
+                () -> client.resign(request),
                 ResignResponse::new,
                 Errors::isRetryableForNoSafeRedoOp));
     }
@@ -174,9 +180,9 @@ final class ElectionImpl extends Impl implements Election {
     private RuntimeException convertException(Throwable e) {
         Throwable cause = e;
         while (cause != null) {
-            if (cause instanceof StatusRuntimeException) {
-                StatusRuntimeException exception = (StatusRuntimeException) cause;
-                String description = exception.getStatus().getDescription();
+            if (cause instanceof InvalidStatusException) {
+                InvalidStatusException exception = (InvalidStatusException) cause;
+                String description = exception.getMessage();
                 // different APIs use different messages. we cannot distinguish missing leader error otherwise,
                 // because communicated status is always UNKNOWN
                 if ("election: not leader".equals(description)) {

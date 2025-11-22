@@ -18,7 +18,9 @@
 dependencies {
     api libs.slf4j
     api libs.guava
-    api libs.grpcCore
+    // For GrpcStatus and InvalidStatusException used in exception handling
+    api "io.vertx:vertx-grpc-common:${libs.versions.vertx.get()}"
+    api libs.vertxGrpcClient
 
     testImplementation libs.bundles.testing
     testRuntimeOnly libs.bundles.log4j

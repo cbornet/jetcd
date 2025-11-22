@@ -16,74 +16,59 @@
 
 package io.etcd.jetcd.impl;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Executor;
-import java.util.function.BiConsumer;
+import java.util.concurrent.CompletableFuture;
 
+import io.etcd.jetcd.api.AuthGrpcClient;
 import io.etcd.jetcd.api.AuthenticateRequest;
-import io.etcd.jetcd.api.VertxAuthGrpc;
-import io.grpc.CallCredentials;
-import io.grpc.ClientInterceptor;
-import io.grpc.Metadata;
-import io.grpc.Status;
-import io.grpc.stub.MetadataUtils;
 
 import com.google.protobuf.ByteString;
 
-import static io.etcd.jetcd.Preconditions.checkArgument;
+import static io.etcd.jetcd.support.Preconditions.checkArgument;
 
 /**
- * AuthTokenInterceptor fills header with Auth token of any rpc calls and
- * refreshes token if the rpc results an invalid Auth token error.
+ * Handles authentication token management for etcd requests.
+ * In Vert.x, authentication is handled by adding the token as a header to each request.
  */
-class AuthCredential extends CallCredentials {
-    public static final Metadata.Key<String> TOKEN = Metadata.Key.of("token", Metadata.ASCII_STRING_MARSHALLER);
+class AuthCredential {
+    public static final String TOKEN_HEADER = "token";
 
     private final ClientConnectionManager manager;
-    private volatile Metadata meta;
+    private volatile String token;
 
     public AuthCredential(ClientConnectionManager manager) {
         this.manager = manager;
     }
 
-    @Override
-    public void applyRequestMetadata(RequestInfo requestInfo, Executor appExecutor, MetadataApplier applier) {
-        final Metadata meta = this.meta;
+    /**
+     * Get the current authentication token, authenticating if necessary.
+     *
+     * @return CompletableFuture with the token
+     */
+    public CompletableFuture<String> getToken() {
+        final String currentToken = this.token;
 
-        if (meta != null) {
-            applier.apply(meta);
-        } else {
-            authenticate(applier);
+        if (currentToken != null) {
+            return CompletableFuture.completedFuture(currentToken);
         }
+
+        return authenticate();
     }
 
+    /**
+     * Clear the cached token to force re-authentication on next request.
+     */
     public void refresh() {
-        meta = null;
+        token = null;
     }
 
-    @SuppressWarnings("rawtypes")
-    private void authenticate(MetadataApplier applier) {
+    private CompletableFuture<String> authenticate() {
         checkArgument(!manager.builder().user().isEmpty(), "username can not be empty.");
         checkArgument(!manager.builder().password().isEmpty(), "password can not be empty.");
 
-        VertxAuthGrpc.AuthVertxStub authFutureStub = VertxAuthGrpc.newVertxStub(this.manager.getChannel());
-
-        List<ClientInterceptor> interceptorsChain = new ArrayList<>();
-        if (manager.builder().authHeaders() != null) {
-            Metadata metadata = new Metadata();
-            manager.builder().authHeaders().forEach((BiConsumer<Metadata.Key, Object>) metadata::put);
-
-            interceptorsChain.add(MetadataUtils.newAttachHeadersInterceptor(metadata));
-        }
-        if (manager.builder().authInterceptors() != null) {
-            interceptorsChain.addAll(manager.builder().authInterceptors());
-        }
-
-        if (!interceptorsChain.isEmpty()) {
-            authFutureStub = authFutureStub.withInterceptors(
-                interceptorsChain.toArray(new ClientInterceptor[0]));
-        }
+        io.etcd.jetcd.resolver.EndpointResolver endpointResolver = manager.getEndpointResolver();
+        AuthGrpcClient authClient = AuthGrpcClient.create(
+            manager.getGrpcClient(),
+            (io.vertx.core.net.SocketAddress) endpointResolver.getTarget());
 
         final ByteString user = ByteString.copyFrom(this.manager.builder().user().getBytes());
         final ByteString pass = ByteString.copyFrom(this.manager.builder().password().getBytes());
@@ -93,21 +78,9 @@ class AuthCredential extends CallCredentials {
             .setPasswordBytes(pass)
             .build();
 
-        try {
-            authFutureStub.authenticate(request)
-                .onFailure(t -> {
-                    applier.fail(Status.UNAUTHENTICATED.withCause(t));
-                })
-                .onSuccess(h -> {
-                    Metadata meta = new Metadata();
-                    meta.put(TOKEN, h.getToken());
-
-                    this.meta = meta;
-
-                    applier.apply(this.meta);
-                });
-        } catch (Exception e) {
-            applier.fail(Status.UNAUTHENTICATED.withCause(e));
-        }
+        return authClient.authenticate(request).toCompletionStage().toCompletableFuture().thenApply(response -> {
+            this.token = response.getToken();
+            return this.token;
+        });
     }
 }

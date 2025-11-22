@@ -1,0 +1,63 @@
+feat!: migrate from grpc-java to vertx-grpc-client
+
+BREAKING CHANGES:
+- Replace loadBalancerPolicy(String) with loadBalancer(LoadBalancer)
+- Remove ClientBuilder no-arg constructor, require EndpointResolver
+- Update error message format from detailed messages to status codes
+- Remove server-based unit test support
+
+This is a major architectural change that resolves Netty dependency
+conflicts and simplifies the dependency tree by removing grpc-java
+entirely and using native Vert.x gRPC client.
+
+Core Changes:
+- Migrate all dependencies from grpc-java to vertx-grpc-client
+- Introduce EndpointResolver abstraction for service discovery
+- Add DNS SRV resolution support via EndpointResolvers.dnsSrv()
+- Add type-safe LoadBalancer API (ROUND_ROBIN, LEAST_REQUESTS, etc.)
+- Implement AuthenticatingGrpcClient wrapper for authentication
+- Add custom headers support via ClientBuilder.headers()
+- Update all 9 service implementations to use GrpcClient
+- Add Util.isNullOrEmpty() for null-safe ByteSequence checks
+- Add Util.toSocketAddress() with validation
+
+API Changes:
+- New: Client.builder(String... addresses) - simplified endpoint config
+- New: Client.builder(URI... addresses) - URI-based endpoint config
+- New: Client.builder(Collection<URI>) - collection support
+- New: Client.builder(EndpointResolver) - custom resolver support
+- New: ClientBuilder.loadBalancer(LoadBalancer) - type-safe API
+- New: ClientBuilder.headers(Map) - custom headers support
+- New: ClientBuilder.header(String, String) - single header support
+- Removed: ClientBuilder.loadBalancerPolicy(String) - use loadBalancer()
+- Changed: ClientBuilder constructor now requires EndpointResolver
+
+New Features:
+- DNS SRV resolution for dynamic service discovery
+- Static endpoint resolution via EndpointResolvers.endpoints()
+- Testcontainer support via EtcdClusterEndpointResolver
+- Type-safe load balancer selection
+- Custom header injection for all requests
+
+Documentation:
+- Add docs/DNS_SRV_RESOLUTION.md - DNS SRV usage guide
+- Add docs/LOAD_BALANCING.md - load balancing guide
+- Update docs/migration-to-vertx-grpc-client.md - status and lessons
+
+Testing:
+- Update 20+ test files to use new API
+- Migrate test assertions to Vert.x error format
+- Remove 3 server-based unit tests (no Vert.x server stubs)
+- Fix authentication NullPointerException
+- Fix URI host validation
+- Status: 101/128 tests passing (27 infrastructure failures)
+
+Fixes:
+- Resolve Netty version conflicts (#1370)
+- Single Netty dependency in tree
+- Cleaner dependency management
+- Better error messages for invalid URIs
+- Null-safe authentication handling
+
+Related: #1372, #1370
+

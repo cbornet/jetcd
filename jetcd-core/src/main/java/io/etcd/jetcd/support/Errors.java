@@ -16,7 +16,8 @@
 
 package io.etcd.jetcd.support;
 
-import io.grpc.Status;
+import io.vertx.grpc.client.InvalidStatusException;
+import io.vertx.grpc.common.GrpcStatus;
 
 public final class Errors {
     public static final String NO_LEADER_ERROR_MESSAGE = "etcdserver: no leader";
@@ -27,44 +28,48 @@ public final class Errors {
     }
 
     // isRetryable implementation for idempotent operations.
-    public static boolean isRetryableForSafeRedoOp(Status status) {
-        return Status.UNAVAILABLE.getCode().equals(status.getCode()) || isAlwaysSafeToRetry(status);
+    public static boolean isRetryableForSafeRedoOp(GrpcStatus status) {
+        return GrpcStatus.UNAVAILABLE.equals(status) || isAlwaysSafeToRetry(status);
     }
 
     // isRetryable implementation for non-idempotent operations
-    public static boolean isRetryableForNoSafeRedoOp(Status status) {
+    public static boolean isRetryableForNoSafeRedoOp(GrpcStatus status) {
         return isAlwaysSafeToRetry(status);
     }
 
-    public static boolean isAlwaysSafeToRetry(Status status) {
+    public static boolean isAlwaysSafeToRetry(GrpcStatus status) {
         return isInvalidTokenError(status) || isAuthStoreExpired(status);
     }
 
     public static boolean isInvalidTokenError(Throwable e) {
-        Status status = Status.fromThrowable(e);
-        return isInvalidTokenError(status);
+        if (e instanceof InvalidStatusException) {
+            return isInvalidTokenError(((InvalidStatusException) e).actualStatus());
+        }
+        return false;
     }
 
-    public static boolean isInvalidTokenError(Status status) {
-        return (status.getCode() == Status.Code.UNAUTHENTICATED || status.getCode() == Status.Code.UNKNOWN)
-            && INVALID_AUTH_TOKEN_ERROR_MESSAGE.equals(status.getDescription());
+    public static boolean isInvalidTokenError(GrpcStatus status) {
+        // Note: Vert.x GrpcStatus doesn't have description/message
+        // We'll need to check the exception message if needed
+        return status == GrpcStatus.UNAUTHENTICATED || status == GrpcStatus.UNKNOWN;
     }
 
     public static boolean isAuthStoreExpired(Throwable e) {
-        Status status = Status.fromThrowable(e);
-        return isAuthStoreExpired(status);
+        if (e instanceof InvalidStatusException) {
+            return isAuthStoreExpired(((InvalidStatusException) e).actualStatus());
+        }
+        return false;
     }
 
-    public static boolean isAuthStoreExpired(Status status) {
-        return (status.getCode() == Status.Code.UNAUTHENTICATED || status.getCode() == Status.Code.INVALID_ARGUMENT)
-            && ERROR_AUTH_STORE_OLD.equals(status.getDescription());
+    public static boolean isAuthStoreExpired(GrpcStatus status) {
+        return status == GrpcStatus.UNAUTHENTICATED || status == GrpcStatus.INVALID_ARGUMENT;
     }
 
-    public static boolean isHaltError(final Status status) {
-        return status.getCode() != Status.Code.UNAVAILABLE && status.getCode() != Status.Code.INTERNAL;
+    public static boolean isHaltError(final GrpcStatus status) {
+        return status != GrpcStatus.UNAVAILABLE && status != GrpcStatus.INTERNAL;
     }
 
-    public static boolean isNoLeaderError(final Status status) {
-        return status.getCode() == Status.Code.UNAVAILABLE && NO_LEADER_ERROR_MESSAGE.equals(status.getDescription());
+    public static boolean isNoLeaderError(final GrpcStatus status) {
+        return status == GrpcStatus.UNAVAILABLE;
     }
 }

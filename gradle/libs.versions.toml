@@ -1,5 +1,4 @@
 [versions]
-grpc = "1.76.0"
 log4j = "2.25.2"
 mockito = "5.20.0"
 slf4j = "2.0.17"
@@ -8,6 +7,7 @@ assertj = "3.27.6"
 junit = "5.13.4"
 testcontainers = "2.0.2"
 protoc = "3.25.1"
+protobuf = "3.25.1"
 failsafe = "3.3.2"
 awaitility = "4.3.0"
 commonsIo = "2.21.0"
@@ -48,14 +48,10 @@ commonsCompress = { module = "org.apache.commons:commons-compress", version.ref 
 mockitoCore = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 mockitoJunit = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
 
-grpcCore = { module = "io.grpc:grpc-core", version.ref = "grpc" }
-grpcNetty = { module = "io.grpc:grpc-netty", version.ref = "grpc" }
-grpcProtobuf = { module = "io.grpc:grpc-protobuf", version.ref = "grpc" }
-grpcStub = { module = "io.grpc:grpc-stub", version.ref = "grpc" }
-grpcInprocess = { module = "io.grpc:grpc-inprocess", version.ref = "grpc" }
-grpcUtil = { module = "io.grpc:grpc-util", version.ref = "grpc" }
+protobufJava = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
 
-vertxGrpc = { module = "io.vertx:vertx-grpc", version.ref = "vertx" }
+vertxGrpcClient = { module = "io.vertx:vertx-grpc-client", version.ref = "vertx" }
+vertxServiceResolver = { module = "io.vertx:vertx-service-resolver", version.ref = "vertx" }
 
 log4jApi = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j" }
 log4jCore = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j" }
@@ -72,8 +68,6 @@ errorproneAnnotations = { module = "com.google.errorprone:error_prone_annotation
 errorproneJavac = { module = "com.google.errorprone:javac", version = "9+" }
 
 [bundles]
-grpc     = [ "grpcCore", "grpcNetty", "grpcProtobuf", "grpcStub", "grpcUtil"]
-grpcTest = [ "grpcInprocess"]
 log4j    = [ "log4jApi", "log4jCore", "log4jSlf4j", "log4j12" ]
 mockito  = [ "mockitoCore", "mockitoJunit" ]
 testing  = ["junit", "assertj", "mockitoCore", "mockitoJunit"]

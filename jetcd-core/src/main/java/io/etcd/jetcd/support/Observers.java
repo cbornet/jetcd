@@ -18,27 +18,51 @@ package io.etcd.jetcd.support;
 
 import java.util.function.Consumer;
 
-import io.grpc.stub.StreamObserver;
+import io.vertx.core.Handler;
+import io.vertx.core.streams.ReadStream;
 
+/**
+ * Helper class for working with Vert.x ReadStream handlers.
+ */
 public final class Observers {
     private Observers() {
     }
 
-    public static <V> StreamObserver<V> observer(Consumer<V> onNext) {
-        return new StreamObserver<V>() {
-            @Override
-            public void onNext(V value) {
-                onNext.accept(value);
-            }
+    /**
+     * Create a simple handler for ReadStream items.
+     *
+     * @param  onNext the handler for each item
+     * @param  <V>    the item type
+     * @return        a handler
+     */
+    public static <V> Handler<V> handler(Consumer<V> onNext) {
+        return onNext::accept;
+    }
 
-            @Override
-            public void onError(Throwable throwable) {
-            }
+    /**
+     * Attach handlers to a ReadStream.
+     *
+     * @param stream      the ReadStream
+     * @param onNext      handler for each item
+     * @param onError     handler for errors
+     * @param onCompleted handler for completion
+     * @param <V>         the item type
+     */
+    public static <V> void observe(
+        ReadStream<V> stream,
+        Consumer<V> onNext,
+        Consumer<Throwable> onError,
+        Runnable onCompleted) {
 
-            @Override
-            public void onCompleted() {
-            }
-        };
+        if (onNext != null) {
+            stream.handler(onNext::accept);
+        }
+        if (onError != null) {
+            stream.exceptionHandler(onError::accept);
+        }
+        if (onCompleted != null) {
+            stream.endHandler(v -> onCompleted.run());
+        }
     }
 
     public static <T> Builder<T> builder() {
@@ -65,34 +89,23 @@ public final class Observers {
             return this;
         }
 
-        public StreamObserver<V> build() {
-            final Consumer<V> doOnNext = this.onNext;
-            final Consumer<Throwable> doOnnError = this.onError;
-            final Runnable doOnnCompleted = this.onCompleted;
-
-            return new StreamObserver<V>() {
-                @Override
-                public void onNext(V value) {
-                    if (onNext != null) {
-                        doOnNext.accept(value);
-                    }
-                }
-
-                @Override
-                public void onError(Throwable throwable) {
-                    if (doOnnError != null) {
-                        doOnnError.accept(throwable);
-                    }
-                }
-
-                @Override
-                public void onCompleted() {
-                    if (doOnnCompleted != null) {
-                        doOnnCompleted.run();
-                    }
-                }
-            };
+        /**
+         * Attach the built handlers to a ReadStream.
+         *
+         * @param  stream the ReadStream to attach handlers to
+         * @return        the ReadStream (for chaining)
+         */
+        public ReadStream<V> attach(ReadStream<V> stream) {
+            if (onNext != null) {
+                stream.handler(onNext::accept);
+            }
+            if (onError != null) {
+                stream.exceptionHandler(onError::accept);
+            }
+            if (onCompleted != null) {
+                stream.endHandler(v -> onCompleted.run());
+            }
+            return stream;
         }
-
     }
 }

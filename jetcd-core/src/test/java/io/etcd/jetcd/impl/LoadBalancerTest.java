@@ -31,6 +31,7 @@ import io.etcd.jetcd.KV;
 import io.etcd.jetcd.Response;
 import io.etcd.jetcd.kv.PutResponse;
 import io.etcd.jetcd.test.EtcdClusterExtension;
+import io.vertx.core.net.endpoint.LoadBalancer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -45,7 +46,7 @@ public class LoadBalancerTest {
     @Test
     public void testPickFirstBalancerFactory() throws Exception {
         final List<URI> endpoints = cluster.clientEndpoints();
-        final ClientBuilder builder = Client.builder().endpoints(endpoints).loadBalancerPolicy("pick_first");
+        final ClientBuilder builder = Client.builder(endpoints);
 
         try (Client client = builder.build();
             KV kv = client.getKVClient()) {
@@ -68,7 +69,7 @@ public class LoadBalancerTest {
     @Test
     public void testRoundRobinLoadBalancerFactory() throws Exception {
         final List<URI> endpoints = cluster.clientEndpoints();
-        final ClientBuilder builder = Client.builder().endpoints(endpoints).loadBalancerPolicy("round_robin");
+        final ClientBuilder builder = Client.builder(endpoints).loadBalancer(LoadBalancer.ROUND_ROBIN);
 
         try (Client client = builder.build();
             KV kv = client.getKVClient()) {

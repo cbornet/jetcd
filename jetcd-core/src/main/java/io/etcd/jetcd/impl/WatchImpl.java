@@ -28,8 +28,8 @@ import org.slf4j.LoggerFactory;
 
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Watch;
-import io.etcd.jetcd.api.VertxWatchGrpc;
 import io.etcd.jetcd.api.WatchCreateRequest;
+import io.etcd.jetcd.api.WatchGrpcClient;
 import io.etcd.jetcd.api.WatchProgressRequest;
 import io.etcd.jetcd.api.WatchRequest;
 import io.etcd.jetcd.api.WatchResponse;
@@ -39,10 +39,9 @@ import io.etcd.jetcd.options.OptionsUtil;
 import io.etcd.jetcd.options.WatchOption;
 import io.etcd.jetcd.support.Errors;
 import io.etcd.jetcd.support.Util;
-import io.grpc.Status;
-import io.grpc.stub.ClientCallStreamObserver;
+import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.WriteStream;
-import io.vertx.grpc.stub.GrpcWriteStream;
+import io.vertx.grpc.common.GrpcStatus;
 
 import com.google.common.base.Strings;
 import com.google.common.util.concurrent.FutureCallback;
@@ -62,7 +61,7 @@ final class WatchImpl extends Impl implements Watch {
     private static final Logger LOG = LoggerFactory.getLogger(WatchImpl.class);
 
     private final Object lock;
-    private final VertxWatchGrpc.WatchVertxStub stub;
+    private final WatchGrpcClient client;
     private final ListeningScheduledExecutorService executor;
     private final AtomicBoolean closed;
     private final List<WatcherImpl> watchers;
@@ -72,7 +71,10 @@ final class WatchImpl extends Impl implements Watch {
         super(connectionManager);
 
         this.lock = new Object();
-        this.stub = connectionManager.newStub(VertxWatchGrpc::newVertxStub);
+        io.etcd.jetcd.resolver.EndpointResolver endpointResolver = connectionManager.getEndpointResolver();
+        this.client = WatchGrpcClient.create(
+            connectionManager.getAuthenticatedGrpcClient(),
+            (io.vertx.core.net.SocketAddress) endpointResolver.getTarget());
         // set it to daemon as there is no way for users to create this thread pool by their own
         this.executor = MoreExecutors.listeningDecorator(
             Executors.newScheduledThreadPool(1, Util.createThreadFactory("jetcd-watch-", true)));
@@ -183,15 +185,24 @@ final class WatchImpl extends Impl implements Watch {
                     builder.addFilters(WatchCreateRequest.FilterType.NOPUT);
                 }
 
-                var ignored = Util.applyRequireLeader(option.withRequireLeader(), stub)
-                    .watchWithHandler(
-                        stream -> {
-                            wstream.set(stream);
-                            stream.write(WatchRequest.newBuilder().setCreateRequest(builder).build());
-                        },
-                        this::onNext,
-                        event -> onCompleted(),
-                        this::onError);
+                // TODO: Add require leader support for Vert.x client
+                client.watch((writeStream, err) -> {
+                    if (err != null) {
+                        onError(err);
+                    } else {
+                        wstream.set(writeStream);
+                        writeStream.write(WatchRequest.newBuilder().setCreateRequest(builder).build());
+                    }
+                }).onComplete(ar -> {
+                    if (ar.failed()) {
+                        onError(ar.cause());
+                    } else {
+                        ReadStream<WatchResponse> readStream = ar.result();
+                        readStream.handler(this::onNext);
+                        readStream.endHandler(event -> onCompleted());
+                        readStream.exceptionHandler(this::onError);
+                    }
+                });
             }
         }
 
@@ -203,14 +214,8 @@ final class WatchImpl extends Impl implements Watch {
                 if (closed.compareAndSet(false, true)) {
                     if (wstream.get() != null) {
                         WriteStream<WatchRequest> ws = wstream.get();
-                        if (ws instanceof GrpcWriteStream<?>) {
-                            GrpcWriteStream<?> gws = (GrpcWriteStream<?>) ws;
-                            var observer = gws.streamObserver();
-                            if (observer instanceof ClientCallStreamObserver<?>) {
-                                ClientCallStreamObserver<?> callObs = (ClientCallStreamObserver<?>) observer;
-                                callObs.cancel("Watcher cancelled", null);
-                            }
-                        }
+                        // End the stream to close the watch
+                        ws.end();
                     }
 
                     id = -1;
@@ -245,13 +250,14 @@ final class WatchImpl extends Impl implements Watch {
             }
 
             // handle a special case when watch has been created and closed at the same time
-            if (response.getCreated() && response.getCanceled() && response.getCancelReason() != null
+            if (response.getCreated() && response.getCanceled()
+                && !response.getCancelReason().isEmpty()
                 && (response.getCancelReason().contains("etcdserver: permission denied") ||
                     response.getCancelReason().contains("etcdserver: invalid auth token"))) {
 
                 // potentially access token expired
                 connectionManager().authCredential().refresh();
-                Status error = Status.Code.CANCELLED.toStatus().withDescription(response.getCancelReason());
+                GrpcStatus error = GrpcStatus.CANCELLED;
                 handleError(toEtcdException(error), true);
             } else if (response.getCreated()) {
 
@@ -321,7 +327,15 @@ final class WatchImpl extends Impl implements Watch {
         }
 
         private void onError(Throwable t) {
-            handleError(toEtcdException(t), shouldReschedule(Status.fromThrowable(t)));
+            GrpcStatus status = getGrpcStatus(t);
+            handleError(toEtcdException(t), shouldReschedule(status));
+        }
+
+        private GrpcStatus getGrpcStatus(Throwable t) {
+            if (t instanceof io.vertx.grpc.client.InvalidStatusException) {
+                return ((io.vertx.grpc.client.InvalidStatusException) t).actualStatus();
+            }
+            return GrpcStatus.UNKNOWN;
         }
 
         private void handleError(EtcdException etcdException, boolean shouldReschedule) {
@@ -350,7 +364,7 @@ final class WatchImpl extends Impl implements Watch {
             close();
         }
 
-        private boolean shouldReschedule(final Status status) {
+        private boolean shouldReschedule(final GrpcStatus status) {
             return !Errors.isHaltError(status) && !Errors.isNoLeaderError(status);
         }
 

@@ -16,9 +16,7 @@
 
 package io.etcd.jetcd.impl;
 
-import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Random;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -29,7 +27,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.ClientBuilder;
-import io.vertx.grpc.VertxChannelBuilder;
+import io.etcd.jetcd.resolver.EndpointResolver;
+import io.etcd.jetcd.resolver.EndpointResolvers;
+import io.vertx.core.net.endpoint.LoadBalancer;
 
 import static io.etcd.jetcd.impl.TestUtil.bytesOf;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,44 +47,30 @@ public class ClientBuilderTest {
 
     @Test
     public void testEndPoints_Null() {
-        assertThatThrownBy(() -> Client.builder().endpoints((URI) null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> Client.builder((String) null)).isInstanceOf(NullPointerException.class);
     }
 
     @Test
     public void testVertx_Null() {
-        assertThatThrownBy(() -> Client.builder().vertx(null)).isInstanceOf(IllegalArgumentException.class);
-    }
-
-    @Test
-    public void testEndPoints_Verify_Empty() {
-        assertThatThrownBy(() -> Client.builder().endpoints(new URI(""))).isInstanceOf(IllegalArgumentException.class);
-    }
-
-    @Test
-    public void testEndPoints_Verify_SomeEmpty() {
-        assertThatThrownBy(() -> Client.builder().endpoints(new URI("http://127.0.0.1:2379"), new URI("")))
+        assertThatThrownBy(() -> Client.builder("http://127.0.0.1:2379").vertx(null))
             .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    public void testBuild_WithoutEndpoints() {
-        assertThatThrownBy(() -> Client.builder().build()).isInstanceOf(IllegalStateException.class);
+    public void testEndPoints_Verify_Empty() {
+        assertThatThrownBy(() -> Client.builder("")).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    public void testMaxInboundMessageSize() throws URISyntaxException {
-        final int value = 1024 + new Random().nextInt(10);
-        final ClientBuilder builder = Client.builder().endpoints(new URI("http://127.0.0.1:2379")).maxInboundMessageSize(value);
-        final VertxChannelBuilder channelBuilder = (VertxChannelBuilder) new ClientConnectionManager(builder)
-            .defaultChannelBuilder();
-
-        assertThat(channelBuilder.nettyBuilder()).hasFieldOrPropertyWithValue("maxInboundMessageSize", value);
+    public void testEndPoints_Verify_SomeEmpty() {
+        assertThatThrownBy(() -> Client.builder("http://127.0.0.1:2379", ""))
+            .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     public void testDefaultNamespace() throws URISyntaxException {
         // test default namespace setting
-        final ClientBuilder builder = Client.builder().endpoints(new URI("http://127.0.0.1:2379"));
+        final ClientBuilder builder = Client.builder("http://127.0.0.1:2379");
         final ClientConnectionManager connectionManager = new ClientConnectionManager(builder);
         assertThat(connectionManager.getNamespace()).isEqualTo(ByteSequence.EMPTY);
     }
@@ -92,9 +78,86 @@ public class ClientBuilderTest {
     @ParameterizedTest
     @MethodSource("namespaceProvider")
     public void testNamespace(ByteSequence namespaceSetting, ByteSequence expectedNamespace) throws URISyntaxException {
-        final ClientBuilder builder = Client.builder().endpoints(new URI("http://127.0.0.1:2379")).namespace(namespaceSetting);
+        final ClientBuilder builder = Client.builder("http://127.0.0.1:2379").namespace(namespaceSetting);
         final ClientConnectionManager connectionManager = new ClientConnectionManager(builder);
         assertThat(connectionManager.getNamespace()).isEqualTo(expectedNamespace);
+    }
+
+    @Test
+    public void testEndpointResolvers_DnsSrv() {
+        // Test creating a DNS SRV resolver with default DNS server
+        EndpointResolver resolver = EndpointResolvers.dnsSrv("_etcd._tcp.example.com");
+
+        assertThat(resolver).isNotNull();
+        assertThat(resolver.getResolver()).isNotNull();
+        assertThat(resolver.getTarget()).isNotNull();
+    }
+
+    @Test
+    public void testEndpointResolvers_DnsSrvWithCustomDns() {
+        // Test creating a DNS SRV resolver with custom DNS server
+        EndpointResolver resolver = EndpointResolvers.dnsSrv("_etcd._tcp.example.com", "dns.example.com", 53);
+
+        assertThat(resolver).isNotNull();
+        assertThat(resolver.getResolver()).isNotNull();
+        assertThat(resolver.getTarget()).isNotNull();
+    }
+
+    @Test
+    public void testEndpointResolvers_Endpoints() throws URISyntaxException {
+        // Test creating a static endpoint resolver
+        EndpointResolver resolver = EndpointResolvers.endpoints("http://127.0.0.1:2379", "http://127.0.0.1:2380");
+
+        assertThat(resolver).isNotNull();
+        assertThat(resolver.getResolver()).isNotNull();
+        assertThat(resolver.getTarget()).isNotNull();
+    }
+
+    @Test
+    public void testClient_BuilderWithDnsSrvResolver() {
+        // Test creating client with DNS SRV resolver
+        ClientBuilder builder = Client.builder(EndpointResolvers.dnsSrv("_etcd._tcp.example.com"));
+
+        assertThat(builder).isNotNull();
+        assertThat(builder.endpointResolver()).isNotNull();
+        assertThat(builder.endpointResolver().getResolver()).isNotNull();
+        assertThat(builder.endpointResolver().getTarget()).isNotNull();
+    }
+
+    @Test
+    public void testLoadBalancer_RoundRobin() throws URISyntaxException {
+        ClientBuilder builder = Client.builder("http://127.0.0.1:2379").loadBalancer(LoadBalancer.ROUND_ROBIN);
+
+        assertThat(builder.loadBalancer()).isEqualTo(LoadBalancer.ROUND_ROBIN);
+    }
+
+    @Test
+    public void testLoadBalancer_LeastRequests() throws URISyntaxException {
+        ClientBuilder builder = Client.builder("http://127.0.0.1:2379").loadBalancer(LoadBalancer.LEAST_REQUESTS);
+
+        assertThat(builder.loadBalancer()).isEqualTo(LoadBalancer.LEAST_REQUESTS);
+    }
+
+    @Test
+    public void testLoadBalancer_Random() throws URISyntaxException {
+        ClientBuilder builder = Client.builder("http://127.0.0.1:2379").loadBalancer(LoadBalancer.RANDOM);
+
+        assertThat(builder.loadBalancer()).isEqualTo(LoadBalancer.RANDOM);
+    }
+
+    @Test
+    public void testLoadBalancer_PowerOfTwoChoices() throws URISyntaxException {
+        ClientBuilder builder = Client.builder("http://127.0.0.1:2379").loadBalancer(LoadBalancer.POWER_OF_TWO_CHOICES);
+
+        assertThat(builder.loadBalancer()).isEqualTo(LoadBalancer.POWER_OF_TWO_CHOICES);
+    }
+
+    @Test
+    public void testLoadBalancer_DefaultNull() throws URISyntaxException {
+        ClientBuilder builder = Client.builder("http://127.0.0.1:2379");
+
+        // Verify default is null when not specified (ClientConnectionManager will default to ROUND_ROBIN)
+        assertThat(builder.loadBalancer()).isNull();
     }
 
 }

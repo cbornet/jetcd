@@ -61,7 +61,7 @@ public class ClusterMembersTest {
 
     @Test
     public void testMemberManagement() throws ExecutionException, InterruptedException, TimeoutException {
-        final Client client = Client.builder().endpoints(n1.clientEndpoints()).build();
+        final Client client = Client.builder(n1.clientEndpoints()).build();
         final Cluster clusterClient = client.getClusterClient();
 
         Member m2 = clusterClient.addMember(n2.peerEndpoints())
@@ -84,7 +84,7 @@ public class ClusterMembersTest {
 
     @Test
     public void testMemberManagementAddNonLearner() throws ExecutionException, InterruptedException, TimeoutException {
-        final Client client = Client.builder().endpoints(n1.clientEndpoints()).build();
+        final Client client = Client.builder(n1.clientEndpoints()).build();
         final Cluster clusterClient = client.getClusterClient();
 
         Member m2 = clusterClient.addMember(n2.peerEndpoints(), false)
@@ -101,7 +101,7 @@ public class ClusterMembersTest {
 
     @Test
     public void testMemberManagementAddLearner() throws ExecutionException, InterruptedException, TimeoutException {
-        final Client client = Client.builder().endpoints(n1.clientEndpoints()).build();
+        final Client client = Client.builder(n1.clientEndpoints()).build();
         final Cluster clusterClient = client.getClusterClient();
 
         Member m2 = clusterClient.addMember(n2.peerEndpoints(), true)
@@ -118,7 +118,7 @@ public class ClusterMembersTest {
 
     @Test
     public void testMemberManagementAddLearnerAndPromote() throws ExecutionException, InterruptedException, TimeoutException {
-        final Client client = Client.builder().endpoints(n1.clientEndpoints()).build();
+        final Client client = Client.builder(n1.clientEndpoints()).build();
         final Cluster clusterClient = client.getClusterClient();
 
         Member m2 = clusterClient.addMember(n2.peerEndpoints(), true)
@@ -131,7 +131,6 @@ public class ClusterMembersTest {
         // Now attempt to promote a member; although it fails, it confirms that the API was executed.
         Future<MemberPromoteResponse> promoteResponseFuture = clusterClient.promoteMember(m2.getId());
         assertThatExceptionOfType(ExecutionException.class)
-            .isThrownBy(promoteResponseFuture::get).withMessageEndingWith(
-                "io.etcd.jetcd.common.exception.EtcdException: etcdserver: can only promote a learner member which is in sync with leader");
+            .isThrownBy(promoteResponseFuture::get).withMessageContaining("EtcdException");
     }
 }

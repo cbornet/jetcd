@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Timeout;
 
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.ClientBuilder;
-import io.grpc.StatusRuntimeException;
 
 import static io.etcd.jetcd.impl.TestUtil.bytesOf;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,8 +19,7 @@ import static org.awaitility.Awaitility.await;
 public class RetryTest {
     @Test
     public void testReconnect() throws Exception {
-        ClientBuilder builder = Client.builder()
-            .endpoints("http://127.0.0.1:9999")
+        ClientBuilder builder = Client.builder("http://127.0.0.1:9999")
             .connectTimeout(Duration.ofMillis(250))
             .waitForReady(false)
             .retryMaxAttempts(5)
@@ -39,8 +37,9 @@ public class RetryTest {
 
             await().untilAsserted(() -> {
                 assertThat(error.get()).isNotNull();
-                assertThat(error.get()).hasCauseInstanceOf(StatusRuntimeException.class);
-                assertThat(error.get().getCause()).hasMessage("UNAVAILABLE: io exception");
+                // With Vert.x gRPC client, connection failures result in exceptions
+                // We verify that an error occurred without checking specific exception types
+                assertThat(error.get()).hasMessageContaining("Connection refused");
             });
         }
     }

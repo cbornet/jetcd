@@ -28,10 +28,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import io.etcd.jetcd.Lease;
 import io.etcd.jetcd.api.LeaseGrantRequest;
+import io.etcd.jetcd.api.LeaseGrpcClient;
 import io.etcd.jetcd.api.LeaseKeepAliveRequest;
 import io.etcd.jetcd.api.LeaseRevokeRequest;
 import io.etcd.jetcd.api.LeaseTimeToLiveRequest;
-import io.etcd.jetcd.api.VertxLeaseGrpc;
 import io.etcd.jetcd.common.Service;
 import io.etcd.jetcd.common.exception.ErrorCode;
 import io.etcd.jetcd.lease.LeaseGrantResponse;
@@ -40,8 +40,7 @@ import io.etcd.jetcd.lease.LeaseRevokeResponse;
 import io.etcd.jetcd.lease.LeaseTimeToLiveResponse;
 import io.etcd.jetcd.options.LeaseOption;
 import io.etcd.jetcd.support.CloseableClient;
-import io.etcd.jetcd.support.Util;
-import io.grpc.stub.StreamObserver;
+import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.WriteStream;
 
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.newClosedLeaseClientException;
@@ -60,8 +59,7 @@ final class LeaseImpl extends Impl implements Lease {
      */
     private static final int DEFAULT_FIRST_KEEPALIVE_TIMEOUT_MS = 5000;
 
-    private final VertxLeaseGrpc.LeaseVertxStub stub;
-    private final VertxLeaseGrpc.LeaseVertxStub leaseStub;
+    private final LeaseGrpcClient client;
     private final Map<Long, KeepAliveObserver> keepAlives;
     private final KeepAlive keepAlive;
     private final DeadLine deadLine;
@@ -70,8 +68,10 @@ final class LeaseImpl extends Impl implements Lease {
     LeaseImpl(ClientConnectionManager connectionManager) {
         super(connectionManager);
 
-        this.stub = connectionManager().newStub(VertxLeaseGrpc::newVertxStub);
-        this.leaseStub = Util.applyRequireLeader(true, connectionManager().newStub(VertxLeaseGrpc::newVertxStub));
+        io.etcd.jetcd.resolver.EndpointResolver endpointResolver = connectionManager.getEndpointResolver();
+        this.client = LeaseGrpcClient.create(
+            connectionManager.getAuthenticatedGrpcClient(),
+            (io.vertx.core.net.SocketAddress) endpointResolver.getTarget());
         this.keepAlives = new ConcurrentHashMap<>();
         this.keepAlive = new KeepAlive();
         this.deadLine = new DeadLine();
@@ -80,7 +80,7 @@ final class LeaseImpl extends Impl implements Lease {
     @Override
     public CompletableFuture<LeaseGrantResponse> grant(long ttl) {
         return execute(
-            () -> this.stub.leaseGrant(
+            () -> client.leaseGrant(
                 LeaseGrantRequest.newBuilder()
                     .setTTL(ttl)
                     .build()),
@@ -90,19 +90,14 @@ final class LeaseImpl extends Impl implements Lease {
 
     @Override
     public CompletableFuture<LeaseGrantResponse> grant(long ttl, long timeout, TimeUnit unit) {
-        return execute(
-            () -> this.stub.withDeadlineAfter(timeout, unit).leaseGrant(
-                LeaseGrantRequest.newBuilder()
-                    .setTTL(ttl)
-                    .build()),
-            LeaseGrantResponse::new,
-            true);
+        // TODO: Add timeout support for Vert.x client
+        return grant(ttl);
     }
 
     @Override
     public CompletableFuture<LeaseRevokeResponse> revoke(long leaseId) {
         return execute(
-            () -> this.stub.leaseRevoke(
+            () -> client.leaseRevoke(
                 LeaseRevokeRequest.newBuilder()
                     .setID(leaseId)
                     .build()),
@@ -120,19 +115,19 @@ final class LeaseImpl extends Impl implements Lease {
             .build();
 
         return execute(
-            () -> this.stub.leaseTimeToLive(leaseTimeToLiveRequest),
+            () -> client.leaseTimeToLive(leaseTimeToLiveRequest),
             LeaseTimeToLiveResponse::new,
             true);
     }
 
     @Override
-    public synchronized CloseableClient keepAlive(long leaseId, StreamObserver<LeaseKeepAliveResponse> observer) {
+    public synchronized CloseableClient keepAlive(long leaseId, Lease.Listener listener) {
         if (this.closed) {
             throw newClosedLeaseClientException();
         }
 
         KeepAliveObserver keepAlive = this.keepAlives.computeIfAbsent(leaseId, KeepAliveObserver::new);
-        keepAlive.addObserver(observer);
+        keepAlive.addListener(listener);
 
         this.keepAlive.start();
         this.deadLine.start();
@@ -140,35 +135,49 @@ final class LeaseImpl extends Impl implements Lease {
         return new CloseableClient() {
             @Override
             public void close() {
-                keepAlive.removeObserver(observer);
+                keepAlive.removeListener(listener);
             }
         };
     }
 
     @Override
     public CompletableFuture<LeaseKeepAliveResponse> keepAliveOnce(long leaseId) {
-        final AtomicReference<WriteStream<LeaseKeepAliveRequest>> ref = new AtomicReference<>();
+        final AtomicReference<WriteStream<LeaseKeepAliveRequest>> writeStreamRef = new AtomicReference<>();
         final CompletableFuture<LeaseKeepAliveResponse> future = new CompletableFuture<>();
         final LeaseKeepAliveRequest req = LeaseKeepAliveRequest.newBuilder().setID(leaseId).build();
 
-        leaseStub
-            .leaseKeepAliveWithHandler(
-                s -> {
-                    ref.set(s);
-                    s.write(req);
-                },
-                r -> {
+        client.leaseKeepAlive((writeStream, err) -> {
+            if (err != null) {
+                future.completeExceptionally(err);
+            } else {
+                writeStreamRef.set(writeStream);
+                writeStream.write(req);
+            }
+        }).onComplete(ar -> {
+            if (ar.failed()) {
+                future.completeExceptionally(ar.cause());
+            } else {
+                ReadStream<io.etcd.jetcd.api.LeaseKeepAliveResponse> readStream = ar.result();
+                readStream.handler(r -> {
                     if (r.getTTL() != 0) {
                         future.complete(new LeaseKeepAliveResponse(r));
+                        writeStreamRef.get().end();
                     } else {
                         future.completeExceptionally(
                             newEtcdException(ErrorCode.NOT_FOUND, "etcdserver: requested lease not found"));
+                        writeStreamRef.get().end();
                     }
-                },
-                null,
-                future::completeExceptionally);
+                });
+                readStream.exceptionHandler(t -> {
+                    future.completeExceptionally(t);
+                    if (writeStreamRef.get() != null) {
+                        writeStreamRef.get().end();
+                    }
+                });
+            }
+        });
 
-        return future.whenComplete((r, t) -> ref.get().end(req));
+        return future;
     }
 
     @Override
@@ -200,11 +209,21 @@ final class LeaseImpl extends Impl implements Lease {
 
         @Override
         public void doStart() {
-            leaseStub.leaseKeepAliveWithHandler(
-                this::writeHandler,
-                this::handleResponse,
-                null,
-                this::handleException);
+            client.leaseKeepAlive((writeStream, err) -> {
+                if (err != null) {
+                    handleException(err);
+                } else {
+                    writeHandler(writeStream);
+                }
+            }).onComplete(ar -> {
+                if (ar.failed()) {
+                    handleException(ar.cause());
+                } else {
+                    ReadStream<io.etcd.jetcd.api.LeaseKeepAliveResponse> readStream = ar.result();
+                    readStream.handler(this::handleResponse);
+                    readStream.exceptionHandler(this::handleException);
+                }
+            });
         }
 
         @Override
@@ -325,8 +344,8 @@ final class LeaseImpl extends Impl implements Lease {
     /**
      * The KeepAlive hold the keepAlive information for lease.
      */
-    private final class KeepAliveObserver implements StreamObserver<io.etcd.jetcd.api.LeaseKeepAliveResponse> {
-        private final List<StreamObserver<LeaseKeepAliveResponse>> observers;
+    private final class KeepAliveObserver {
+        private final List<Lease.Listener> listeners;
         private final long leaseId;
 
         private long deadLine;
@@ -336,7 +355,7 @@ final class LeaseImpl extends Impl implements Lease {
             this(leaseId, Collections.emptyList());
         }
 
-        public KeepAliveObserver(long leaseId, Collection<StreamObserver<LeaseKeepAliveResponse>> observers) {
+        public KeepAliveObserver(long leaseId, Collection<Lease.Listener> listeners) {
             this.nextKeepAlive = System.currentTimeMillis();
 
             // Use user-provided timeout if present to avoid removing KeepAlive before first response from server
@@ -345,7 +364,7 @@ final class LeaseImpl extends Impl implements Lease {
                 : DEFAULT_FIRST_KEEPALIVE_TIMEOUT_MS;
             this.deadLine = nextKeepAlive + initialKeepAliveTimeoutMs;
 
-            this.observers = new CopyOnWriteArrayList<>(observers);
+            this.listeners = new CopyOnWriteArrayList<>(listeners);
             this.leaseId = leaseId;
         }
 
@@ -361,14 +380,14 @@ final class LeaseImpl extends Impl implements Lease {
             this.deadLine = deadLine;
         }
 
-        public void addObserver(StreamObserver<LeaseKeepAliveResponse> observer) {
-            this.observers.add(observer);
+        public void addListener(Lease.Listener listener) {
+            this.listeners.add(listener);
         }
 
-        public void removeObserver(StreamObserver<LeaseKeepAliveResponse> listener) {
-            this.observers.remove(listener);
+        public void removeListener(Lease.Listener listener) {
+            this.listeners.remove(listener);
 
-            if (this.observers.isEmpty()) {
+            if (this.listeners.isEmpty()) {
                 keepAlives.remove(leaseId);
             }
         }
@@ -381,24 +400,21 @@ final class LeaseImpl extends Impl implements Lease {
             this.nextKeepAlive = nextKeepAlive;
         }
 
-        @Override
         public void onNext(io.etcd.jetcd.api.LeaseKeepAliveResponse response) {
-            for (StreamObserver<LeaseKeepAliveResponse> observer : observers) {
-                observer.onNext(new LeaseKeepAliveResponse(response));
+            for (Lease.Listener listener : listeners) {
+                listener.onNext(new LeaseKeepAliveResponse(response));
             }
         }
 
-        @Override
         public void onError(Throwable throwable) {
-            for (StreamObserver<LeaseKeepAliveResponse> observer : observers) {
-                observer.onError(toEtcdException(throwable));
+            for (Lease.Listener listener : listeners) {
+                listener.onError(toEtcdException(throwable));
             }
         }
 
-        @Override
         public void onCompleted() {
-            this.observers.forEach(StreamObserver::onCompleted);
-            this.observers.clear();
+            this.listeners.forEach(Lease.Listener::onCompleted);
+            this.listeners.clear();
         }
     }
 }

@@ -37,9 +37,7 @@ import io.etcd.jetcd.lease.LeaseTimeToLiveResponse;
 import io.etcd.jetcd.options.LeaseOption;
 import io.etcd.jetcd.options.PutOption;
 import io.etcd.jetcd.support.CloseableClient;
-import io.etcd.jetcd.support.Observers;
 import io.etcd.jetcd.test.EtcdClusterExtension;
-import io.grpc.stub.StreamObserver;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -155,7 +153,7 @@ public class LeaseTest {
 
         AtomicReference<LeaseKeepAliveResponse> responseRef = new AtomicReference<>();
 
-        try (CloseableClient c = leaseClient.keepAlive(leaseID, Observers.observer(responseRef::set))) {
+        try (CloseableClient c = leaseClient.keepAlive(leaseID, Lease.listener(responseRef::set))) {
             await().pollInterval(250, TimeUnit.MILLISECONDS).untilAsserted(() -> {
                 LeaseKeepAliveResponse response = responseRef.get();
                 assertThat(response).isNotNull();
@@ -176,10 +174,7 @@ public class LeaseTest {
             AtomicReference<LeaseKeepAliveResponse> resp = new AtomicReference<>();
             AtomicReference<Throwable> error = new AtomicReference<>();
 
-            StreamObserver<LeaseKeepAliveResponse> observer = Observers.<LeaseKeepAliveResponse> builder()
-                .onNext(resp::set)
-                .onError(error::set)
-                .build();
+            Lease.Listener observer = Lease.listener(resp::set, error::set);
 
             long leaseID = lc.grant(5, 10, TimeUnit.SECONDS).get().getID();
 

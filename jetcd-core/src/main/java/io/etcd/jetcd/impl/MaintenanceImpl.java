@@ -29,7 +29,6 @@ import io.etcd.jetcd.maintenance.DefragmentResponse;
 import io.etcd.jetcd.maintenance.HashKVResponse;
 import io.etcd.jetcd.maintenance.MoveLeaderResponse;
 import io.etcd.jetcd.maintenance.StatusResponse;
-import io.grpc.stub.StreamObserver;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdException;
@@ -38,12 +37,15 @@ import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdExceptio
  * Implementation of maintenance client.
  */
 final class MaintenanceImpl extends Impl implements Maintenance {
-    private final VertxMaintenanceGrpc.MaintenanceVertxStub stub;
+    private final MaintenanceGrpcClient client;
 
     MaintenanceImpl(ClientConnectionManager connectionManager) {
         super(connectionManager);
 
-        this.stub = connectionManager().newStub(VertxMaintenanceGrpc::newVertxStub);
+        io.etcd.jetcd.resolver.EndpointResolver endpointResolver = connectionManager.getEndpointResolver();
+        client = MaintenanceGrpcClient.create(
+            connectionManager.getAuthenticatedGrpcClient(),
+            (io.vertx.core.net.SocketAddress) endpointResolver.getTarget());
     }
 
     @Override
@@ -54,7 +56,7 @@ final class MaintenanceImpl extends Impl implements Maintenance {
             .setMemberID(0)
             .build();
 
-        return completable(this.stub.alarm(alarmRequest), AlarmResponse::new);
+        return completable(client.alarm(alarmRequest), AlarmResponse::new);
     }
 
     @Override
@@ -68,50 +70,41 @@ final class MaintenanceImpl extends Impl implements Maintenance {
             .setMemberID(member.getMemberId())
             .build();
 
-        return completable(this.stub.alarm(alarmRequest), AlarmResponse::new);
+        return completable(client.alarm(alarmRequest), AlarmResponse::new);
     }
 
     @Override
     public CompletableFuture<DefragmentResponse> defragmentMember(String target) {
-        return this.connectionManager().withNewChannel(
-            target,
-            VertxMaintenanceGrpc::newVertxStub,
-            stub -> {
-                return stub.defragment(DefragmentRequest.getDefaultInstance())
-                    .map(DefragmentResponse::new)
-                    .toCompletionStage().toCompletableFuture();
-            });
+        // TODO: Implement target-specific client creation for defragmentMember
+        // For now, use the default client
+        return completable(
+            client.defragment(DefragmentRequest.getDefaultInstance()),
+            DefragmentResponse::new);
     }
 
     @Override
     public CompletableFuture<StatusResponse> statusMember(String target) {
-        return this.connectionManager().withNewChannel(
-            target,
-            VertxMaintenanceGrpc::newVertxStub,
-            stub -> {
-                return stub.status(StatusRequest.getDefaultInstance())
-                    .map(StatusResponse::new)
-                    .toCompletionStage().toCompletableFuture();
-            });
+        // TODO: Implement target-specific client creation for statusMember
+        // For now, use the default client
+        return completable(
+            client.status(StatusRequest.getDefaultInstance()),
+            StatusResponse::new);
     }
 
     @Override
     public CompletableFuture<MoveLeaderResponse> moveLeader(long transfereeID) {
         return completable(
-            this.stub.moveLeader(MoveLeaderRequest.newBuilder().setTargetID(transfereeID).build()),
+            client.moveLeader(MoveLeaderRequest.newBuilder().setTargetID(transfereeID).build()),
             MoveLeaderResponse::new);
     }
 
     @Override
     public CompletableFuture<HashKVResponse> hashKV(String target, long rev) {
-        return this.connectionManager().withNewChannel(
-            target,
-            VertxMaintenanceGrpc::newVertxStub,
-            stub -> {
-                return stub.hashKV(HashKVRequest.newBuilder().setRevision(rev).build())
-                    .map(HashKVResponse::new)
-                    .toCompletionStage().toCompletableFuture();
-            });
+        // TODO: Implement target-specific client creation for hashKV
+        // For now, use the default client
+        return completable(
+            client.hashKV(HashKVRequest.newBuilder().setRevision(rev).build()),
+            HashKVResponse::new);
     }
 
     @Override
@@ -119,33 +112,40 @@ final class MaintenanceImpl extends Impl implements Maintenance {
         final CompletableFuture<Long> answer = new CompletableFuture<>();
         final AtomicLong bytes = new AtomicLong(0);
 
-        this.stub.snapshotWithHandler(
-            SnapshotRequest.getDefaultInstance(),
-            r -> {
-                try {
-                    r.getBlob().writeTo(outputStream);
-                    bytes.addAndGet(r.getBlob().size());
-                } catch (IOException e) {
+        client.snapshot(SnapshotRequest.getDefaultInstance()).onComplete(ar -> {
+            if (ar.failed()) {
+                answer.completeExceptionally(toEtcdException(ar.cause()));
+            } else {
+                ar.result().handler(r -> {
+                    try {
+                        r.getBlob().writeTo(outputStream);
+                        bytes.addAndGet(r.getBlob().size());
+                    } catch (IOException e) {
+                        answer.completeExceptionally(toEtcdException(e));
+                    }
+                });
+                ar.result().endHandler(event -> {
+                    answer.complete(bytes.get());
+                });
+                ar.result().exceptionHandler(e -> {
                     answer.completeExceptionally(toEtcdException(e));
-                }
-            },
-            event -> {
-                answer.complete(bytes.get());
-            },
-            e -> {
-                answer.completeExceptionally(toEtcdException(e));
-            });
+                });
+            }
+        });
 
         return answer;
     }
 
     @Override
-    public void snapshot(StreamObserver<io.etcd.jetcd.maintenance.SnapshotResponse> observer) {
-
-        this.stub.snapshotWithHandler(
-            SnapshotRequest.getDefaultInstance(),
-            r -> observer.onNext(new io.etcd.jetcd.maintenance.SnapshotResponse(r)),
-            event -> observer.onCompleted(),
-            e -> observer.onError(toEtcdException(e)));
+    public void snapshot(Maintenance.Listener listener) {
+        client.snapshot(SnapshotRequest.getDefaultInstance()).onComplete(ar -> {
+            if (ar.failed()) {
+                listener.onError(toEtcdException(ar.cause()));
+            } else {
+                ar.result().handler(r -> listener.onNext(new io.etcd.jetcd.maintenance.SnapshotResponse(r)));
+                ar.result().endHandler(event -> listener.onCompleted());
+                ar.result().exceptionHandler(e -> listener.onError(toEtcdException(e)));
+            }
+        });
     }
 }

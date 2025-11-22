@@ -20,9 +20,13 @@ plugins {
 
 dependencies {
     api libs.slf4j
-    api libs.vertxGrpc
-    api libs.bundles.grpc
+    api libs.vertxGrpcClient
+    api libs.protobufJava
     api libs.bundles.javax
+
+    // Needed for compilation of generated service interfaces
+    // Using api instead of compileOnly to ensure server interfaces compile correctly
+    api "io.vertx:vertx-grpc-server:${libs.versions.vertx.get()}"
 }
 
 protobuf {
@@ -30,27 +34,43 @@ protobuf {
         artifact = "com.google.protobuf:protoc:${libs.versions.protoc.get()}"
     }
     plugins {
-        grpc {
-            artifact = "io.grpc:protoc-gen-grpc-java:${libs.versions.grpc.get()}"
-        }
         vertx {
-            artifact = "io.vertx:vertx-grpc-protoc-plugin:${libs.versions.vertx.get()}"
+            // Use vertx-grpc-protoc-plugin2 to generate native Vert.x gRPC clients
+            // This avoids grpc-java dependency by generating clients that use GrpcClient directly
+            artifact = "io.vertx:vertx-grpc-protoc-plugin2:${libs.versions.vertx.get()}"
         }
     }
     generateProtoTasks {
         all()*.plugins {
-            grpc
-            vertx
+            vertx {
+                // Generate only client code (not server), native Vert.x style
+                option 'grpc-client'
+            }
         }
     }
 }
 
-//sourceSets {
-//    main {
-//        java {
-//            srcDirs "${projectDir}/build/generated/source/proto/main/java"
-//            srcDirs "${projectDir}/build/generated/source/proto/main/grpc"
-//            srcDirs "${projectDir}/build/generated/source/proto/main/vertx"
-//        }
-//    }
-//}
+sourceSets {
+    main {
+        java {
+            srcDir "${projectDir}/build/generated/sources/proto/main/java"
+            srcDir "${projectDir}/build/generated/sources/proto/main/vertx"
+        }
+    }
+}
+
+// Remove server-side generated code we don't need
+tasks.named('generateProto').configure {
+    doLast {
+        // Delete only pure server-side files, keep service interfaces as client interfaces extend them
+        delete fileTree("${projectDir}/build/generated/sources/proto/main/vertx") {
+            include '**/*Service.java'
+            include '**/*GrpcService.java'
+        }
+    }
+}
+
+// Handle duplicate proto files in sourcesJar (proto files appear in both java and vertx dirs)
+tasks.withType(Jar).configureEach {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

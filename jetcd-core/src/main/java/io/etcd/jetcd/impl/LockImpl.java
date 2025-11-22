@@ -20,9 +20,9 @@ import java.util.concurrent.CompletableFuture;
 
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Lock;
+import io.etcd.jetcd.api.lock.LockGrpcClient;
 import io.etcd.jetcd.api.lock.LockRequest;
 import io.etcd.jetcd.api.lock.UnlockRequest;
-import io.etcd.jetcd.api.lock.VertxLockGrpc;
 import io.etcd.jetcd.lock.LockResponse;
 import io.etcd.jetcd.lock.UnlockResponse;
 import io.etcd.jetcd.support.Errors;
@@ -31,9 +31,10 @@ import io.etcd.jetcd.support.Util;
 import static java.util.Objects.requireNonNull;
 
 final class LockImpl extends Impl implements Lock {
-    private final VertxLockGrpc.LockVertxStub stub;
+    private final LockGrpcClient client;
     private final ByteSequence namespace;
 
+    // TODO: Add require leader support for Vert.x client
     // Lock operations are done in a context where a client is trying to implement
     // some strict mutual exclusion use case; in that type of context, it makes sense to always
     // apply require leader, since we don't want a client connected to a non-raft-leader server
@@ -46,14 +47,13 @@ final class LockImpl extends Impl implements Lock {
     // (a) know (b) retry on a different server.
     // The retry on a different server should happen automatically if the connection manager is using
     // a round robin strategy.
-    private VertxLockGrpc.LockVertxStub stubWithLeader() {
-        return Util.applyRequireLeader(true, stub);
-    }
 
     LockImpl(ClientConnectionManager connectionManager) {
         super(connectionManager);
 
-        this.stub = connectionManager.newStub(VertxLockGrpc::newVertxStub);
+        io.etcd.jetcd.resolver.EndpointResolver endpointResolver = connectionManager.getEndpointResolver();
+        this.client = LockGrpcClient.create(connectionManager.getAuthenticatedGrpcClient(),
+            (io.vertx.core.net.SocketAddress) endpointResolver.getTarget());
         this.namespace = connectionManager.getNamespace();
     }
 
@@ -67,7 +67,7 @@ final class LockImpl extends Impl implements Lock {
             .build();
 
         return execute(
-            () -> stubWithLeader().lock(request),
+            () -> client.lock(request),
             response -> new LockResponse(response, namespace),
             Errors::isRetryableForSafeRedoOp);
     }
@@ -81,7 +81,7 @@ final class LockImpl extends Impl implements Lock {
             .build();
 
         return execute(
-            () -> stubWithLeader().unlock(request),
+            () -> client.unlock(request),
             UnlockResponse::new,
             Errors::isRetryableForSafeRedoOp);
     }

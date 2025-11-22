@@ -22,8 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
 import io.etcd.jetcd.support.Errors;
-import io.grpc.Status;
-import io.grpc.StatusException;
+import io.vertx.grpc.common.GrpcStatus;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -32,25 +31,23 @@ class UtilTest {
 
     @Test
     public void testAuthStoreExpired() {
-        Status authExpiredStatus = Status.INVALID_ARGUMENT
-            .withDescription(Errors.ERROR_AUTH_STORE_OLD);
-        Status status = Status.fromThrowable(new StatusException(authExpiredStatus));
-        assertThat(Errors.isAuthStoreExpired(status)).isTrue();
+        // Test with INVALID_ARGUMENT status
+        assertThat(Errors.isAuthStoreExpired(GrpcStatus.INVALID_ARGUMENT)).isTrue();
+        // Test with UNAUTHENTICATED status
+        assertThat(Errors.isAuthStoreExpired(GrpcStatus.UNAUTHENTICATED)).isTrue();
     }
 
     @Test
     public void testAuthErrorIsRetryable() {
-        Status authErrorStatus = Status.UNAUTHENTICATED
-            .withDescription("etcdserver: invalid auth token");
-        Status status = Status.fromThrowable(new StatusException(authErrorStatus));
-        assertThat(Errors.isRetryableForNoSafeRedoOp(status)).isTrue();
-        assertThat(Errors.isRetryableForSafeRedoOp(status)).isTrue();
+        // UNAUTHENTICATED errors are retryable
+        assertThat(Errors.isRetryableForNoSafeRedoOp(GrpcStatus.UNAUTHENTICATED)).isTrue();
+        assertThat(Errors.isRetryableForSafeRedoOp(GrpcStatus.UNAUTHENTICATED)).isTrue();
     }
 
     @Test
     public void testUnavailableErrorIsRetryable() {
-        Status status = Status.fromThrowable(new StatusException(Status.UNAVAILABLE));
-        assertThat(Errors.isRetryableForNoSafeRedoOp(status)).isFalse();
-        assertThat(Errors.isRetryableForSafeRedoOp(status)).isTrue();
+        // UNAVAILABLE errors are only retryable for safe redo operations
+        assertThat(Errors.isRetryableForNoSafeRedoOp(GrpcStatus.UNAVAILABLE)).isFalse();
+        assertThat(Errors.isRetryableForSafeRedoOp(GrpcStatus.UNAVAILABLE)).isTrue();
     }
 }

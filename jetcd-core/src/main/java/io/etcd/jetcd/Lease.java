@@ -18,6 +18,7 @@ package io.etcd.jetcd;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import io.etcd.jetcd.lease.LeaseGrantResponse;
 import io.etcd.jetcd.lease.LeaseKeepAliveResponse;
@@ -25,7 +26,6 @@ import io.etcd.jetcd.lease.LeaseRevokeResponse;
 import io.etcd.jetcd.lease.LeaseTimeToLiveResponse;
 import io.etcd.jetcd.options.LeaseOption;
 import io.etcd.jetcd.support.CloseableClient;
-import io.grpc.stub.StreamObserver;
 
 /**
  * Interface of KeepAlive talking to etcd.
@@ -80,8 +80,99 @@ public interface Lease extends CloseableClient {
      * keep the given lease alive forever.
      *
      * @param  leaseId  lease to be keep alive forever.
-     * @param  observer the observer
-     * @return          a KeepAliveListener that listens for KeepAlive responses.
+     * @param  listener the listener
+     * @return          a CloseableClient that can be used to stop the keep alive.
      */
-    CloseableClient keepAlive(long leaseId, StreamObserver<LeaseKeepAliveResponse> observer);
+    CloseableClient keepAlive(long leaseId, Listener listener);
+
+    /**
+     * keep the given lease alive forever.
+     *
+     * @param  leaseId lease to be keep alive forever.
+     * @param  onNext  the on next consumer
+     * @return         a CloseableClient that can be used to stop the keep alive.
+     */
+    default CloseableClient keepAlive(long leaseId, Consumer<LeaseKeepAliveResponse> onNext) {
+        return keepAlive(leaseId, listener(onNext));
+    }
+
+    /**
+     * keep the given lease alive forever.
+     *
+     * @param  leaseId lease to be keep alive forever.
+     * @param  onNext  the on next consumer
+     * @param  onError the on error consumer
+     * @return         a CloseableClient that can be used to stop the keep alive.
+     */
+    default CloseableClient keepAlive(long leaseId, Consumer<LeaseKeepAliveResponse> onNext, Consumer<Throwable> onError) {
+        return keepAlive(leaseId, listener(onNext, onError));
+    }
+
+    /**
+     * keep the given lease alive forever.
+     *
+     * @param  leaseId     lease to be keep alive forever.
+     * @param  onNext      the on next consumer
+     * @param  onError     the on error consumer
+     * @param  onCompleted the on completion runnable
+     * @return             a CloseableClient that can be used to stop the keep alive.
+     */
+    default CloseableClient keepAlive(long leaseId, Consumer<LeaseKeepAliveResponse> onNext, Consumer<Throwable> onError,
+        Runnable onCompleted) {
+        return keepAlive(leaseId, listener(onNext, onError, onCompleted));
+    }
+
+    static Listener listener(Consumer<LeaseKeepAliveResponse> onNext) {
+        return listener(onNext, t -> {
+        }, () -> {
+        });
+    }
+
+    static Listener listener(Consumer<LeaseKeepAliveResponse> onNext, Consumer<Throwable> onError) {
+        return listener(onNext, onError, () -> {
+        });
+    }
+
+    static Listener listener(Consumer<LeaseKeepAliveResponse> onNext, Consumer<Throwable> onError, Runnable onCompleted) {
+        return new Listener() {
+            @Override
+            public void onNext(LeaseKeepAliveResponse response) {
+                onNext.accept(response);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                onError.accept(throwable);
+            }
+
+            @Override
+            public void onCompleted() {
+                onCompleted.run();
+            }
+        };
+    }
+
+    /**
+     * Listener for lease keep alive responses.
+     */
+    interface Listener {
+        /**
+         * Invoked on new keep alive responses.
+         *
+         * @param response the response.
+         */
+        void onNext(LeaseKeepAliveResponse response);
+
+        /**
+         * Invoked on errors.
+         *
+         * @param throwable the error.
+         */
+        void onError(Throwable throwable);
+
+        /**
+         * Invoked on completion.
+         */
+        void onCompleted();
+    }
 }

@@ -19,21 +19,16 @@ package io.etcd.jetcd.impl;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.ClientBuilder;
+import io.etcd.jetcd.resolver.EndpointResolver;
 import io.etcd.jetcd.support.Util;
-import io.grpc.*;
-import io.grpc.ForwardingClientCall.SimpleForwardingClientCall;
-import io.grpc.netty.NegotiationType;
-import io.grpc.stub.AbstractStub;
-import io.netty.channel.ChannelOption;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
-import io.vertx.grpc.VertxChannelBuilder;
+import io.vertx.core.net.endpoint.LoadBalancer;
+import io.vertx.grpc.client.GrpcClient;
 
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdException;
 
@@ -43,16 +38,17 @@ final class ClientConnectionManager {
     private final ExecutorService executorService;
     private final AuthCredential credential;
     private volatile Vertx vertx;
-    private volatile ManagedChannel managedChannel;
+    private volatile GrpcClient grpcClient;
+    private volatile GrpcClient authenticatedGrpcClient;
 
     ClientConnectionManager(ClientBuilder builder) {
         this(builder, null);
     }
 
-    ClientConnectionManager(ClientBuilder builder, ManagedChannel managedChannel) {
+    ClientConnectionManager(ClientBuilder builder, GrpcClient grpcClient) {
         this.lock = new Object();
         this.builder = builder;
-        this.managedChannel = managedChannel;
+        this.grpcClient = grpcClient;
         this.credential = new AuthCredential(this);
 
         if (builder.executorService() == null) {
@@ -67,16 +63,41 @@ final class ClientConnectionManager {
         }
     }
 
-    ManagedChannel getChannel() {
-        if (managedChannel == null) {
+    GrpcClient getGrpcClient() {
+        if (grpcClient == null) {
             synchronized (lock) {
-                if (managedChannel == null) {
-                    managedChannel = defaultChannelBuilder().build();
+                if (grpcClient == null) {
+                    grpcClient = createGrpcClient();
                 }
             }
         }
 
-        return managedChannel;
+        return grpcClient;
+    }
+
+    /**
+     * Get the authenticated GrpcClient that adds auth token headers to all requests.
+     * Use this for all authenticated operations (KV, Watch, Lease, etc.).
+     *
+     * @return the authenticated GrpcClient
+     */
+    GrpcClient getAuthenticatedGrpcClient() {
+        if (authenticatedGrpcClient == null) {
+            synchronized (lock) {
+                if (authenticatedGrpcClient == null) {
+                    authenticatedGrpcClient = new AuthenticatingGrpcClient(getGrpcClient(), this);
+                }
+            }
+        }
+
+        return authenticatedGrpcClient;
+    }
+
+    EndpointResolver getEndpointResolver() {
+        if (builder.endpointResolver() == null) {
+            throw new IllegalArgumentException("EndpointResolver must be configured");
+        }
+        return builder.endpointResolver();
     }
 
     ByteSequence getNamespace() {
@@ -95,35 +116,16 @@ final class ClientConnectionManager {
         return this.credential;
     }
 
-    /**
-     * create stub with saved channel.
-     *
-     * @param  supplier the stub supplier
-     * @param  <T>      the type of stub
-     * @return          the attached stub
-     */
-    <T extends AbstractStub<T>> T newStub(Function<ManagedChannel, T> supplier) {
-        return newStub(supplier, getChannel());
-    }
-
-    private <T extends AbstractStub<T>> T newStub(Function<ManagedChannel, T> stubCustomizer, ManagedChannel channel) {
-        T stub = stubCustomizer.apply(channel);
-        if (builder.waitForReady()) {
-            stub = stub.withWaitForReady();
-        }
-        if (builder.user() != null && builder.password() != null) {
-            stub = stub.withCallCredentials(this.authCredential());
-        }
-
-        return stub;
-    }
-
     void close() {
         synchronized (lock) {
-            if (managedChannel != null) {
-                managedChannel.shutdownNow();
+            if (authenticatedGrpcClient != null) {
+                authenticatedGrpcClient.close();
             }
-            if (vertx != null) {
+            if (grpcClient != null) {
+                grpcClient.close();
+            }
+            if (vertx != null && builder.vertx() == null) {
+                // Only close Vertx if we created it ourselves
                 vertx.close();
             }
         }
@@ -133,91 +135,39 @@ final class ClientConnectionManager {
         }
     }
 
-    <T extends AbstractStub<T>, R> CompletableFuture<R> withNewChannel(
+    <R> CompletableFuture<R> withNewClient(
         String target,
-        Function<ManagedChannel, T> stubCustomizer,
-        Function<T, CompletableFuture<R>> stubConsumer) {
+        Function<GrpcClient, CompletableFuture<R>> clientConsumer) {
 
-        final ManagedChannel channel = defaultChannelBuilder(target).build();
-        final T stub = newStub(stubCustomizer, channel);
+        final GrpcClient client = GrpcClient.client(vertx());
 
         try {
-            return stubConsumer.apply(stub).whenComplete((r, t) -> channel.shutdown());
+            return clientConsumer.apply(client).whenComplete((r, t) -> client.close());
         } catch (Exception e) {
-            channel.shutdown();
+            client.close();
             throw toEtcdException(e);
         }
     }
 
-    ManagedChannelBuilder<?> defaultChannelBuilder() {
-        return defaultChannelBuilder(builder.target());
-    }
+    private GrpcClient createGrpcClient() {
+        io.vertx.grpc.client.GrpcClientBuilder grpcBuilder = GrpcClient.builder(vertx());
 
-    @SuppressWarnings("rawtypes")
-    ManagedChannelBuilder<?> defaultChannelBuilder(String target) {
-        if (target == null) {
-            throw new IllegalArgumentException("At least one endpoint should be provided");
-        }
+        EndpointResolver endpointResolver = getEndpointResolver();
+        grpcBuilder.withAddressResolver(endpointResolver.getResolver());
 
-        final VertxChannelBuilder channelBuilder = VertxChannelBuilder.forTarget(vertx(), target);
+        // Configure load balancer (default to ROUND_ROBIN if not specified)
+        LoadBalancer loadBalancer = builder.loadBalancer();
+        if (loadBalancer == null) {
+            loadBalancer = LoadBalancer.ROUND_ROBIN;
+        }
+        grpcBuilder.withLoadBalancer(loadBalancer);
 
-        if (builder.authority() != null) {
-            channelBuilder.overrideAuthority(builder.authority());
-        }
-        if (builder.maxInboundMessageSize() != null) {
-            channelBuilder.maxInboundMessageSize(builder.maxInboundMessageSize());
-        }
-        if (builder.sslContext() != null) {
-            channelBuilder.nettyBuilder().negotiationType(NegotiationType.TLS);
-            channelBuilder.nettyBuilder().sslContext(builder.sslContext());
-        } else {
-            channelBuilder.nettyBuilder().negotiationType(NegotiationType.PLAINTEXT);
-        }
+        // TODO: Configure SSL if provided
+        // if (builder.sslContext() != null) {
+        //     Convert from Netty SslContext to Vert.x SSL configuration
+        // }
 
-        if (builder.keepaliveTime() != null) {
-            channelBuilder.keepAliveTime(builder.keepaliveTime().toMillis(), TimeUnit.MILLISECONDS);
-        }
-        if (builder.keepaliveTimeout() != null) {
-            channelBuilder.keepAliveTimeout(builder.keepaliveTimeout().toMillis(), TimeUnit.MILLISECONDS);
-        }
-        if (builder.keepaliveWithoutCalls() != null) {
-            channelBuilder.keepAliveWithoutCalls(builder.keepaliveWithoutCalls());
-        }
-        if (builder.connectTimeout() != null) {
-            channelBuilder.nettyBuilder().withOption(ChannelOption.CONNECT_TIMEOUT_MILLIS,
-                (int) builder.connectTimeout().toMillis());
-        }
-
-        if (builder.loadBalancerPolicy() != null) {
-            channelBuilder.defaultLoadBalancingPolicy(builder.loadBalancerPolicy());
-        } else {
-            channelBuilder.defaultLoadBalancingPolicy("round_robin");
-        }
-
-        if (builder.headers() != null) {
-            channelBuilder.intercept(new ClientInterceptor() {
-                @Override
-                public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
-                    MethodDescriptor<ReqT, RespT> method,
-                    CallOptions callOptions,
-                    Channel next) {
-
-                    return new SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
-                        @Override
-                        public void start(Listener<RespT> responseListener, Metadata headers) {
-                            builder.headers().forEach((BiConsumer<Metadata.Key, Object>) headers::put);
-                            super.start(responseListener, headers);
-                        }
-                    };
-                }
-            });
-        }
-
-        if (builder.interceptors() != null) {
-            channelBuilder.intercept(builder.interceptors());
-        }
-
-        return channelBuilder;
+        return (GrpcClient) grpcBuilder.build();
     }
 
     Vertx vertx() {

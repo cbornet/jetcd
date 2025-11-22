@@ -20,18 +20,17 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.stream.Collectors;
 
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Constants;
-import io.grpc.Metadata;
-import io.grpc.stub.AbstractStub;
+import io.vertx.core.Future;
+import io.vertx.core.net.SocketAddress;
 
 import com.google.protobuf.ByteString;
-
-import static io.grpc.stub.MetadataUtils.newAttachHeadersInterceptor;
 
 public final class Util {
 
@@ -46,6 +45,31 @@ public final class Util {
                 throw new IllegalArgumentException("Invalid endpoint URI: " + uri, e);
             }
         }).collect(Collectors.toList());
+    }
+
+    /**
+     * Converts a URI to a SocketAddress, using default port 2379 if not specified.
+     *
+     * @param  uri the URI to convert
+     * @return     a SocketAddress for the URI
+     */
+    public static SocketAddress toSocketAddress(URI uri) {
+        String host = uri.getHost();
+        if (host == null || host.isEmpty()) {
+            throw new IllegalArgumentException("URI host cannot be null or empty: " + uri);
+        }
+        int port = uri.getPort() != -1 ? uri.getPort() : 2379;
+        return SocketAddress.inetSocketAddress(port, host);
+    }
+
+    /**
+     * Checks if a ByteSequence is null or empty.
+     *
+     * @param  sequence the ByteSequence to check
+     * @return          true if the sequence is null or empty, false otherwise
+     */
+    public static boolean isNullOrEmpty(ByteSequence sequence) {
+        return sequence == null || sequence.isEmpty();
     }
 
     public static ByteString prefixNamespace(ByteSequence key, ByteSequence namespace) {
@@ -112,13 +136,18 @@ public final class Util {
         return namespace.isEmpty() ? key : key.substring(namespace.size());
     }
 
-    public static <T extends AbstractStub<T>> T applyRequireLeader(boolean requireLeader, T stub) {
-        if (!requireLeader) {
-            return stub;
-        }
-        final Metadata md = new Metadata();
-        md.put(Constants.REQUIRE_LEADER_KEY, Constants.REQUIRE_LEADER_VALUE);
-        return stub.withInterceptors(newAttachHeadersInterceptor(md));
+    /**
+     * Convert a Vert.x Future to a CompletableFuture.
+     *
+     * @param      vertxFuture the Vert.x future
+     * @param      <T>         the result type
+     * @return                 a CompletableFuture
+     * @deprecated             Use {@link Future#toCompletionStage()} and
+     *                         {@link java.util.concurrent.CompletionStage#toCompletableFuture()} instead
+     */
+    @Deprecated
+    public static <T> CompletableFuture<T> toCompletableFuture(Future<T> vertxFuture) {
+        return vertxFuture.toCompletionStage().toCompletableFuture();
     }
 
     public static ThreadFactory createThreadFactory(String prefix, boolean daemon) {

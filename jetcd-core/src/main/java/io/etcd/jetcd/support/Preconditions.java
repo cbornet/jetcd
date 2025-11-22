@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
-package io.etcd.jetcd;
+package io.etcd.jetcd.support;
 
-public class Preconditions {
+public final class Preconditions {
+
+    private Preconditions() {
+    }
 
     public static void checkArgument(boolean expression, String errorMessage) {
         if (!expression) {
@@ -28,5 +31,12 @@ public class Preconditions {
         if (!expression) {
             throw new IllegalStateException(errorMessage);
         }
+    }
+
+    public static <T> T requireNonNull(T obj, String errorMessage) {
+        if (obj == null) {
+            throw new NullPointerException(errorMessage);
+        }
+        return obj;
     }
 }

@@ -58,8 +58,7 @@ public class SslTest {
             ? new FileInputStream(capath)
             : getClass().getResourceAsStream(DEFAULT_SSL_CA_PATH)) {
 
-            Client client = Client.builder()
-                .endpoints(endpoint)
+            Client client = Client.builder(endpoint.toString())
                 .authority(authority)
                 .sslContext(b -> b.trustManager(is))
                 .build();

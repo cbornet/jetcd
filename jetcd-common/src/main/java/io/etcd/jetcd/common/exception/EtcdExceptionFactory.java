@@ -18,9 +18,8 @@ package io.etcd.jetcd.common.exception;
 
 import java.util.Objects;
 
-import io.grpc.Status;
-
-import static io.grpc.Status.fromThrowable;
+import io.vertx.grpc.client.InvalidStatusException;
+import io.vertx.grpc.common.GrpcStatus;
 
 /**
  * A factory for creating instances of {@link EtcdException} and its subtypes.
@@ -71,15 +70,20 @@ public final class EtcdExceptionFactory {
             return (EtcdException) cause;
         }
 
-        return toEtcdException(fromThrowable(cause));
+        if (cause instanceof InvalidStatusException) {
+            InvalidStatusException statusEx = (InvalidStatusException) cause;
+            return toEtcdException(statusEx.actualStatus());
+        }
+
+        return newEtcdException(ErrorCode.UNKNOWN, cause.getMessage(), cause);
     }
 
-    public static EtcdException toEtcdException(Status status) {
+    public static EtcdException toEtcdException(GrpcStatus status) {
         Objects.requireNonNull(status, "status can't be null");
         return fromStatus(status);
     }
 
-    private static EtcdException fromStatus(Status status) {
-        return newEtcdException(ErrorCode.fromGrpcStatus(status), status.getDescription(), status.getCause());
+    private static EtcdException fromStatus(GrpcStatus status) {
+        return newEtcdException(ErrorCode.fromGrpcStatus(status), status.toString(), null);
     }
 }

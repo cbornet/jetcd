@@ -38,10 +38,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.Maintenance;
-import io.etcd.jetcd.maintenance.SnapshotResponse;
 import io.etcd.jetcd.maintenance.StatusResponse;
 import io.etcd.jetcd.test.EtcdClusterExtension;
-import io.grpc.stub.StreamObserver;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
@@ -106,22 +104,11 @@ public class MaintenanceTest {
         final AtomicLong count = new AtomicLong();
         final CountDownLatch latcht = new CountDownLatch(1);
 
-        maintenance.snapshot(new StreamObserver<SnapshotResponse>() {
-            @Override
-            public void onNext(SnapshotResponse value) {
-                count.addAndGet(value.getBlob().size());
-            }
-
-            @Override
-            public void onError(Throwable t) {
-                fail("Should not throw exception");
-            }
-
-            @Override
-            public void onCompleted() {
-                latcht.countDown();
-            }
-        });
+        maintenance.snapshot(
+            Maintenance.listener(
+                value -> count.addAndGet(value.getBlob().size()),
+                t -> fail("Should not throw exception"),
+                latcht::countDown));
 
         latcht.await(10, TimeUnit.SECONDS);
 
@@ -162,7 +149,7 @@ public class MaintenanceTest {
             fail("leader not found");
         }
 
-        try (Client client = Client.builder().endpoints(leaderEndpoint).build()) {
+        try (Client client = Client.builder(leaderEndpoint.toString()).build()) {
             client.getMaintenanceClient().moveLeader(followers.get(0)).get();
         }
     }
