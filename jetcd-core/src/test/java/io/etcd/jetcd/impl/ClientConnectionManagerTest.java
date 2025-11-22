@@ -25,19 +25,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
-import io.etcd.jetcd.launcher.Etcd;
 import io.etcd.jetcd.test.EtcdClusterExtension;
 
 import static io.etcd.jetcd.impl.TestUtil.bytesOf;
 
 @Timeout(value = 30, unit = TimeUnit.SECONDS)
 public class ClientConnectionManagerTest {
-
-    private final static String ROOT_STRING = "root";
-    private final static ByteSequence ROOT = bytesOf(ROOT_STRING);
-    private final static ByteSequence ROOT_PASS = bytesOf("123");
 
     @RegisterExtension
     public static final EtcdClusterExtension cluster = EtcdClusterExtension.builder()
@@ -54,8 +48,6 @@ public class ClientConnectionManagerTest {
     @Disabled("DNS resolver not implemented")
     @Test
     public void testEndpointsWithDns() throws InterruptedException, ExecutionException, TimeoutException {
-        final int port = cluster.cluster().containers().get(0).getMappedPort(Etcd.ETCD_CLIENT_PORT);
-
         // DNS resolution through custom resolver not yet implemented
         // try (Client client = Client.builder("dns:///etcd0:" + port).build()) {
         //     client.getKVClient().put(bytesOf("sample_key"), bytesOf("sample_key")).get(15, TimeUnit.SECONDS);

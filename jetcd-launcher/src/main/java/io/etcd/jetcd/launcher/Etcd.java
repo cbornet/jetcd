@@ -86,7 +86,7 @@ public final class Etcd {
      * options for multi-node setups, SSL, custom networks, and data persistence.
      */
     public static class Builder {
-        private String image = Etcd.resolveContainerImage();
+        private String image = resolveContainerImage();
         private String clusterName = UUID.randomUUID().toString();
         private String prefix;
         private int nodes = 1;

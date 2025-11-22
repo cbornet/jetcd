@@ -82,7 +82,7 @@ public class WatchTest {
         final AtomicReference<WatchResponse> ref = new AtomicReference<>();
 
         // From client with namespace watch for key. Since client is namespaced it should watch for namespaced key.
-        try (Watcher watcher = nsClient.getWatchClient().watch(key, ref::set)) {
+        try (Watcher watcher = nsClient.getWatchClient().watch(key, ref::set)) { // NOPMD - UnusedLocalVariable
             // Using non-namespaced client put namespaced key.
             client.getKVClient().put(nsKey, value).get();
             await().atMost(TIME_OUT_SECONDS, TimeUnit.SECONDS).untilAsserted(() -> assertThat(ref.get()).isNotNull());
@@ -101,7 +101,7 @@ public class WatchTest {
         final ByteSequence value = randomByteSequence();
         final AtomicReference<WatchResponse> ref = new AtomicReference<>();
 
-        try (Watcher watcher = client.getWatchClient().watch(key, ref::set)) {
+        try (Watcher watcher = client.getWatchClient().watch(key, ref::set)) { // NOPMD - UnusedLocalVariable
 
             client.getKVClient().put(key, value).get();
 
@@ -122,8 +122,8 @@ public class WatchTest {
         final ByteSequence value = randomByteSequence();
         final List<WatchResponse> res = Collections.synchronizedList(new ArrayList<>(2));
 
-        try (Watcher w1 = client.getWatchClient().watch(key, res::add);
-            Watcher w2 = client.getWatchClient().watch(key, res::add)) {
+        try (Watcher w1 = client.getWatchClient().watch(key, res::add); // NOPMD - UnusedLocalVariable
+            Watcher w2 = client.getWatchClient().watch(key, res::add)) { // NOPMD - UnusedLocalVariable
 
             client.getKVClient().put(key, value).get();
             latch.await(4, TimeUnit.SECONDS);
@@ -145,7 +145,7 @@ public class WatchTest {
 
         client.getKVClient().put(key, value).get();
 
-        try (Watcher watcher = client.getWatchClient().watch(key, ref::set)) {
+        try (Watcher watcher = client.getWatchClient().watch(key, ref::set)) { // NOPMD - UnusedLocalVariable
             client.getKVClient().delete(key).get();
 
             await().atMost(TIME_OUT_SECONDS, TimeUnit.SECONDS).untilAsserted(() -> assertThat(ref.get()).isNotNull());
@@ -168,7 +168,7 @@ public class WatchTest {
         final WatchOption options = WatchOption.builder().withRevision(getCompactedRevision(client, key)).build();
         final Watch wc = client.getWatchClient();
 
-        try (Watcher watcher = wc.watch(key, options, Watch.listener(TestUtil::noOpWatchResponseConsumer, ref::set))) {
+        try (Watcher watcher = wc.watch(key, options, Watch.listener(TestUtil::noOpWatchResponseConsumer, ref::set))) { // NOPMD - UnusedLocalVariable
             await().atMost(TIME_OUT_SECONDS, TimeUnit.SECONDS).untilAsserted(() -> assertThat(ref.get()).isNotNull());
             assertThat(ref.get().getClass()).isEqualTo(CompactedException.class);
         }
@@ -181,7 +181,7 @@ public class WatchTest {
         final ByteSequence value = randomByteSequence();
         final List<WatchResponse> events = Collections.synchronizedList(new ArrayList<>());
 
-        try (Watcher watcher = client.getWatchClient().watch(key, events::add)) {
+        try (Watcher watcher = client.getWatchClient().watch(key, events::add)) { // NOPMD - UnusedLocalVariable
             client.getKVClient().put(key, value).get();
             await().atMost(TIME_OUT_SECONDS, TimeUnit.SECONDS).untilAsserted(() -> assertThat(events).isNotEmpty());
         }
@@ -204,8 +204,8 @@ public class WatchTest {
         final AtomicReference<WatchResponse> emptyWatcherEventRef = new AtomicReference<>();
         final AtomicReference<WatchResponse> activeWatcherEventRef = new AtomicReference<>();
 
-        try (Watcher activeWatcher = watchClient.watch(key, activeWatcherEventRef::set);
-            Watcher emptyWatcher = watchClient.watch(key.concat(randomByteSequence()), emptyWatcherEventRef::set)) {
+        try (Watcher activeWatcher = watchClient.watch(key, activeWatcherEventRef::set); // NOPMD - UnusedLocalVariable
+            Watcher emptyWatcher = watchClient.watch(key.concat(randomByteSequence()), emptyWatcherEventRef::set)) { // NOPMD - UnusedLocalVariable
             // Check that a requestProgress returns identical revisions initially
             watchClient.requestProgress();
             await().atMost(TIME_OUT_SECONDS, TimeUnit.SECONDS).untilAsserted(() -> {
@@ -260,7 +260,7 @@ public class WatchTest {
         long lastSeenRevision = putResponse.getHeader().getRevision();
         WatchOption watchOption = WatchOption.builder().withRevision(lastSeenRevision + 1).build();
 
-        try (Watcher watcher = client.getWatchClient().watch(key, watchOption, events::add)) {
+        try (Watcher watcher = client.getWatchClient().watch(key, watchOption, events::add)) { // NOPMD - UnusedLocalVariable
 
             cluster.restart(0, TimeUnit.MILLISECONDS); // resumes (recreates) the watch
 
@@ -290,7 +290,7 @@ public class WatchTest {
             }
         };
 
-        try (Watcher watcher = client.getWatchClient().watch(key, consumer)) {
+        try (Watcher watcher = client.getWatchClient().watch(key, consumer)) { // NOPMD - UnusedLocalVariable
             client.getKVClient().put(key, value).get();
 
             await().atMost(TIME_OUT_SECONDS, TimeUnit.SECONDS).untilAsserted(() -> assertThat(ref.get()).isNotNull());
@@ -329,11 +329,11 @@ public class WatchTest {
             completed.set(Boolean.TRUE);
         });
 
-        try (Watcher watcher = wc.watch(key, options, listener)) {
+        try (Watcher watcher = wc.watch(key, options, listener)) { // NOPMD - UnusedLocalVariable
             await().atMost(TIME_OUT_SECONDS, TimeUnit.SECONDS).untilAsserted(() -> assertThat(ref.get()).isNotNull());
             assertThat(ref.get().getClass()).isEqualTo(CompactedException.class);
             assertThat(completed.get()).isNotNull();
-            assertThat(completed.get()).isEqualTo(Boolean.TRUE);
+            assertThat(completed.get()).isEqualTo(true);
         }
     }
 
@@ -345,10 +345,10 @@ public class WatchTest {
         final WatchOption options = WatchOption.builder().withCreateNotify(true).build();
         final AtomicReference<WatchResponse> ref = new AtomicReference<>();
 
-        try (Watcher watcher = client.getWatchClient().watch(key, options, ref::set)) {
+        try (Watcher watcher = client.getWatchClient().watch(key, options, ref::set)) { // NOPMD - UnusedLocalVariable
             await().atMost(TIME_OUT_SECONDS, TimeUnit.SECONDS).untilAsserted(() -> assertThat(ref.get()).isNotNull());
             assertThat(ref.get().getEvents().size()).isEqualTo(0);
-            assertThat(ref.get().isCreatedNotify()).isEqualTo(Boolean.TRUE);
+            assertThat(ref.get().isCreatedNotify()).isEqualTo(true);
         }
     }
 }

@@ -153,7 +153,7 @@ public class LeaseTest {
 
         AtomicReference<LeaseKeepAliveResponse> responseRef = new AtomicReference<>();
 
-        try (CloseableClient c = leaseClient.keepAlive(leaseID, Lease.listener(responseRef::set))) {
+        try (CloseableClient c = leaseClient.keepAlive(leaseID, Lease.listener(responseRef::set))) { // NOPMD - UnusedLocalVariable
             await().pollInterval(250, TimeUnit.MILLISECONDS).untilAsserted(() -> {
                 LeaseKeepAliveResponse response = responseRef.get();
                 assertThat(response).isNotNull();
@@ -181,7 +181,7 @@ public class LeaseTest {
             kvClient.put(KEY, VALUE, PutOption.builder().withLeaseId(leaseID).build()).get();
             assertThat(kvClient.get(KEY).get().getCount()).isEqualTo(1);
 
-            try (CloseableClient lcc = lc.keepAlive(leaseID, observer)) {
+            try (CloseableClient lcc = lc.keepAlive(leaseID, observer)) { // NOPMD - UnusedLocalVariable
                 await().pollInterval(250, TimeUnit.MILLISECONDS).untilAsserted(() -> {
                     LeaseKeepAliveResponse response = resp.get();
                     assertThat(response).isNotNull();

@@ -55,7 +55,7 @@ public class WatchResumeTest {
             final ByteSequence value = TestUtil.randomByteSequence();
             final AtomicReference<WatchResponse> ref = new AtomicReference<>();
 
-            try (Watcher watcher = watchClient.watch(key, ref::set)) {
+            try (Watcher watcher = watchClient.watch(key, ref::set)) { // NOPMD - UnusedLocalVariable
                 cluster.restart(delaySec, TimeUnit.SECONDS);
 
                 kvClient.put(key, value).get();

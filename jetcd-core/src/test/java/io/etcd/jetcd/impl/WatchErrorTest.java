@@ -55,7 +55,7 @@ public class WatchErrorTest {
         final ByteSequence key = randomByteSequence();
         final List<Throwable> events = Collections.synchronizedList(new ArrayList<>());
 
-        try (Watcher watcher = client.getWatchClient().watch(key, TestUtil::noOpWatchResponseConsumer, events::add)) {
+        try (Watcher watcher = client.getWatchClient().watch(key, TestUtil::noOpWatchResponseConsumer, events::add)) { // NOPMD - UnusedLocalVariable
             cluster.cluster().stop();
             await().atMost(15, TimeUnit.SECONDS).untilAsserted(() -> assertThat(events).isNotEmpty());
         }
