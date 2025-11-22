@@ -100,9 +100,7 @@ public final class EndpointResolvers {
      * unchanging list of etcd servers.
      * </p>
      */
-    public static final class Static implements EndpointResolver {
-        private final AddressResolver resolver;
-        private final Address target;
+    public static final class Static extends AbstractEndpointResolver {
 
         /**
          * Creates a static endpoint resolver from a list of endpoint URIs.
@@ -122,18 +120,7 @@ public final class EndpointResolvers {
         }
 
         private Static(AddressResolver resolver, Address target) {
-            this.resolver = resolver;
-            this.target = target;
-        }
-
-        @Override
-        public AddressResolver getResolver() {
-            return resolver;
-        }
-
-        @Override
-        public Address getTarget() {
-            return target;
+            super(resolver, target);
         }
     }
 
@@ -152,9 +139,7 @@ public final class EndpointResolvers {
      * priority and weight information.
      * </p>
      */
-    public static final class DnsSrv implements EndpointResolver {
-        private final AddressResolver resolver;
-        private final Address target;
+    public static final class DnsSrv extends AbstractEndpointResolver {
 
         /**
          * Creates a DNS SRV resolver with default DNS server.
@@ -188,18 +173,7 @@ public final class EndpointResolvers {
         }
 
         private DnsSrv(AddressResolver resolver, Address target) {
-            this.resolver = resolver;
-            this.target = target;
-        }
-
-        @Override
-        public AddressResolver getResolver() {
-            return resolver;
-        }
-
-        @Override
-        public Address getTarget() {
-            return target;
+            super(resolver, target);
         }
     }
 }
