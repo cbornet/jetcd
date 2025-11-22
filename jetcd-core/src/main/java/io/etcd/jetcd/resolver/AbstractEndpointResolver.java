@@ -41,4 +41,3 @@ public abstract class AbstractEndpointResolver implements EndpointResolver {
         return target;
     }
 }
-

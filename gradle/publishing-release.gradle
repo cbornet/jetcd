@@ -78,7 +78,7 @@ publishing {
 }
 
 signing {
-    required {
+    required = {
         !version.endsWith('SNAPSHOT')
     }
 

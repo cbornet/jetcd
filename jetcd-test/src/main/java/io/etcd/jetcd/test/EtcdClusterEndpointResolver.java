@@ -16,7 +16,6 @@
 
 package io.etcd.jetcd.test;
 
-import java.util.List;
 import java.util.stream.Collectors;
 
 import io.etcd.jetcd.launcher.EtcdCluster;
@@ -47,7 +46,7 @@ public class EtcdClusterEndpointResolver extends AbstractEndpointResolver {
                 .map(addr -> SocketAddress.inetSocketAddress(addr.getPort(), addr.getHostName()))
                 .collect(Collectors.toList());
         });
-        
+
         Address target = SocketAddress.inetSocketAddress(2379, "etcd-test-cluster");
 
         return new EtcdClusterEndpointResolver(resolver, target);
