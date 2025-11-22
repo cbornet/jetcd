@@ -45,17 +45,11 @@ public class WatchResponse extends AbstractResponse<io.etcd.jetcd.api.WatchRespo
      * convert API watch event to client event.
      */
     private static WatchEvent toEvent(Event event, ByteSequence namespace) {
-        WatchEvent.EventType eventType;
-        switch (event.getType()) {
-            case DELETE:
-                eventType = WatchEvent.EventType.DELETE;
-                break;
-            case PUT:
-                eventType = WatchEvent.EventType.PUT;
-                break;
-            default:
-                eventType = WatchEvent.EventType.UNRECOGNIZED;
-        }
+        WatchEvent.EventType eventType = switch (event.getType()) {
+            case DELETE -> WatchEvent.EventType.DELETE;
+            case PUT -> WatchEvent.EventType.PUT;
+            default -> WatchEvent.EventType.UNRECOGNIZED;
+        };
 
         return new WatchEvent(new KeyValue(event.getKv(), namespace), new KeyValue(event.getPrevKv(), namespace), eventType);
     }

@@ -204,7 +204,7 @@ final class LeaseImpl extends Impl implements Lease {
         private volatile Long restart;
         private volatile WriteStream<LeaseKeepAliveRequest> requestStream;
 
-        public KeepAlive() {
+        KeepAlive() {
         }
 
         @Override
@@ -312,7 +312,7 @@ final class LeaseImpl extends Impl implements Lease {
     private class DeadLine extends Service {
         private volatile Long task;
 
-        public DeadLine() {
+        DeadLine() {
         }
 
         @Override
@@ -351,11 +351,11 @@ final class LeaseImpl extends Impl implements Lease {
         private long deadLine;
         private long nextKeepAlive;
 
-        public KeepAliveObserver(long leaseId) {
+        KeepAliveObserver(long leaseId) {
             this(leaseId, Collections.emptyList());
         }
 
-        public KeepAliveObserver(long leaseId, Collection<Lease.Listener> listeners) {
+        KeepAliveObserver(long leaseId, Collection<Lease.Listener> listeners) {
             this.nextKeepAlive = System.currentTimeMillis();
 
             // Use user-provided timeout if present to avoid removing KeepAlive before first response from server
@@ -368,23 +368,23 @@ final class LeaseImpl extends Impl implements Lease {
             this.leaseId = leaseId;
         }
 
-        public long getLeaseId() {
+        long getLeaseId() {
             return leaseId;
         }
 
-        public long getDeadLine() {
+        long getDeadLine() {
             return deadLine;
         }
 
-        public void setDeadLine(long deadLine) {
+        void setDeadLine(long deadLine) {
             this.deadLine = deadLine;
         }
 
-        public void addListener(Lease.Listener listener) {
+        void addListener(Lease.Listener listener) {
             this.listeners.add(listener);
         }
 
-        public void removeListener(Lease.Listener listener) {
+        void removeListener(Lease.Listener listener) {
             this.listeners.remove(listener);
 
             if (this.listeners.isEmpty()) {
@@ -392,27 +392,27 @@ final class LeaseImpl extends Impl implements Lease {
             }
         }
 
-        public long getNextKeepAlive() {
+        long getNextKeepAlive() {
             return nextKeepAlive;
         }
 
-        public void setNextKeepAlive(long nextKeepAlive) {
+        void setNextKeepAlive(long nextKeepAlive) {
             this.nextKeepAlive = nextKeepAlive;
         }
 
-        public void onNext(io.etcd.jetcd.api.LeaseKeepAliveResponse response) {
+        void onNext(io.etcd.jetcd.api.LeaseKeepAliveResponse response) {
             for (Lease.Listener listener : listeners) {
                 listener.onNext(new LeaseKeepAliveResponse(response));
             }
         }
 
-        public void onError(Throwable throwable) {
+        void onError(Throwable throwable) {
             for (Lease.Listener listener : listeners) {
                 listener.onError(toEtcdException(throwable));
             }
         }
 
-        public void onCompleted() {
+        void onCompleted() {
             this.listeners.forEach(Lease.Listener::onCompleted);
             this.listeners.clear();
         }

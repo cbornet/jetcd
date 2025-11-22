@@ -39,20 +39,12 @@ public class AuthRoleGetResponse extends AbstractResponse<io.etcd.jetcd.api.Auth
         ByteSequence key = ByteSequence.from(perm.getKey());
         ByteSequence rangeEnd = ByteSequence.from(perm.getRangeEnd());
 
-        Permission.Type type;
-        switch (perm.getPermType()) {
-            case READ:
-                type = Permission.Type.READ;
-                break;
-            case WRITE:
-                type = Permission.Type.WRITE;
-                break;
-            case READWRITE:
-                type = Permission.Type.READWRITE;
-                break;
-            default:
-                type = Permission.Type.UNRECOGNIZED;
-        }
+        Permission.Type type = switch (perm.getPermType()) {
+            case READ -> Permission.Type.READ;
+            case WRITE -> Permission.Type.WRITE;
+            case READWRITE -> Permission.Type.READWRITE;
+            default -> Permission.Type.UNRECOGNIZED;
+        };
 
         return new Permission(type, key, rangeEnd);
     }

@@ -128,12 +128,11 @@ public final class EtcdExceptionFactory {
      */
     public static EtcdException toEtcdException(Throwable cause) {
         Objects.requireNonNull(cause, "cause can't be null");
-        if (cause instanceof EtcdException) {
-            return (EtcdException) cause;
+        if (cause instanceof EtcdException etcdException) {
+            return etcdException;
         }
 
-        if (cause instanceof InvalidStatusException) {
-            InvalidStatusException statusEx = (InvalidStatusException) cause;
+        if (cause instanceof InvalidStatusException statusEx) {
             return toEtcdException(statusEx.actualStatus());
         }
 

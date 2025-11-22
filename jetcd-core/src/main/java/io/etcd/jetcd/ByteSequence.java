@@ -106,8 +106,7 @@ public final class ByteSequence {
         if (obj == this) {
             return true;
         }
-        if (obj instanceof ByteSequence) {
-            ByteSequence other = (ByteSequence) obj;
+        if (obj instanceof ByteSequence other) {
             if (other.hashCode() != hashCode()) {
                 return false;
             }

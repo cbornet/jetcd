@@ -57,16 +57,12 @@ public final class OptionsUtil {
      * @return       the translated {@link RangeRequest.SortOrder}
      */
     public static RangeRequest.SortOrder toRangeRequestSortOrder(SortOrder order) {
-        switch (order) {
-            case NONE:
-                return RangeRequest.SortOrder.NONE;
-            case ASCEND:
-                return RangeRequest.SortOrder.ASCEND;
-            case DESCEND:
-                return RangeRequest.SortOrder.DESCEND;
-            default:
-                return RangeRequest.SortOrder.UNRECOGNIZED;
-        }
+        return switch (order) {
+            case NONE -> RangeRequest.SortOrder.NONE;
+            case ASCEND -> RangeRequest.SortOrder.ASCEND;
+            case DESCEND -> RangeRequest.SortOrder.DESCEND;
+            default -> RangeRequest.SortOrder.UNRECOGNIZED;
+        };
     }
 
     /**
@@ -76,19 +72,13 @@ public final class OptionsUtil {
      * @return        the translated {@link RangeRequest.SortTarget}
      */
     public static RangeRequest.SortTarget toRangeRequestSortTarget(SortTarget target) {
-        switch (target) {
-            case KEY:
-                return RangeRequest.SortTarget.KEY;
-            case CREATE:
-                return RangeRequest.SortTarget.CREATE;
-            case MOD:
-                return RangeRequest.SortTarget.MOD;
-            case VALUE:
-                return RangeRequest.SortTarget.VALUE;
-            case VERSION:
-                return RangeRequest.SortTarget.VERSION;
-            default:
-                return RangeRequest.SortTarget.UNRECOGNIZED;
-        }
+        return switch (target) {
+            case KEY -> RangeRequest.SortTarget.KEY;
+            case CREATE -> RangeRequest.SortTarget.CREATE;
+            case MOD -> RangeRequest.SortTarget.MOD;
+            case VALUE -> RangeRequest.SortTarget.VALUE;
+            case VERSION -> RangeRequest.SortTarget.VERSION;
+            default -> RangeRequest.SortTarget.UNRECOGNIZED;
+        };
     }
 }

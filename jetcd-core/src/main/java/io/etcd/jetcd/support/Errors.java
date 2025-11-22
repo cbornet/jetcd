@@ -42,8 +42,8 @@ public final class Errors {
     }
 
     public static boolean isInvalidTokenError(Throwable e) {
-        if (e instanceof InvalidStatusException) {
-            return isInvalidTokenError(((InvalidStatusException) e).actualStatus());
+        if (e instanceof InvalidStatusException invalidStatusException) {
+            return isInvalidTokenError(invalidStatusException.actualStatus());
         }
         return false;
     }
@@ -55,8 +55,8 @@ public final class Errors {
     }
 
     public static boolean isAuthStoreExpired(Throwable e) {
-        if (e instanceof InvalidStatusException) {
-            return isAuthStoreExpired(((InvalidStatusException) e).actualStatus());
+        if (e instanceof InvalidStatusException invalidStatusException) {
+            return isAuthStoreExpired(invalidStatusException.actualStatus());
         }
         return false;
     }

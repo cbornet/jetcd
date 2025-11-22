@@ -204,21 +204,12 @@ final class AuthImpl extends Impl implements Auth {
         requireNonNull(rangeEnd, "rangeEnd can't be null");
         requireNonNull(permType, "permType can't be null");
 
-        io.etcd.jetcd.api.Permission.Type type;
-        switch (permType) {
-            case WRITE:
-                type = io.etcd.jetcd.api.Permission.Type.WRITE;
-                break;
-            case READWRITE:
-                type = io.etcd.jetcd.api.Permission.Type.READWRITE;
-                break;
-            case READ:
-                type = io.etcd.jetcd.api.Permission.Type.READ;
-                break;
-            default:
-                type = io.etcd.jetcd.api.Permission.Type.UNRECOGNIZED;
-                break;
-        }
+        io.etcd.jetcd.api.Permission.Type type = switch (permType) {
+            case WRITE -> io.etcd.jetcd.api.Permission.Type.WRITE;
+            case READWRITE -> io.etcd.jetcd.api.Permission.Type.READWRITE;
+            case READ -> io.etcd.jetcd.api.Permission.Type.READ;
+            default -> io.etcd.jetcd.api.Permission.Type.UNRECOGNIZED;
+        };
 
         io.etcd.jetcd.api.Permission perm = io.etcd.jetcd.api.Permission.newBuilder()
             .setKey(ByteString.copyFrom(key.getBytes()))

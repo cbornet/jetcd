@@ -146,6 +146,7 @@ public final class Util {
      *                         {@link java.util.concurrent.CompletionStage#toCompletableFuture()} instead
      */
     @Deprecated
+    @SuppressWarnings("InlineMeSuggester")
     public static <T> CompletableFuture<T> toCompletableFuture(Future<T> vertxFuture) {
         return vertxFuture.toCompletionStage().toCompletableFuture();
     }

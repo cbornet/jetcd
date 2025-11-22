@@ -160,8 +160,8 @@ abstract class Impl {
     }
 
     private GrpcStatus getGrpcStatus(Throwable throwable) {
-        if (throwable instanceof InvalidStatusException) {
-            return ((InvalidStatusException) throwable).actualStatus();
+        if (throwable instanceof InvalidStatusException invalidStatusException) {
+            return invalidStatusException.actualStatus();
         }
         return GrpcStatus.UNKNOWN;
     }

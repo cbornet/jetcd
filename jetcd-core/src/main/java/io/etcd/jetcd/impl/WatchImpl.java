@@ -129,7 +129,6 @@ final class WatchImpl extends Impl implements Watch {
         private final AtomicReference<WriteStream<WatchRequest>> wstream;
         private final AtomicBoolean started;
         private long revision;
-        private long id;
 
         WatcherImpl(ByteSequence key, WatchOption option, Listener listener) {
             this.key = key;
@@ -139,7 +138,6 @@ final class WatchImpl extends Impl implements Watch {
 
             this.started = new AtomicBoolean();
             this.wstream = new AtomicReference<>();
-            this.id = -1;
             this.revision = this.option.getRevision();
         }
 
@@ -160,9 +158,6 @@ final class WatchImpl extends Impl implements Watch {
             }
 
             if (started.compareAndSet(false, true)) {
-                // id is not really useful today, but it may be in etcd 3.4
-                id = -1;
-
                 WatchCreateRequest.Builder builder = WatchCreateRequest.newBuilder()
                     .setKey(Util.prefixNamespace(this.key, namespace))
                     .setPrevKv(this.option.isPrevKV())
@@ -218,8 +213,6 @@ final class WatchImpl extends Impl implements Watch {
                         ws.end();
                     }
 
-                    id = -1;
-
                     listener.onCompleted();
 
                     // remote the watcher from the watchers list
@@ -271,7 +264,6 @@ final class WatchImpl extends Impl implements Watch {
                 }
 
                 revision = Math.max(revision, response.getHeader().getRevision());
-                id = response.getWatchId();
                 if (option.isCreatedNotify()) {
                     listener.onNext(new io.etcd.jetcd.watch.WatchResponse(response));
                 }
@@ -332,8 +324,8 @@ final class WatchImpl extends Impl implements Watch {
         }
 
         private GrpcStatus getGrpcStatus(Throwable t) {
-            if (t instanceof io.vertx.grpc.client.InvalidStatusException) {
-                return ((io.vertx.grpc.client.InvalidStatusException) t).actualStatus();
+            if (t instanceof io.vertx.grpc.client.InvalidStatusException invalidStatusException) {
+                return invalidStatusException.actualStatus();
             }
             return GrpcStatus.UNKNOWN;
         }
