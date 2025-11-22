@@ -56,11 +56,22 @@ public class EtcdClusterEndpointResolver implements EndpointResolver {
         this.target = target;
     }
 
+    /**
+     * Returns the address resolver that maps the target address to the actual
+     * testcontainer endpoints.
+     *
+     * @return the address resolver
+     */
     @Override
     public AddressResolver getResolver() {
         return resolver;
     }
 
+    /**
+     * Returns the target address that will be resolved to the cluster endpoints.
+     *
+     * @return the target address
+     */
     @Override
     public Address getTarget() {
         return target;
