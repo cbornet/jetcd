@@ -344,7 +344,7 @@ public class KVTest {
         }
     }
 
-    @Test()
+    @Test
     public void waitForReadySemantics() throws ExecutionException, InterruptedException, TimeoutException {
         String nonExistingServer = "http://127.0.0.1:9999";
 

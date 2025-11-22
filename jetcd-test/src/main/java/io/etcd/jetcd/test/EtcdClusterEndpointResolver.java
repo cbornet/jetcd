@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 
 import io.etcd.jetcd.launcher.EtcdCluster;
 import io.etcd.jetcd.launcher.EtcdContainer;
-import io.etcd.jetcd.resolver.EndpointResolver;
+import io.etcd.jetcd.resolver.AbstractEndpointResolver;
 import io.vertx.core.net.Address;
 import io.vertx.core.net.AddressResolver;
 import io.vertx.core.net.SocketAddress;
@@ -29,51 +29,31 @@ import io.vertx.core.net.SocketAddress;
 /**
  * An endpoint resolver for testcontainers-based etcd clusters.
  */
-public class EtcdClusterEndpointResolver implements EndpointResolver {
-    private final AddressResolver resolver;
-    private final Address target;
+public class EtcdClusterEndpointResolver extends AbstractEndpointResolver {
 
     /**
      * Creates an endpoint resolver for a testcontainers etcd cluster.
+     * The resolver dynamically queries fresh endpoints on each resolution attempt,
+     * ensuring it adapts to cluster restarts and port changes.
      *
      * @param  cluster the etcd cluster
      * @return         an endpoint resolver
      */
     public static EtcdClusterEndpointResolver create(EtcdCluster cluster) {
-        List<SocketAddress> addresses = cluster.containers().stream()
-            .map(EtcdContainer::getClientAddress)
-            .map(addr -> SocketAddress.inetSocketAddress(addr.getPort(), addr.getHostName()))
-            .collect(Collectors.toList());
-
-        AddressResolver resolver = AddressResolver.mappingResolver(ignored -> addresses);
+        // Create resolver that queries fresh endpoints on each resolution
+        AddressResolver resolver = AddressResolver.mappingResolver(ignored -> {
+            return cluster.containers().stream()
+                .map(EtcdContainer::getClientAddress)
+                .map(addr -> SocketAddress.inetSocketAddress(addr.getPort(), addr.getHostName()))
+                .collect(Collectors.toList());
+        });
+        
         Address target = SocketAddress.inetSocketAddress(2379, "etcd-test-cluster");
 
         return new EtcdClusterEndpointResolver(resolver, target);
     }
 
     private EtcdClusterEndpointResolver(AddressResolver resolver, Address target) {
-        this.resolver = resolver;
-        this.target = target;
-    }
-
-    /**
-     * Returns the address resolver that maps the target address to the actual
-     * testcontainer endpoints.
-     *
-     * @return the address resolver
-     */
-    @Override
-    public AddressResolver getResolver() {
-        return resolver;
-    }
-
-    /**
-     * Returns the target address that will be resolved to the cluster endpoints.
-     *
-     * @return the target address
-     */
-    @Override
-    public Address getTarget() {
-        return target;
+        super(resolver, target);
     }
 }
