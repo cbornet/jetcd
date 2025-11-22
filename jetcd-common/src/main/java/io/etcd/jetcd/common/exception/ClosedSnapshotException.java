@@ -16,6 +16,10 @@
 
 package io.etcd.jetcd.common.exception;
 
+/**
+ * Thrown when operations are attempted on a snapshot that has been closed.
+ * This exception indicates the snapshot stream is no longer available.
+ */
 public class ClosedSnapshotException extends EtcdException {
 
     public ClosedSnapshotException() {

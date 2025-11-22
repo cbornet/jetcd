@@ -29,7 +29,12 @@ public class CompactedException extends EtcdException {
         this.compactedRevision = compactedRev;
     }
 
-    // get the current compacted revision of etcd server.
+    /**
+     * Returns the current compacted revision of the etcd server.
+     * Revisions at or below this value have been compacted and are no longer available.
+     *
+     * @return the compacted revision
+     */
     public long getCompactedRevision() {
         return compactedRevision;
     }

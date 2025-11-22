@@ -16,6 +16,10 @@
 
 package io.etcd.jetcd.common.exception;
 
+/**
+ * Thrown when operations are attempted on a client that has been closed.
+ * This exception indicates the client is no longer accepting requests.
+ */
 public class ClosedClientException extends EtcdException {
 
     public ClosedClientException(String reason) {
