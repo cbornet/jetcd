@@ -50,6 +50,11 @@ import org.testcontainers.containers.wait.strategy.Wait;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
 
+/**
+ * Testcontainer wrapper for a single etcd node.
+ * Supports configuration for SSL, clustering, custom networks, and data persistence.
+ * Can be used standalone or as part of an {@link EtcdCluster}.
+ */
 public class EtcdContainer extends GenericContainer<EtcdContainer> {
     private static final Logger LOGGER = LoggerFactory.getLogger(EtcdContainer.class);
 
@@ -65,6 +70,13 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
     private boolean shouldMountDataDirectory = true;
     private String user;
 
+    /**
+     * Creates a new etcd container.
+     *
+     * @param image the Docker image to use
+     * @param node  the node name for this container
+     * @param nodes all node names in the cluster (for multi-node setups)
+     */
     public EtcdContainer(String image, String node, Collection<String> nodes) {
         super(image);
 
@@ -75,26 +87,60 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
         this.nodes.add(node);
     }
 
-    public EtcdContainer withSll(boolean ssl) {
+    /**
+     * Enables or disables SSL/TLS for secure communication.
+     * When enabled, uses auto-generated certificates from the classpath.
+     *
+     * @param  ssl true to enable SSL/TLS
+     * @return     this container
+     */
+    public EtcdContainer withSsl(boolean ssl) {
         this.ssl = ssl;
         return self();
     }
 
+    /**
+     * Enables debug mode with verbose logging.
+     *
+     * @param  debug true to enable debug mode
+     * @return       this container
+     */
     public EtcdContainer withDebug(boolean debug) {
         this.debug = debug;
         return self();
     }
 
-    public EtcdContainer withShouldMountDataDirectory(boolean shouldMountDataDiretory) {
-        this.shouldMountDataDirectory = shouldMountDataDiretory;
+    /**
+     * Enables mounting of the etcd data directory to the host filesystem.
+     * This allows data to persist between container restarts.
+     *
+     * @param  shouldMountDataDirectory true to mount the data directory
+     * @return                          this container
+     */
+    public EtcdContainer withShouldMountDataDirectory(boolean shouldMountDataDirectory) {
+        this.shouldMountDataDirectory = shouldMountDataDirectory;
         return self();
     }
 
+    /**
+     * Sets the cluster token for initial cluster bootstrap.
+     * Used to identify the cluster during initial setup.
+     *
+     * @param  clusterToken the cluster token
+     * @return              this container
+     */
     public EtcdContainer withClusterToken(String clusterToken) {
         this.clusterToken = clusterToken;
         return self();
     }
 
+    /**
+     * Adds additional command-line arguments to pass to the etcd process.
+     * Useful for custom etcd configuration beyond the standard options.
+     *
+     * @param  additionalArgs collection of additional arguments
+     * @return                this container
+     */
     public EtcdContainer withAdditionalArgs(Collection<String> additionalArgs) {
         if (additionalArgs != null) {
             this.additionalArgs = Collections.unmodifiableCollection(new ArrayList<>(additionalArgs));
@@ -268,24 +314,49 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
         deleteDataDirectory(dataDirectory);
     }
 
+    /**
+     * Returns the node name for this container.
+     *
+     * @return the node name
+     */
     public String node() {
         return this.node;
     }
 
+    /**
+     * Returns the client address for connecting to this etcd node.
+     *
+     * @return the client socket address (host and mapped port)
+     */
     public InetSocketAddress getClientAddress() {
         return new InetSocketAddress(getHost(), getMappedPort(Etcd.ETCD_CLIENT_PORT));
     }
 
+    /**
+     * Returns the client endpoint URI for connecting to this etcd node.
+     *
+     * @return the client endpoint URI
+     */
     public URI clientEndpoint() {
         return newURI(
             getHost(),
             getMappedPort(Etcd.ETCD_CLIENT_PORT));
     }
 
+    /**
+     * Returns the peer address used for cluster member communication.
+     *
+     * @return the peer socket address (host and mapped port)
+     */
     public InetSocketAddress getPeerAddress() {
         return new InetSocketAddress(getHost(), getMappedPort(Etcd.ETCD_PEER_PORT));
     }
 
+    /**
+     * Returns the peer endpoint URI used for cluster member communication.
+     *
+     * @return the peer endpoint URI
+     */
     public URI peerEndpoint() {
         return newURI(
             getHost(),
@@ -300,6 +371,11 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
         }
     }
 
+    /**
+     * Checks if the data directory is mounted to the host filesystem.
+     *
+     * @return true if the data directory is mounted
+     */
     public boolean hasDataDirectoryMounted() {
         return dataDirectory != null;
     }

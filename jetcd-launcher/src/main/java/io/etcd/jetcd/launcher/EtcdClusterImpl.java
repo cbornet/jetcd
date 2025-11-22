@@ -54,7 +54,7 @@ public class EtcdClusterImpl implements EtcdCluster {
         this.containers = endpoints.stream()
             .map(e -> new EtcdContainer(image, e, endpoints)
                 .withClusterToken(clusterName)
-                .withSll(ssl)
+                .withSsl(ssl)
                 .withDebug(debug)
                 .withAdditionalArgs(additionalArgs)
                 .withNetwork(network)
