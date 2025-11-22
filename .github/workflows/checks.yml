@@ -3,26 +3,25 @@ name: Checks
 on:
   workflow_call:
 
-
 jobs:
   check:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 'Checkout'
+      - name: "Checkout"
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - name: 'Set Up Java'
+      - name: "Set Up Java"
         uses: actions/setup-java@v5
         with:
-          java-version: 11
-          distribution: 'temurin'
-          cache: 'gradle'
-      - name: 'Run check task'
+          java-version: 21
+          distribution: "temurin"
+          cache: "gradle"
+      - name: "Run check task"
         run: |
           ./gradlew check -x test
-      - name: 'Run check script'
+      - name: "Run check script"
         run: |
           bash ./.github/workflows/scripts/precheck.sh
         shell: bash
@@ -31,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
-      - name: 'Checkout'
+      - name: "Checkout"
         uses: actions/checkout@v5
-      - name: 'Dependency Review'
+      - name: "Dependency Review"
         uses: actions/dependency-review-action@v4

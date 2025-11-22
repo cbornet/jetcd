@@ -36,7 +36,7 @@ public final class Etcd {
     /**
      * Default etcd container image.
      */
-    public static final String CONTAINER_IMAGE = "quay.io/coreos/etcd:v3.5.14";
+    public static final String CONTAINER_IMAGE = "quay.io/coreos/etcd:v3.5.25";
 
     /**
      * Default port for etcd client communication.
