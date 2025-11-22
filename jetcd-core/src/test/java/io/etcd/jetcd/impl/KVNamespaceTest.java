@@ -71,7 +71,16 @@ public class KVNamespaceTest {
 
     @AfterEach
     public void cleanUpCase() {
+        // Clean up test data before closing clients
         if (kvClient != null) {
+            try {
+                ByteSequence pfxPrefix = bytesOf("pfx");
+                kvClient.delete(pfxPrefix, DeleteOption.builder()
+                    .withRange(bytesOf("pfxz"))
+                    .build()).get(5, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                System.err.println("Warning: Failed to cleanup pfx keys: " + e.getMessage());
+            }
             kvClient.close();
             kvClient = null;
         }

@@ -23,6 +23,7 @@ dependencies {
     api libs.vertxGrpcClient
     api libs.protobufJava
     api libs.bundles.javax
+    api libs.checkerQual
 
     // Needed for compilation of generated service interfaces
     // Using api instead of compileOnly to ensure server interfaces compile correctly

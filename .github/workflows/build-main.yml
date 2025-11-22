@@ -26,7 +26,7 @@ on:
       - main
   workflow_dispatch:
   schedule:
-  - cron: "0 0 * * *"
+    - cron: "0 0 * * *"
 
 jobs:
   checks:
@@ -38,8 +38,6 @@ jobs:
     strategy:
       matrix:
         java-version:
-          - 11
-          - 17
           - 21
         etcd:
           - quay.io/coreos/etcd:v3.5.21
@@ -54,20 +52,20 @@ jobs:
     needs:
       - build
     steps:
-      - name: 'Checkout'
+      - name: "Checkout"
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - name: 'Set Up Java'
+      - name: "Set Up Java"
         uses: actions/setup-java@v5
         with:
           java-version: 11
-          distribution: 'temurin'
-          cache: 'gradle'
-      - name: 'Collect Info'
+          distribution: "temurin"
+          cache: "gradle"
+      - name: "Collect Info"
         run: |
           ./gradlew currentVersion
-      - name: 'Publish Snapshot'
+      - name: "Publish Snapshot"
         if: github.event_name != 'schedule'
         env:
           NEXUS_USERNAME: ${{ secrets.OSSRH_USERNAME }}

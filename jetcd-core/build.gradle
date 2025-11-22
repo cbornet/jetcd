@@ -26,6 +26,7 @@ dependencies {
 
     //compileOnly libs.javaxAnnotation
     compileOnly libs.autoServiceAnnotations
+    implementation 'com.google.errorprone:error_prone_annotations:2.44.0'
 
     annotationProcessor libs.autoServiceProcessor
 
