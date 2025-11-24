@@ -52,7 +52,6 @@ mockitoJunit = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mo
 protobufJava = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
 
 vertxGrpcClient = { module = "io.vertx:vertx-grpc-client", version.ref = "vertx" }
-vertxServiceResolver = { module = "io.vertx:vertx-service-resolver", version.ref = "vertx" }
 
 log4jApi = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j" }
 log4jCore = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j" }

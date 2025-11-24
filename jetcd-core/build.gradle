@@ -22,7 +22,6 @@ dependencies {
     api libs.slf4j
     api libs.guava
     api libs.failsafe
-    api libs.vertxServiceResolver
 
     //compileOnly libs.javaxAnnotation
     compileOnly libs.autoServiceAnnotations
