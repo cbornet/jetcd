@@ -17,6 +17,8 @@
 package io.etcd.jetcd.resolver;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import io.vertx.core.Future;
@@ -32,36 +34,34 @@ import io.vertx.core.spi.endpoint.EndpointResolver;
  * AddressResolver that uses Vert.x DnsClient to resolve DNS SRV records
  * and converts them directly to SocketAddress instances compatible with gRPC client stubs.
  * <p>
- * The DnsClient is initialized lazily when the Vertx instance becomes available.
+ * Maintains a separate EndpointResolver for each Vertx instance to handle cases where
+ * different Vertx instances are used.
  */
 public final class DnsSrvAddressResolver implements AddressResolver<SocketAddress> {
+    private final Map<Vertx, EndpointResolver<SocketAddress, ?, ?, ?>> resolverCache;
     private final String serviceName;
     private final DnsClientOptions dnsOptions;
-    private volatile DnsClient dnsClient;
 
     public DnsSrvAddressResolver(String serviceName, DnsClientOptions dnsOptions) {
+        this.resolverCache = new ConcurrentHashMap<>();
         this.serviceName = serviceName;
         this.dnsOptions = dnsOptions;
     }
 
     @Override
     public EndpointResolver<SocketAddress, ?, ?, ?> endpointResolver(Vertx vertx) {
-        // Initialize DnsClient lazily when Vertx instance is provided
-        if (dnsClient == null) {
-            synchronized (this) {
-                if (dnsClient == null) {
-                    dnsClient = vertx.createDnsClient(dnsOptions);
-                }
-            }
-        }
+        return resolverCache.computeIfAbsent(vertx, this::createEndpointResolver);
+    }
 
-        final DnsClient client = dnsClient;
+    private EndpointResolver<SocketAddress, ?, ?, ?> createEndpointResolver(Vertx vertx) {
+        // Create DnsClient for this specific Vertx instance
+        DnsClient dnsClient = vertx.createDnsClient(dnsOptions);
 
         // Use the mappingResolver pattern to convert DNS SRV lookups to socket addresses
         AddressResolver<SocketAddress> resolver = AddressResolver.mappingResolver(sockAddr -> {
             try {
                 // Query DNS SRV records synchronously (blocking on the async Future)
-                Future<List<SrvRecord>> srvFuture = client.resolveSRV(serviceName);
+                Future<List<SrvRecord>> srvFuture = dnsClient.resolveSRV(serviceName);
                 List<SrvRecord> srvRecords = srvFuture.toCompletionStage().toCompletableFuture().get();
 
                 if (srvRecords.isEmpty()) {
