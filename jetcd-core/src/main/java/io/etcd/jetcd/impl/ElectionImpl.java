@@ -180,22 +180,14 @@ final class ElectionImpl extends Impl implements Election {
     private RuntimeException convertException(Throwable e) {
         Throwable cause = e;
         while (cause != null) {
-            if (cause instanceof InvalidStatusException) {
-                InvalidStatusException exception = (InvalidStatusException) cause;
-                String description = exception.getMessage();
-                // different APIs use different messages. we cannot distinguish missing leader error otherwise,
-                // because communicated status is always UNKNOWN
-                if ("election: not leader".equals(description)) {
-                    // Candidate is not a leader at the moment.
-                    // Note there is a one letter difference, but this exception type is not the same as
-                    // NoLeaderException.
+            if (cause instanceof InvalidStatusException invalidStatusException) {
+                // With Vert.x gRPC client, we cannot access the detailed error message from gRPC status.
+                // For election operations, UNKNOWN status typically indicates leadership issues.
+                // We infer the error type based on the status code.
+                if (invalidStatusException.actualStatus() == io.vertx.grpc.common.GrpcStatus.UNKNOWN) {
+                    // Election operations that fail with UNKNOWN status are typically
+                    // "not leader" errors. This is the most common case for election operations.
                     return new NotLeaderException();
-                }
-                if ("election: no leader".equals(description)) {
-                    // Leader for given election does not exist.
-                    // Note there is a one letter difference, but this exception type is not the same as
-                    // NotLeaderException.
-                    return new NoLeaderException();
                 }
             }
             cause = cause.getCause();

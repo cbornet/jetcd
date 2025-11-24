@@ -66,7 +66,13 @@ public final class Errors {
     }
 
     public static boolean isHaltError(final GrpcStatus status) {
-        return status != GrpcStatus.UNAVAILABLE && status != GrpcStatus.INTERNAL;
+        // Allow reconnection for transient errors:
+        // - UNAVAILABLE: server temporarily unavailable
+        // - INTERNAL: internal server errors
+        // - UNKNOWN: unexpected stream closures (e.g., during cluster restarts)
+        return status != GrpcStatus.UNAVAILABLE 
+            && status != GrpcStatus.INTERNAL 
+            && status != GrpcStatus.UNKNOWN;
     }
 
     public static boolean isNoLeaderError(final GrpcStatus status) {

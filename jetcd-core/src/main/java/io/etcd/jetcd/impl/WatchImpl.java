@@ -18,6 +18,7 @@ package io.etcd.jetcd.impl;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -61,7 +62,6 @@ final class WatchImpl extends Impl implements Watch {
     private static final Logger LOG = LoggerFactory.getLogger(WatchImpl.class);
 
     private final Object lock;
-    private final WatchGrpcClient client;
     private final ListeningScheduledExecutorService executor;
     private final AtomicBoolean closed;
     private final List<WatcherImpl> watchers;
@@ -71,16 +71,23 @@ final class WatchImpl extends Impl implements Watch {
         super(connectionManager);
 
         this.lock = new Object();
-        io.etcd.jetcd.resolver.EndpointResolver endpointResolver = connectionManager.getEndpointResolver();
-        this.client = WatchGrpcClient.create(
-            connectionManager.getAuthenticatedGrpcClient(),
-            (io.vertx.core.net.SocketAddress) endpointResolver.getTarget());
         // set it to daemon as there is no way for users to create this thread pool by their own
         this.executor = MoreExecutors.listeningDecorator(
             Executors.newScheduledThreadPool(1, Util.createThreadFactory("jetcd-watch-", true)));
         this.closed = new AtomicBoolean();
         this.watchers = new CopyOnWriteArrayList<>();
         this.namespace = connectionManager.getNamespace();
+    }
+
+    /**
+     * Creates a new WatchGrpcClient with dynamically resolved endpoint.
+     * This ensures we always use the current cluster endpoint, even after restarts.
+     */
+    private WatchGrpcClient createWatchClient() {
+        io.etcd.jetcd.resolver.EndpointResolver endpointResolver = connectionManager().getEndpointResolver();
+        return WatchGrpcClient.create(
+            connectionManager().getAuthenticatedGrpcClient(),
+            (io.vertx.core.net.SocketAddress) endpointResolver.getTarget());
     }
 
     @Override
@@ -96,6 +103,18 @@ final class WatchImpl extends Impl implements Watch {
             impl.resume();
 
             watchers.add(impl);
+        }
+
+        // Wait for the watch to be created on the server side before returning
+        // This ensures that the watcher is ready to receive events
+        try {
+            CountDownLatch creationLatch = impl.createdLatch.get();
+            if (creationLatch != null && !creationLatch.await(10, TimeUnit.SECONDS)) {
+                LOG.warn("Watch creation timed out for key={}, but returning watcher anyway", key);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            LOG.warn("Interrupted while waiting for watch creation for key={}", key, e);
         }
 
         return impl;
@@ -115,6 +134,7 @@ final class WatchImpl extends Impl implements Watch {
     public void requestProgress() {
         if (!closed.get()) {
             synchronized (this.lock) {
+                LOG.debug("requestProgress called, {} watchers", watchers.size());
                 watchers.forEach(Watcher::requestProgress);
             }
         }
@@ -128,6 +148,7 @@ final class WatchImpl extends Impl implements Watch {
 
         private final AtomicReference<WriteStream<WatchRequest>> wstream;
         private final AtomicBoolean started;
+        private final AtomicReference<CountDownLatch> createdLatch;
         private long revision;
 
         WatcherImpl(ByteSequence key, WatchOption option, Listener listener) {
@@ -138,6 +159,7 @@ final class WatchImpl extends Impl implements Watch {
 
             this.started = new AtomicBoolean();
             this.wstream = new AtomicReference<>();
+            this.createdLatch = new AtomicReference<>(new CountDownLatch(1));
             this.revision = this.option.getRevision();
         }
 
@@ -158,6 +180,8 @@ final class WatchImpl extends Impl implements Watch {
             }
 
             if (started.compareAndSet(false, true)) {
+                // Create a new latch for this watch attempt (needed for reconnections)
+                createdLatch.set(new CountDownLatch(1));
                 WatchCreateRequest.Builder builder = WatchCreateRequest.newBuilder()
                     .setKey(Util.prefixNamespace(this.key, namespace))
                     .setPrevKv(this.option.isPrevKV())
@@ -180,8 +204,12 @@ final class WatchImpl extends Impl implements Watch {
                     builder.addFilters(WatchCreateRequest.FilterType.NOPUT);
                 }
 
+                // Create a fresh client with current endpoint on each connection attempt
+                // This ensures we connect to the correct endpoint even after cluster restarts
+                WatchGrpcClient watchClient = createWatchClient();
+
                 // TODO: Add require leader support for Vert.x client
-                client.watch((writeStream, err) -> {
+                watchClient.watch((writeStream, err) -> {
                     if (err != null) {
                         onError(err);
                     } else {
@@ -223,9 +251,36 @@ final class WatchImpl extends Impl implements Watch {
 
         @Override
         public void requestProgress() {
-            if (!closed.get() && wstream.get() != null) {
-                WatchProgressRequest watchProgressRequest = WatchProgressRequest.newBuilder().build();
-                wstream.get().write(WatchRequest.newBuilder().setProgressRequest(watchProgressRequest).build());
+            if (closed.get()) {
+                LOG.warn("WatcherImpl.requestProgress: watcher is closed, key={}", key);
+                return;
+            }
+            
+            try {
+                // Wait for the watch to be fully created before sending progress request
+                CountDownLatch latch = createdLatch.get();
+                if (latch == null) {
+                    LOG.warn("WatcherImpl.requestProgress: createdLatch is null, key={}", key);
+                    return;
+                }
+                
+                LOG.debug("WatcherImpl.requestProgress: waiting for watch to be created, key={}", key);
+                if (!latch.await(5, TimeUnit.SECONDS)) {
+                    LOG.warn("WatcherImpl.requestProgress: timeout waiting for watch to be created, key={}", key);
+                    return;
+                }
+                
+                WriteStream<WatchRequest> ws = wstream.get();
+                if (ws != null) {
+                    LOG.debug("WatcherImpl.requestProgress: sending progress request for key={}", key);
+                    WatchProgressRequest watchProgressRequest = WatchProgressRequest.newBuilder().build();
+                    ws.write(WatchRequest.newBuilder().setProgressRequest(watchProgressRequest).build());
+                } else {
+                    LOG.warn("WatcherImpl.requestProgress: wstream is null after creation, key={}", key);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                LOG.warn("WatcherImpl.requestProgress: interrupted while waiting for watch creation, key={}", key, e);
             }
         }
 
@@ -235,12 +290,15 @@ final class WatchImpl extends Impl implements Watch {
         //
         // ************************
 
-        private void onNext(WatchResponse response) {
-            if (closed.get()) {
-                // events eventually received when the client is closed should
-                // not be propagated to the listener
-                return;
-            }
+            private void onNext(WatchResponse response) {
+                LOG.debug("WatcherImpl.onNext: received response - created={}, canceled={}, eventsCount={}, compactRevision={}, key={}", 
+                    response.getCreated(), response.getCanceled(), response.getEventsCount(), response.getCompactRevision(), key);
+                
+                if (closed.get()) {
+                    // events eventually received when the client is closed should
+                    // not be propagated to the listener
+                    return;
+                }
 
             // handle a special case when watch has been created and closed at the same time
             if (response.getCreated() && response.getCanceled()
@@ -264,6 +322,12 @@ final class WatchImpl extends Impl implements Watch {
                 }
 
                 revision = Math.max(revision, response.getHeader().getRevision());
+                // Signal that the watch is now fully created and ready for operations
+                CountDownLatch latch = createdLatch.get();
+                if (latch != null) {
+                    latch.countDown();
+                    LOG.debug("WatcherImpl.onNext: Watch created, signaling createdLatch, key={}", key);
+                }
                 if (option.isCreatedNotify()) {
                     listener.onNext(new io.etcd.jetcd.watch.WatchResponse(response));
                 }
@@ -287,6 +351,8 @@ final class WatchImpl extends Impl implements Watch {
 
                 handleError(toEtcdException(error), false);
             } else if (io.etcd.jetcd.watch.WatchResponse.isProgressNotify(response)) {
+                LOG.debug("WatcherImpl.onNext: Progress notify detected - delivering to listener, revision={}, key={}", 
+                    response.getHeader().getRevision(), key);
                 listener.onNext(new io.etcd.jetcd.watch.WatchResponse(response));
                 revision = Math.max(revision, response.getHeader().getRevision());
             } else if (response.getEventsCount() == 0 && option.isProgressNotify()) {
