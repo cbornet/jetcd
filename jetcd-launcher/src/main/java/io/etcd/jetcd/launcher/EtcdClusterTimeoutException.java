@@ -42,4 +42,3 @@ public class EtcdClusterTimeoutException extends EtcdClusterStartException {
         super(message, cause);
     }
 }
-

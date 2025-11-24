@@ -75,7 +75,9 @@ final class EtcdSupport {
             if (isValidUserSpec(tcUser)) {
                 return tcUser;
             }
-            LOGGER.warn("TC_USER has invalid format '{}', ignoring. Expected formats: uid:gid (e.g., 1000:1000) or username (e.g., myuser)", tcUser);
+            LOGGER.warn(
+                "TC_USER has invalid format '{}', ignoring. Expected formats: uid:gid (e.g., 1000:1000) or username (e.g., myuser)",
+                tcUser);
         }
 
         // Auto-detect on Unix-like systems
@@ -119,10 +121,10 @@ final class EtcdSupport {
      * Executes a system command and returns its output.
      * Returns null if the command fails or exits with non-zero status.
      *
-     * @param  command                  the command and arguments to execute
-     * @return                          the command output, or null on failure
-     * @throws IOException              if an I/O error occurs
-     * @throws InterruptedException     if interrupted while waiting
+     * @param  command              the command and arguments to execute
+     * @return                      the command output, or null on failure
+     * @throws IOException          if an I/O error occurs
+     * @throws InterruptedException if interrupted while waiting
      */
     static String executeCommand(String... command) throws IOException, InterruptedException {
         Process process = new ProcessBuilder(command)
@@ -144,4 +146,3 @@ final class EtcdSupport {
         }
     }
 }
-

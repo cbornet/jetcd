@@ -36,19 +36,21 @@ import com.google.common.base.Strings;
 public final class Etcd {
     /**
      * Default etcd container image.
-     * 
-     * <p>This version is updated periodically to track stable etcd releases.
+     *
+     * <p>
+     * This version is updated periodically to track stable etcd releases.
      * The image can be overridden by setting the {@code ETCD_IMAGE} environment
      * variable, which is useful for testing against different etcd versions
      * without modifying code.
-     * 
-     * <p>Version information:
+     *
+     * <p>
+     * Version information:
      * <ul>
-     *   <li>Current version: 3.5.25</li>
-     *   <li>Last updated: November 2024</li>
-     *   <li>Source: quay.io/coreos/etcd</li>
+     * <li>Current version: 3.5.25</li>
+     * <li>Last updated: November 2024</li>
+     * <li>Source: quay.io/coreos/etcd</li>
      * </ul>
-     * 
+     *
      * @see #resolveContainerImage()
      */
     public static final String CONTAINER_IMAGE = "quay.io/coreos/etcd:v3.5.25";
@@ -222,9 +224,9 @@ public final class Etcd {
          * The cluster will wait up to this duration for all containers to start
          * before throwing an exception. Default is 1 minute.
          *
-         * @param  timeout the timeout value (must be positive)
-         * @param  unit    the time unit for the timeout
-         * @return         this builder
+         * @param  timeout                  the timeout value (must be positive)
+         * @param  unit                     the time unit for the timeout
+         * @return                          this builder
          * @throws IllegalArgumentException if timeout is not positive
          */
         public Builder withStartupTimeout(long timeout, TimeUnit unit) {

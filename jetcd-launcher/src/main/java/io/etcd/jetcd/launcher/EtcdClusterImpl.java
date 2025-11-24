@@ -38,7 +38,7 @@ import static java.util.stream.Collectors.toList;
 
 public class EtcdClusterImpl implements EtcdCluster {
     private static final Logger LOG = LoggerFactory.getLogger(EtcdClusterImpl.class);
-    
+
     private final List<EtcdContainer> containers;
     private final String clusterName;
     private final List<String> endpoints;
@@ -88,11 +88,10 @@ public class EtcdClusterImpl implements EtcdCluster {
         ExecutorService executor = Executors.newFixedThreadPool(containers.size());
 
         try {
-            List<CompletableFuture<Void>> futures = containers.stream()
-                .map(container -> CompletableFuture.runAsync(container::start, executor))
-                .collect(toList());
-
-            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+            CompletableFuture.allOf(
+                containers.stream()
+                    .map(container -> CompletableFuture.runAsync(container::start, executor))
+                    .toArray(CompletableFuture[]::new))
                 .orTimeout(startupTimeout, startupTimeoutUnit)
                 .join();
 
@@ -100,28 +99,31 @@ public class EtcdClusterImpl implements EtcdCluster {
 
         } catch (CompletionException e) {
             LOG.error("Failed to start etcd cluster '{}'", clusterName, e);
-            try {
-                stop();
-            } catch (Exception stopEx) {
-                LOG.warn("Failed to cleanup containers after startup failure", stopEx);
-            }
+            cleanupAfterFailure();
+
             Throwable cause = e.getCause();
             if (cause instanceof TimeoutException) {
                 throw new EtcdClusterTimeoutException(
                     "Cluster startup timed out after " + startupTimeout + " " + startupTimeoutUnit, cause);
             }
             throw new EtcdClusterStartException("Cluster failed to start", cause);
+
         } catch (CancellationException e) {
             LOG.warn("Etcd cluster '{}' startup was interrupted", clusterName);
             Thread.currentThread().interrupt();
-            try {
-                stop();
-            } catch (Exception stopEx) {
-                LOG.warn("Failed to cleanup containers after interruption", stopEx);
-            }
+            cleanupAfterFailure();
             throw new EtcdClusterStartException("Interrupted while starting cluster", e);
+
         } finally {
             executor.shutdownNow();
+        }
+    }
+
+    private void cleanupAfterFailure() {
+        try {
+            stop();
+        } catch (Exception e) {
+            LOG.warn("Failed to cleanup containers after startup failure", e);
         }
     }
 

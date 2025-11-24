@@ -42,4 +42,3 @@ public class EtcdClusterStartException extends RuntimeException {
         super(message, cause);
     }
 }
-
