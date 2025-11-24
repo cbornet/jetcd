@@ -129,7 +129,11 @@ public class WatchTest {
             latch.await(4, TimeUnit.SECONDS);
 
             await().atMost(TIME_OUT_SECONDS, TimeUnit.SECONDS).untilAsserted(() -> assertThat(res).hasSize(2));
-            assertThat(res.get(0)).usingRecursiveComparison().isEqualTo(res.get(1));
+            // Both watchers should receive responses with the same events
+            assertThat(res.get(0).getEvents()).usingRecursiveComparison().isEqualTo(res.get(1).getEvents());
+            // Verify cluster_id and revision are the same (member_id can differ)
+            assertThat(res.get(0).getHeader().getClusterId()).isEqualTo(res.get(1).getHeader().getClusterId());
+            assertThat(res.get(0).getHeader().getRevision()).isEqualTo(res.get(1).getHeader().getRevision());
             assertThat(res.get(0).getEvents().size()).isEqualTo(1);
             assertThat(res.get(0).getEvents().get(0).getEventType()).isEqualTo(EventType.PUT);
             assertThat(res.get(0).getEvents().get(0).getKeyValue().getKey()).isEqualTo(key);
