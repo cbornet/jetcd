@@ -23,12 +23,11 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import io.etcd.jetcd.support.Util;
+import io.vertx.core.Vertx;
+import io.vertx.core.dns.DnsClientOptions;
 import io.vertx.core.net.Address;
 import io.vertx.core.net.AddressResolver;
 import io.vertx.core.net.SocketAddress;
-import io.vertx.serviceresolver.ServiceAddress;
-import io.vertx.serviceresolver.srv.SrvResolver;
-import io.vertx.serviceresolver.srv.SrvResolverOptions;
 
 /**
  * Utility class providing factory methods for creating endpoint resolvers.
@@ -148,9 +147,10 @@ public final class EndpointResolvers {
          * @return             an endpoint resolver that uses DNS SRV records
          */
         public static DnsSrv create(String serviceName) {
-            SrvResolverOptions options = new SrvResolverOptions();
-            AddressResolver resolver = SrvResolver.create(options);
-            Address target = ServiceAddress.of(serviceName);
+            DnsClientOptions dnsOptions = new DnsClientOptions();
+            DnsSrvAddressResolver resolver = new DnsSrvAddressResolver(serviceName, dnsOptions);
+            // Use a placeholder SocketAddress that will be resolved by our custom resolver
+            Address target = SocketAddress.inetSocketAddress(2379, serviceName);
 
             return new DnsSrv(resolver, target);
         }
@@ -164,10 +164,12 @@ public final class EndpointResolvers {
          * @return             an endpoint resolver that uses DNS SRV records
          */
         public static DnsSrv create(String serviceName, String dnsServer, int dnsPort) {
-            SrvResolverOptions options = new SrvResolverOptions()
-                .setServer(SocketAddress.inetSocketAddress(dnsPort, dnsServer));
-            AddressResolver resolver = SrvResolver.create(options);
-            Address target = ServiceAddress.of(serviceName);
+            DnsClientOptions dnsOptions = new DnsClientOptions()
+                .setHost(dnsServer)
+                .setPort(dnsPort);
+            DnsSrvAddressResolver resolver = new DnsSrvAddressResolver(serviceName, dnsOptions);
+            // Use a placeholder SocketAddress that will be resolved by our custom resolver
+            Address target = SocketAddress.inetSocketAddress(2379, serviceName);
 
             return new DnsSrv(resolver, target);
         }

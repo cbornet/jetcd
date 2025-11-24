@@ -41,10 +41,15 @@ import io.vertx.core.dns.DnsClient;
 import io.vertx.core.dns.DnsClientOptions;
 import io.vertx.core.dns.SrvRecord;
 
+import io.etcd.jetcd.ByteSequence;
+import io.etcd.jetcd.Client;
+import io.etcd.jetcd.KV;
+import io.etcd.jetcd.kv.GetResponse;
 import io.etcd.jetcd.launcher.EtcdContainer;
 import io.etcd.jetcd.resolver.EndpointResolver;
 import io.etcd.jetcd.resolver.EndpointResolvers;
 
+import static io.etcd.jetcd.impl.TestUtil.bytesOf;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -256,6 +261,31 @@ public class DnsSrvIntegrationTest {
         assertThat(resolver.getResolver()).isNotNull();
 
         System.out.println("jetcd DNS SRV resolver created successfully");
+    }
+
+    @Test
+    public void testJetcdClientWithDnsSrvSingleNode() throws Exception {
+        EndpointResolver resolver = EndpointResolvers.dnsSrv(
+            "_etcd._tcp.single.test.local",
+            "127.0.0.1",
+            dnsPort);
+
+        try (Client client = Client.builder(resolver).build()) {
+            KV kv = client.getKVClient();
+
+            ByteSequence key = bytesOf("dns_srv_single_test");
+            ByteSequence value = bytesOf("test_value");
+
+            kv.put(key, value).get(10, TimeUnit.SECONDS);
+
+            GetResponse getResp = kv.get(key).get(10, TimeUnit.SECONDS);
+            assertThat(getResp.getCount()).isEqualTo(1);
+            assertThat(getResp.getKvs().get(0).getValue()).isEqualTo(value);
+
+            kv.delete(key).get(10, TimeUnit.SECONDS);
+
+            System.out.println("jetcd client with DNS SRV (single-node): PASSED");
+        }
     }
 
 }
