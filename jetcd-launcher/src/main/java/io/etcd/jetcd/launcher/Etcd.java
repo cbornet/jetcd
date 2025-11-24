@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import org.testcontainers.containers.Network;
 
@@ -96,6 +97,8 @@ public final class Etcd {
         private Network network;
         private boolean shouldMountDataDirectory = true;
         private String user;
+        private long startupTimeout = 1;
+        private TimeUnit startupTimeoutUnit = TimeUnit.MINUTES;
 
         /**
          * Sets the cluster name for identification.
@@ -201,6 +204,28 @@ public final class Etcd {
         }
 
         /**
+         * Sets the timeout for cluster startup.
+         * The cluster will wait up to this duration for all containers to start
+         * before throwing an exception. Default is 1 minute.
+         *
+         * @param  timeout the timeout value (must be positive)
+         * @param  unit    the time unit for the timeout
+         * @return         this builder
+         * @throws IllegalArgumentException if timeout is not positive
+         */
+        public Builder withStartupTimeout(long timeout, TimeUnit unit) {
+            if (timeout <= 0) {
+                throw new IllegalArgumentException("Startup timeout must be positive, got: " + timeout);
+            }
+            if (unit == null) {
+                throw new IllegalArgumentException("TimeUnit cannot be null");
+            }
+            this.startupTimeout = timeout;
+            this.startupTimeoutUnit = unit;
+            return this;
+        }
+
+        /**
          * Builds the EtcdCluster with the configured options.
          *
          * @return                          the configured cluster instance
@@ -227,7 +252,9 @@ public final class Etcd {
                 additionalArgs,
                 network,
                 shouldMountDataDirectory,
-                user);
+                user,
+                startupTimeout,
+                startupTimeoutUnit);
         }
 
         /**

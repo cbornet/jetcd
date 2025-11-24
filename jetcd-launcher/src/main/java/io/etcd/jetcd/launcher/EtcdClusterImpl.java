@@ -42,6 +42,8 @@ public class EtcdClusterImpl implements EtcdCluster {
     private final String clusterName;
     private final List<String> endpoints;
     private final Network network;
+    private final long startupTimeout;
+    private final TimeUnit startupTimeoutUnit;
 
     public EtcdClusterImpl(
         String image,
@@ -53,9 +55,13 @@ public class EtcdClusterImpl implements EtcdCluster {
         Collection<String> additionalArgs,
         Network network,
         boolean shouldMountDataDirectory,
-        String user) {
+        String user,
+        long startupTimeout,
+        TimeUnit startupTimeoutUnit) {
 
         this.clusterName = clusterName;
+        this.startupTimeout = startupTimeout;
+        this.startupTimeoutUnit = startupTimeoutUnit;
         this.endpoints = IntStream.range(0, nodes)
             .mapToObj(i -> (prefix == null ? "etcd" : prefix + "etcd") + i)
             .collect(toList());
@@ -85,7 +91,7 @@ public class EtcdClusterImpl implements EtcdCluster {
                 .collect(toList());
 
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
-                .orTimeout(1, TimeUnit.MINUTES)
+                .orTimeout(startupTimeout, startupTimeoutUnit)
                 .join();
 
         } catch (CompletionException e) {
