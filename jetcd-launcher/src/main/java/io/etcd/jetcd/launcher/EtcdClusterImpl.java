@@ -27,6 +27,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
@@ -100,7 +101,12 @@ public class EtcdClusterImpl implements EtcdCluster {
             } catch (Exception stopEx) {
                 LOG.warn("Failed to cleanup containers after startup failure", stopEx);
             }
-            throw new IllegalStateException("Cluster failed to start", e.getCause());
+            Throwable cause = e.getCause();
+            if (cause instanceof TimeoutException) {
+                throw new EtcdClusterTimeoutException(
+                    "Cluster startup timed out after " + startupTimeout + " " + startupTimeoutUnit, cause);
+            }
+            throw new EtcdClusterStartException("Cluster failed to start", cause);
         } catch (CancellationException e) {
             Thread.currentThread().interrupt();
             try {
@@ -108,7 +114,7 @@ public class EtcdClusterImpl implements EtcdCluster {
             } catch (Exception stopEx) {
                 LOG.warn("Failed to cleanup containers after interruption", stopEx);
             }
-            throw new IllegalStateException("Interrupted while starting cluster", e);
+            throw new EtcdClusterStartException("Interrupted while starting cluster", e);
         } finally {
             executor.shutdownNow();
         }
