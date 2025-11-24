@@ -276,18 +276,21 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
     }
 
     private static void deleteDataDirectory(Path dir) {
-        if (dir != null && Files.exists(dir)) {
-            try {
-                try (Stream<Path> stream = Files.walk(dir)) {
-                    stream.sorted(Comparator.reverseOrder())
-                        .map(Path::toFile)
-                        .forEach(File::delete);
-                } catch (IOException e) {
-                    LOGGER.error("Error deleting directory {}", dir, e);
-                }
-            } catch (Exception e) {
-                LOGGER.error("Error deleting directory {}", dir, e);
-            }
+        if (dir == null || !Files.exists(dir)) {
+            return;
+        }
+
+        try (Stream<Path> stream = Files.walk(dir)) {
+            stream.sorted(Comparator.reverseOrder())
+                .forEach(path -> {
+                    try {
+                        Files.delete(path);
+                    } catch (IOException e) {
+                        LOGGER.warn("Failed to delete {}: {}", path, e.getMessage());
+                    }
+                });
+        } catch (IOException e) {
+            LOGGER.error("Error walking directory {} for deletion", dir, e);
         }
     }
 
