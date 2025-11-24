@@ -16,6 +16,7 @@ import io.etcd.jetcd.KV;
 import io.etcd.jetcd.auth.Permission;
 import io.etcd.jetcd.impl.TestUtil;
 import io.etcd.jetcd.kv.GetResponse;
+import io.etcd.jetcd.support.SslUtil;
 import io.etcd.jetcd.test.EtcdClusterExtension;
 
 @Timeout(value = 30)
@@ -67,8 +68,8 @@ public class AuthTokenRefreshTest {
         final File caFile = new File(Objects.requireNonNull(getClass().getResource("/ssl/cert/ca.pem")).toURI());
 
         Client client = TestUtil.client(cluster)
-            .authority("etcd0")
-            .sslContext(b -> b.trustManager(caFile))
+            .httpClientOptions(SslUtil.withTrustManager(caFile)
+                .andThen(options -> options.setVerifyHost(false)))
             .build();
 
         // enable authentication to enforce usage of access token
@@ -89,8 +90,8 @@ public class AuthTokenRefreshTest {
         return TestUtil.client(cluster)
             .user(user)
             .password(password)
-            .authority("etcd0")
-            .sslContext(b -> b.trustManager(caFile))
+            .httpClientOptions(SslUtil.withTrustManager(caFile)
+                .andThen(options -> options.setVerifyHost(false)))
             .build();
     }
 

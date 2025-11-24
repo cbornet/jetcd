@@ -214,7 +214,7 @@ public final class Etcd {
                 ssl,
                 debug,
                 additionalArgs,
-                network != null ? network : Network.SHARED,
+                network,
                 shouldMountDataDirectory,
                 user);
         }

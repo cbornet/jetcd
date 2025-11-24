@@ -38,25 +38,25 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOf
 
 @Timeout(value = 30, unit = TimeUnit.SECONDS)
 public class ClusterMembersTest {
-    private static final Network NETWORK = Network.newNetwork();
+    private final Network clusterNetwork = Network.builder().build();
 
     @RegisterExtension
     public final EtcdClusterExtension n1 = EtcdClusterExtension.builder()
         .withNodes(1)
         .withPrefix("n1")
-        .withNetwork(NETWORK)
+        .withNetwork(clusterNetwork)
         .build();
     @RegisterExtension
     public final EtcdClusterExtension n2 = EtcdClusterExtension.builder()
         .withNodes(1)
         .withPrefix("n2")
-        .withNetwork(NETWORK)
+        .withNetwork(clusterNetwork)
         .build();
     @RegisterExtension
     public final EtcdClusterExtension n3 = EtcdClusterExtension.builder()
         .withNodes(1)
         .withPrefix("n3")
-        .withNetwork(NETWORK)
+        .withNetwork(clusterNetwork)
         .build();
 
     @Test

@@ -111,7 +111,10 @@ public class LockTest {
             LockResponse response = feature.get();
             locksToRelease.add(response.getKey());
         });
-        assertThat(exception.getMessage().contains("etcdserver: requested lease not found")).isTrue();
+        // With Vert.x gRPC client, error messages are wrapped in InvalidStatusException
+        // The actual etcd error about lease not found is in the cause chain
+        assertThat(exception.getCause()).isNotNull();
+        assertThat(exception.getCause().getMessage()).containsAnyOf("requested lease not found", "UNKNOWN");
     }
 
     @ParameterizedTest

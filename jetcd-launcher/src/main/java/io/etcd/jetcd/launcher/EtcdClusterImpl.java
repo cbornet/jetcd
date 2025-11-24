@@ -25,14 +25,19 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Network;
 
 import static java.util.stream.Collectors.toList;
 
 public class EtcdClusterImpl implements EtcdCluster {
+    private static final Logger LOG = LoggerFactory.getLogger(EtcdClusterImpl.class);
+    
     private final List<EtcdContainer> containers;
     private final String clusterName;
     private final List<String> endpoints;
+    private final Network network;
 
     public EtcdClusterImpl(
         String image,
@@ -51,13 +56,16 @@ public class EtcdClusterImpl implements EtcdCluster {
             .mapToObj(i -> (prefix == null ? "etcd" : prefix + "etcd") + i)
             .collect(toList());
 
+        // Store network reference for cleanup. If null, use Network.SHARED as default
+        this.network = network != null ? network : Network.SHARED;
+
         this.containers = endpoints.stream()
             .map(e -> new EtcdContainer(image, e, endpoints)
                 .withClusterToken(clusterName)
                 .withSsl(ssl)
                 .withDebug(debug)
                 .withAdditionalArgs(additionalArgs)
-                .withNetwork(network)
+                .withNetwork(this.network)
                 .withShouldMountDataDirectory(shouldMountDataDirectory)
                 .withUser(user))
             .collect(toList());
@@ -100,8 +108,22 @@ public class EtcdClusterImpl implements EtcdCluster {
 
     @Override
     public void close() {
+        // Close containers first
         for (EtcdContainer container : containers) {
             container.close();
+        }
+
+        // Try to clean up network if it's not the shared one
+        // Network.SHARED is managed by Testcontainers and should never be closed
+        if (network != null && network != Network.SHARED) {
+            try {
+                network.close();
+                LOG.debug("Successfully closed network for cluster: {}", clusterName);
+            } catch (Exception e) {
+                // Log but don't fail - cleanup is best-effort
+                // This is a fallback for when Ryuk service is not active
+                LOG.warn("Failed to cleanup network for cluster {}: {}", clusterName, e.getMessage());
+            }
         }
     }
 

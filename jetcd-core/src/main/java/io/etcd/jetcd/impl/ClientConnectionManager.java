@@ -27,6 +27,7 @@ import io.etcd.jetcd.resolver.EndpointResolver;
 import io.etcd.jetcd.support.Util;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
+import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.net.endpoint.LoadBalancer;
 import io.vertx.grpc.client.GrpcClient;
 
@@ -162,10 +163,11 @@ final class ClientConnectionManager {
         }
         grpcBuilder.withLoadBalancer(loadBalancer);
 
-        // TODO: Configure SSL if provided
-        // if (builder.sslContext() != null) {
-        //     Convert from Netty SslContext to Vert.x SSL configuration
-        // }
+        // Configure HTTP client options if provided (e.g., for SSL/TLS)
+        HttpClientOptions httpClientOptions = builder.httpClientOptions();
+        if (httpClientOptions != null) {
+            grpcBuilder.with(httpClientOptions);
+        }
 
         return (GrpcClient) grpcBuilder.build();
     }

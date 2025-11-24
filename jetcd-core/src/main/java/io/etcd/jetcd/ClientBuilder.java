@@ -25,16 +25,13 @@ import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
-import javax.net.ssl.SSLException;
-
 import io.etcd.jetcd.common.exception.EtcdException;
 import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
 import io.etcd.jetcd.impl.ClientImpl;
 import io.etcd.jetcd.resolver.EndpointResolver;
 import io.etcd.jetcd.support.Preconditions;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.net.endpoint.LoadBalancer;
 
 /**
@@ -48,8 +45,7 @@ public final class ClientBuilder implements Cloneable {
     private ExecutorService executorService;
     private LoadBalancer loadBalancer;
     private Map<String, String> headers;
-    private SslContext sslContext;
-    private String authority;
+    private HttpClientOptions httpClientOptions;
     private Integer maxInboundMessageSize;
     private ByteSequence namespace = ByteSequence.EMPTY;
     private long retryDelay = 500;
@@ -167,58 +163,91 @@ public final class ClientBuilder implements Cloneable {
     }
 
     /**
-     * Returns the ssl context
+     * Returns the HTTP client options used for configuring the gRPC client.
      *
-     * @return the ssl context.
+     * @return the HTTP client options, or null if not configured.
      */
-    public SslContext sslContext() {
-        return sslContext;
+    public HttpClientOptions httpClientOptions() {
+        return httpClientOptions;
     }
 
     /**
-     * SSL/TLS context to use instead of the system default. It must have been configured with {@link
-     * SslContextBuilder}, but options could have been overridden.
+     * Configure HTTP client options for the gRPC client.
      *
-     * @param  sslContext the ssl context
-     * @return            this builder
+     * <p>
+     * This allows full control over the HTTP/2 client configuration, including SSL/TLS settings,
+     * connection pooling, timeouts, and other HTTP client behaviors.
+     * </p>
+     *
+     * <p>
+     * Example usage for SSL/TLS configuration:
+     * </p>
+     *
+     * <pre>
+     * import io.vertx.core.http.HttpClientOptions;
+     * import io.vertx.core.net.PemTrustOptions;
+     *
+     * Client client = Client.builder("https://localhost:2379")
+     *     .httpClientOptions(new HttpClientOptions()
+     *         .setSsl(true)
+     *         .setUseAlpn(true)
+     *         .setTrustOptions(new PemTrustOptions().addCertPath("/path/to/ca.pem"))
+     *         .setVerifyHost(false))
+     *     .build();
+     * </pre>
+     *
+     * @param  httpClientOptions the HTTP client options
+     * @return                   this builder
      */
-    public ClientBuilder sslContext(SslContext sslContext) {
-        this.sslContext = sslContext;
+    public ClientBuilder httpClientOptions(HttpClientOptions httpClientOptions) {
+        this.httpClientOptions = httpClientOptions;
         return this;
     }
 
     /**
-     * Configure SSL/TLS context create through {@link SslContextBuilder#forClient} to use.
+     * Configure HTTP client options using a fluent consumer pattern.
      *
-     * @param  consumer     the SslContextBuilder consumer
-     * @return              this builder
-     * @throws SSLException if the SslContextBuilder fails
-     */
-    public ClientBuilder sslContext(Consumer<SslContextBuilder> consumer) throws SSLException {
-        SslContextBuilder builder = SslContextBuilder.forClient();
-        consumer.accept(builder);
-
-        return sslContext(builder.build());
-    }
-
-    /**
-     * Returns The authority used to authenticate connections to servers.
+     * <p>
+     * This method provides a convenient way to configure HTTP client options inline.
+     * If HTTP client options were already set, this method will modify the existing
+     * options rather than replacing them.
+     * </p>
      *
-     * @return the authority.
-     */
-    public String authority() {
-        return authority;
-    }
-
-    /**
-     * Sets the authority used to authenticate connections to servers.
+     * <p>
+     * Example:
+     * </p>
      *
-     * @param  authority the authority used to authenticate connections to servers.
-     * @return           this builder
+     * <pre>
+     * Client client = Client.builder("https://localhost:2379")
+     *     .httpClientOptions(options -> options
+     *         .setSsl(true)
+     *         .setUseAlpn(true)
+     *         .setTrustAll(true))
+     *     .build();
+     * </pre>
+     *
+     * <p>
+     * For SSL/TLS configuration, see {@link io.etcd.jetcd.support.SslUtil} for helper methods:
+     * </p>
+     *
+     * <pre>
+     * import io.etcd.jetcd.support.SslUtil;
+     *
+     * Client client = Client.builder("https://localhost:2379")
+     *     .httpClientOptions(SslUtil.withTrustManager("/path/to/ca.pem")
+     *         .andThen(options -> options.setVerifyHost(false)))
+     *     .build();
+     * </pre>
+     *
+     * @param  consumer a consumer that configures the HttpClientOptions
+     * @return          this builder
+     * @see             io.etcd.jetcd.support.SslUtil
      */
-    public ClientBuilder authority(String authority) {
-        this.authority = authority;
-        return this;
+    public ClientBuilder httpClientOptions(Consumer<HttpClientOptions> consumer) {
+        // If options already exist, modify them. Otherwise create new ones.
+        HttpClientOptions options = this.httpClientOptions != null ? this.httpClientOptions : new HttpClientOptions();
+        consumer.accept(options);
+        return httpClientOptions(options);
     }
 
     /**

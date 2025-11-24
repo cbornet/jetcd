@@ -89,7 +89,8 @@ final class ElectionImpl extends Impl implements Election {
             execute(
                 () -> client.campaign(request),
                 CampaignResponse::new,
-                Errors::isRetryableForNoSafeRedoOp));
+                Errors::isRetryableForNoSafeRedoOp),
+            false);
     }
 
     @Override
@@ -112,7 +113,8 @@ final class ElectionImpl extends Impl implements Election {
             execute(
                 () -> client.proclaim(request),
                 ProclaimResponse::new,
-                Errors::isRetryableForNoSafeRedoOp));
+                Errors::isRetryableForNoSafeRedoOp),
+            false);
     }
 
     @Override
@@ -127,7 +129,8 @@ final class ElectionImpl extends Impl implements Election {
             execute(
                 () -> client.leader(request),
                 response -> new LeaderResponse(response, namespace),
-                Errors::isRetryableForNoSafeRedoOp));
+                Errors::isRetryableForNoSafeRedoOp),
+            true);
     }
 
     @Override
@@ -168,26 +171,31 @@ final class ElectionImpl extends Impl implements Election {
             execute(
                 () -> client.resign(request),
                 ResignResponse::new,
-                Errors::isRetryableForNoSafeRedoOp));
+                Errors::isRetryableForNoSafeRedoOp),
+            false);
     }
 
-    private <S> CompletableFuture<S> wrapConvertException(CompletableFuture<S> future) {
+    private <S> CompletableFuture<S> wrapConvertException(CompletableFuture<S> future, boolean isLeaderQuery) {
         return future.exceptionally(e -> {
-            throw convertException(e);
+            throw convertException(e, isLeaderQuery);
         });
     }
 
-    private RuntimeException convertException(Throwable e) {
+    private RuntimeException convertException(Throwable e, boolean isLeaderQuery) {
         Throwable cause = e;
         while (cause != null) {
             if (cause instanceof InvalidStatusException invalidStatusException) {
                 // With Vert.x gRPC client, we cannot access the detailed error message from gRPC status.
                 // For election operations, UNKNOWN status typically indicates leadership issues.
-                // We infer the error type based on the status code.
+                // We distinguish based on the operation context:
+                // - leader() queries that fail with UNKNOWN mean "no leader exists" (NoLeaderException)
+                // - proclaim()/campaign() that fail with UNKNOWN mean "not the leader" (NotLeaderException)
                 if (invalidStatusException.actualStatus() == io.vertx.grpc.common.GrpcStatus.UNKNOWN) {
-                    // Election operations that fail with UNKNOWN status are typically
-                    // "not leader" errors. This is the most common case for election operations.
-                    return new NotLeaderException();
+                    if (isLeaderQuery) {
+                        return new NoLeaderException();
+                    } else {
+                        return new NotLeaderException();
+                    }
                 }
             }
             cause = cause.getCause();
