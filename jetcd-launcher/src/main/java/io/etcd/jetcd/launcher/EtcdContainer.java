@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,6 +35,7 @@ import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -181,7 +183,7 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
 
         String tempUser = this.user;
         if (tempUser == null) {
-            tempUser = System.getenv("TC_USER");
+            tempUser = getHostUser();
         }
         if (tempUser != null) {
             String finalUser = tempUser;
@@ -286,6 +288,42 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
                 LOGGER.error("Error deleting directory {}", dir, e);
             }
         }
+    }
+
+    private static String getHostUser() {
+        // First check if TC_USER is set (used by CI)
+        String tcUser = System.getenv("TC_USER");
+        if (tcUser != null && !tcUser.isEmpty()) {
+            return tcUser;
+        }
+
+        // Auto-detect on Unix-like systems
+        try {
+            if (System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win")) {
+                return null;
+            }
+
+            ProcessBuilder uidBuilder = new ProcessBuilder("id", "-u");
+            uidBuilder.redirectErrorStream(true);
+            Process uidProcess = uidBuilder.start();
+            String uid = new String(uidProcess.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            uidProcess.waitFor();
+            uidProcess.destroy();
+
+            ProcessBuilder gidBuilder = new ProcessBuilder("id", "-g");
+            gidBuilder.redirectErrorStream(true);
+            Process gidProcess = gidBuilder.start();
+            String gid = new String(gidProcess.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
+            gidProcess.waitFor();
+            gidProcess.destroy();
+
+            if (!uid.isEmpty() && !gid.isEmpty()) {
+                return uid + ":" + gid;
+            }
+        } catch (Exception e) {
+            LOGGER.debug("Could not detect host user", e);
+        }
+        return null;
     }
 
     @Override
