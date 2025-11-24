@@ -20,15 +20,17 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.etcd.jetcd.Client;
+import io.etcd.jetcd.resolver.EndpointResolver;
+import io.etcd.jetcd.resolver.EndpointResolvers;
 import io.etcd.jetcd.test.EtcdClusterExtension;
 
 import static io.etcd.jetcd.impl.TestUtil.bytesOf;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @Timeout(value = 30, unit = TimeUnit.SECONDS)
 public class ClientConnectionManagerTest {
@@ -45,12 +47,28 @@ public class ClientConnectionManagerTest {
         }
     }
 
-    @Disabled("DNS resolver not implemented")
+    /**
+     * Tests that the DNS SRV resolver API exists and can be created.
+     * This verifies the API surface but does not test actual DNS resolution
+     * (which would require DNS infrastructure setup).
+     * 
+     * For real DNS SRV usage examples, see docs/DNS_SRV_RESOLUTION.md
+     */
     @Test
-    public void testEndpointsWithDns() throws InterruptedException, ExecutionException, TimeoutException {
-        // DNS resolution through custom resolver not yet implemented
-        // try (Client client = Client.builder("dns:///etcd0:" + port).build()) {
-        //     client.getKVClient().put(bytesOf("sample_key"), bytesOf("sample_key")).get(15, TimeUnit.SECONDS);
-        // }
+    public void testDnsSrvResolverCreation() {
+        // Verify DNS SRV resolver can be created with service name only
+        EndpointResolver resolver1 = EndpointResolvers.dnsSrv("_etcd._tcp.example.com");
+        assertThat(resolver1).isNotNull();
+        assertThat(resolver1.getTarget()).isNotNull();
+        assertThat(resolver1.getResolver()).isNotNull();
+
+        // Verify DNS SRV resolver can be created with custom DNS server
+        EndpointResolver resolver2 = EndpointResolvers.dnsSrv(
+            "_etcd._tcp.example.com",
+            "8.8.8.8",
+            53);
+        assertThat(resolver2).isNotNull();
+        assertThat(resolver2.getTarget()).isNotNull();
+        assertThat(resolver2.getResolver()).isNotNull();
     }
 }
