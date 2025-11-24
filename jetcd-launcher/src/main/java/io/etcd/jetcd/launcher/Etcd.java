@@ -203,9 +203,20 @@ public final class Etcd {
         /**
          * Builds the EtcdCluster with the configured options.
          *
-         * @return the configured cluster instance
+         * @return                          the configured cluster instance
+         * @throws IllegalArgumentException if configuration is invalid
          */
         public EtcdCluster build() {
+            if (nodes <= 0) {
+                throw new IllegalArgumentException("Node count must be positive, got: " + nodes);
+            }
+            if (clusterName == null || clusterName.trim().isEmpty()) {
+                throw new IllegalArgumentException("Cluster name cannot be null or empty");
+            }
+            if (image == null || image.trim().isEmpty()) {
+                throw new IllegalArgumentException("Container image cannot be null or empty");
+            }
+
             return new EtcdClusterImpl(
                 image,
                 clusterName,
