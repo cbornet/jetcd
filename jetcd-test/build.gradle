@@ -29,5 +29,7 @@ dependencies {
 
     annotationProcessor libs.autoServiceProcessor
 
+    testImplementation libs.assertj
+
     testRuntimeOnly libs.bundles.log4j
 }

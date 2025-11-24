@@ -30,15 +30,45 @@ import io.vertx.core.net.SocketAddress;
  */
 public class EtcdClusterEndpointResolver extends AbstractEndpointResolver {
 
+    private static final int DEFAULT_PORT = 2379;
+    private static final String DEFAULT_HOSTNAME = "etcd-test-cluster";
+
     /**
      * Creates an endpoint resolver for a testcontainers etcd cluster.
      * The resolver dynamically queries fresh endpoints on each resolution attempt,
      * ensuring it adapts to cluster restarts and port changes.
+     * Uses default port (2379) and hostname ("etcd-test-cluster").
      *
-     * @param  cluster the etcd cluster
-     * @return         an endpoint resolver
+     * @param  cluster                  the etcd cluster
+     * @return                          an endpoint resolver
+     * @throws IllegalArgumentException if cluster is null
      */
     public static EtcdClusterEndpointResolver create(EtcdCluster cluster) {
+        return create(cluster, DEFAULT_PORT, DEFAULT_HOSTNAME);
+    }
+
+    /**
+     * Creates an endpoint resolver for a testcontainers etcd cluster with custom target address.
+     * The resolver dynamically queries fresh endpoints on each resolution attempt,
+     * ensuring it adapts to cluster restarts and port changes.
+     *
+     * @param  cluster                  the etcd cluster
+     * @param  port                     the target port for the resolver
+     * @param  hostname                 the target hostname for the resolver
+     * @return                          an endpoint resolver
+     * @throws IllegalArgumentException if cluster is null, port is out of range, or hostname is null
+     */
+    public static EtcdClusterEndpointResolver create(EtcdCluster cluster, int port, String hostname) {
+        if (cluster == null) {
+            throw new IllegalArgumentException("Cluster cannot be null");
+        }
+        if (port < 1 || port > 65535) {
+            throw new IllegalArgumentException("Port must be between 1 and 65535, got: " + port);
+        }
+        if (hostname == null) {
+            throw new IllegalArgumentException("Hostname cannot be null");
+        }
+
         // Create resolver that queries fresh endpoints on each resolution
         AddressResolver resolver = AddressResolver.mappingResolver(ignored -> {
             return cluster.containers().stream()
@@ -47,7 +77,7 @@ public class EtcdClusterEndpointResolver extends AbstractEndpointResolver {
                 .collect(Collectors.toList());
         });
 
-        Address target = SocketAddress.inetSocketAddress(2379, "etcd-test-cluster");
+        Address target = SocketAddress.inetSocketAddress(port, hostname);
 
         return new EtcdClusterEndpointResolver(resolver, target);
     }

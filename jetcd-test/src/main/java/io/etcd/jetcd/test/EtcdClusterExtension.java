@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
@@ -36,40 +37,109 @@ import io.etcd.jetcd.launcher.EtcdCluster;
 
 /**
  * JUnit5 Extension to have etcd cluster in tests.
+ *
+ * <p>
+ * This extension manages testcontainers-based etcd clusters for integration testing.
+ * It supports two lifecycle modes:
+ * <ul>
+ * <li><strong>Class-level (@BeforeAll/@AfterAll):</strong> Cluster starts once before all tests
+ * and remains running until all tests complete. Use this for faster test execution when
+ * tests don't need isolation.</li>
+ * <li><strong>Method-level (@BeforeEach/@AfterEach):</strong> Cluster starts/stops for each test.
+ * Use this when tests need a fresh cluster state.</li>
+ * </ul>
+ *
+ * <p>
+ * <strong>Cluster Sharing:</strong> Multiple test classes can share the same cluster instance
+ * by using the same cluster name. When using @BeforeAll, only use cluster sharing across test
+ * classes that run in the same test suite execution to avoid premature cluster shutdown.
+ *
+ * <p>
+ * Example usage:
+ *
+ * <pre>
+ * {
+ *     &#64;code
+ *     public class MyTest {
+ *         &#64;RegisterExtension
+ *         public static final EtcdClusterExtension cluster = EtcdClusterExtension.builder()
+ *             .withNodes(3)
+ *             .withClusterName("my-test-cluster")
+ *             .build();
+ *
+ *         {@literal @}Test
+ *         public void testSomething() {
+ *             List<URI> endpoints = cluster.clientEndpoints();
+ *             // use endpoints to connect
+ *         }
+ *     }
+ * }
+ * </pre>
  */
 public class EtcdClusterExtension implements BeforeAllCallback, BeforeEachCallback, AfterAllCallback, AfterEachCallback {
 
-    private static final Map<String, EtcdCluster> CLUSTERS = new ConcurrentHashMap<>();
+    /**
+     * Reference wrapper for shared cluster instances with reference counting.
+     * Tracks how many extension instances are using each cluster to ensure
+     * proper lifecycle management and cleanup.
+     */
+    private static class ClusterReference {
+        final EtcdCluster cluster;
+        final AtomicInteger refCount = new AtomicInteger(0);
 
-    private final EtcdCluster cluster;
+        ClusterReference(EtcdCluster cluster) {
+            this.cluster = cluster;
+        }
+
+        void incrementRef() {
+            refCount.incrementAndGet();
+        }
+
+        boolean decrementRef() {
+            return refCount.decrementAndGet() == 0;
+        }
+    }
+
+    private static final Map<String, ClusterReference> CLUSTERS = new ConcurrentHashMap<>();
+
+    private final String clusterName;
+    private final EtcdCluster clusterTemplate;
     private final AtomicBoolean beforeAll;
 
-    private EtcdClusterExtension(EtcdCluster cluster) {
-        this.cluster = cluster;
+    private EtcdClusterExtension(EtcdCluster clusterTemplate) {
+        this.clusterName = clusterTemplate.clusterName();
+        this.clusterTemplate = clusterTemplate;
         this.beforeAll = new AtomicBoolean();
     }
 
     /**
      * Returns the underlying etcd cluster for direct access to cluster operations.
      *
-     * @return the etcd cluster instance
+     * @return the etcd cluster instance, or null if not started
      */
     public EtcdCluster cluster() {
-        return this.cluster;
+        ClusterReference ref = CLUSTERS.get(clusterName);
+        return ref != null ? ref.cluster : null;
     }
 
     /**
      * Restarts all nodes in the cluster with a delay between restarts.
      * Useful for testing resilience and recovery scenarios.
      *
-     * @param delay the delay between node restarts
-     * @param unit  the time unit of the delay
+     * @param  delay            the delay between node restarts
+     * @param  unit             the time unit of the delay
+     * @throws RuntimeException if the restart is interrupted
      */
     public void restart(long delay, TimeUnit unit) {
+        EtcdCluster cluster = cluster();
+        if (cluster == null) {
+            throw new IllegalStateException("Cluster not started");
+        }
         try {
-            this.cluster.restart(delay, unit);
+            cluster.restart(delay, unit);
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Cluster restart was interrupted", e);
         }
     }
 
@@ -79,7 +149,7 @@ public class EtcdClusterExtension implements BeforeAllCallback, BeforeEachCallba
      * @return the cluster name
      */
     public String clusterName() {
-        return this.cluster.clusterName();
+        return this.clusterName;
     }
 
     /**
@@ -88,7 +158,11 @@ public class EtcdClusterExtension implements BeforeAllCallback, BeforeEachCallba
      * @return list of client endpoint URIs
      */
     public List<URI> clientEndpoints() {
-        return this.cluster.clientEndpoints();
+        EtcdCluster cluster = cluster();
+        if (cluster == null) {
+            throw new IllegalStateException("Cluster not started");
+        }
+        return cluster.clientEndpoints();
     }
 
     /**
@@ -97,7 +171,11 @@ public class EtcdClusterExtension implements BeforeAllCallback, BeforeEachCallba
      * @return list of peer endpoint URIs
      */
     public List<URI> peerEndpoints() {
-        return this.cluster.peerEndpoints();
+        EtcdCluster cluster = cluster();
+        if (cluster == null) {
+            throw new IllegalStateException("Cluster not started");
+        }
+        return cluster.peerEndpoints();
     }
 
     @Override
@@ -123,18 +201,23 @@ public class EtcdClusterExtension implements BeforeAllCallback, BeforeEachCallba
     }
 
     protected synchronized void before(ExtensionContext context) {
-        EtcdCluster oldCluster = CLUSTERS.putIfAbsent(cluster.clusterName(), cluster);
-        if (oldCluster == null) {
-            cluster.start();
-        }
+        ClusterReference ref = CLUSTERS.computeIfAbsent(clusterName, k -> {
+            ClusterReference newRef = new ClusterReference(clusterTemplate);
+            newRef.cluster.start();
+            return newRef;
+        });
+        ref.incrementRef();
     }
 
     protected synchronized void after(ExtensionContext context) {
         if (!this.beforeAll.get()) {
-            try {
-                cluster.close();
-            } finally {
-                CLUSTERS.remove(cluster.clusterName());
+            ClusterReference ref = CLUSTERS.get(clusterName);
+            if (ref != null && ref.decrementRef()) {
+                try {
+                    ref.cluster.close();
+                } finally {
+                    CLUSTERS.remove(clusterName);
+                }
             }
         }
     }
@@ -147,7 +230,8 @@ public class EtcdClusterExtension implements BeforeAllCallback, BeforeEachCallba
      * @return             the cluster instance, or null if not found
      */
     public static EtcdCluster cluster(String clusterName) {
-        return CLUSTERS.get(clusterName);
+        ClusterReference ref = CLUSTERS.get(clusterName);
+        return ref != null ? ref.cluster : null;
     }
 
     /**
