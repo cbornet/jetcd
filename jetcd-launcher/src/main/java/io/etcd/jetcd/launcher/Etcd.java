@@ -36,6 +36,20 @@ import com.google.common.base.Strings;
 public final class Etcd {
     /**
      * Default etcd container image.
+     * 
+     * <p>This version is updated periodically to track stable etcd releases.
+     * The image can be overridden by setting the {@code ETCD_IMAGE} environment
+     * variable, which is useful for testing against different etcd versions
+     * without modifying code.
+     * 
+     * <p>Version information:
+     * <ul>
+     *   <li>Current version: 3.5.25</li>
+     *   <li>Last updated: November 2024</li>
+     *   <li>Source: quay.io/coreos/etcd</li>
+     * </ul>
+     * 
+     * @see #resolveContainerImage()
      */
     public static final String CONTAINER_IMAGE = "quay.io/coreos/etcd:v3.5.25";
 
