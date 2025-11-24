@@ -183,7 +183,7 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
 
         String tempUser = this.user;
         if (tempUser == null) {
-            tempUser = getHostUser();
+            tempUser = EtcdSupport.getHostUser();
         }
         if (tempUser != null) {
             String finalUser = tempUser;
@@ -275,61 +275,6 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
         return cmd.toArray(new String[0]);
     }
 
-    private static void deleteDataDirectory(Path dir) {
-        if (dir == null || !Files.exists(dir)) {
-            return;
-        }
-
-        try (Stream<Path> stream = Files.walk(dir)) {
-            stream.sorted(Comparator.reverseOrder())
-                .forEach(path -> {
-                    try {
-                        Files.delete(path);
-                    } catch (IOException e) {
-                        LOGGER.warn("Failed to delete {}: {}", path, e.getMessage());
-                    }
-                });
-        } catch (IOException e) {
-            LOGGER.error("Error walking directory {} for deletion", dir, e);
-        }
-    }
-
-    private static String getHostUser() {
-        // First check if TC_USER is set (used by CI)
-        String tcUser = System.getenv("TC_USER");
-        if (tcUser != null && !tcUser.isEmpty()) {
-            return tcUser;
-        }
-
-        // Auto-detect on Unix-like systems
-        try {
-            if (System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win")) {
-                return null;
-            }
-
-            ProcessBuilder uidBuilder = new ProcessBuilder("id", "-u");
-            uidBuilder.redirectErrorStream(true);
-            Process uidProcess = uidBuilder.start();
-            String uid = new String(uidProcess.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
-            uidProcess.waitFor();
-            uidProcess.destroy();
-
-            ProcessBuilder gidBuilder = new ProcessBuilder("id", "-g");
-            gidBuilder.redirectErrorStream(true);
-            Process gidProcess = gidBuilder.start();
-            String gid = new String(gidProcess.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
-            gidProcess.waitFor();
-            gidProcess.destroy();
-
-            if (!uid.isEmpty() && !gid.isEmpty()) {
-                return uid + ":" + gid;
-            }
-        } catch (Exception e) {
-            LOGGER.debug("Could not detect host user", e);
-        }
-        return null;
-    }
-
     @Override
     protected void containerIsStarting(InspectContainerResponse containerInfo) {
 
@@ -354,7 +299,7 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
     @Override
     public void close() {
         super.close();
-        deleteDataDirectory(dataDirectory);
+        EtcdSupport.deleteDataDirectory(dataDirectory);
     }
 
     /**
