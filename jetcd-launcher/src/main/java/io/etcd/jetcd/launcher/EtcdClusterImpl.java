@@ -17,12 +17,16 @@
 package io.etcd.jetcd.launcher;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
@@ -73,36 +77,50 @@ public class EtcdClusterImpl implements EtcdCluster {
 
     @Override
     public void start() {
-        final CountDownLatch latch = new CountDownLatch(containers.size());
-        final AtomicReference<Exception> failedToStart = new AtomicReference<>();
-
-        for (EtcdContainer container : containers) {
-            new Thread(() -> {
-                try {
-                    container.start();
-                } catch (Exception e) {
-                    failedToStart.set(e);
-                } finally {
-                    latch.countDown();
-                }
-            }).start();
-        }
+        ExecutorService executor = Executors.newFixedThreadPool(containers.size());
 
         try {
-            latch.await(1, TimeUnit.MINUTES);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+            List<CompletableFuture<Void>> futures = containers.stream()
+                .map(container -> CompletableFuture.runAsync(container::start, executor))
+                .collect(toList());
 
-        if (failedToStart.get() != null) {
-            throw new IllegalStateException("Cluster failed to start", failedToStart.get());
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .orTimeout(1, TimeUnit.MINUTES)
+                .join();
+
+        } catch (CompletionException e) {
+            try {
+                stop();
+            } catch (Exception stopEx) {
+                LOG.warn("Failed to cleanup containers after startup failure", stopEx);
+            }
+            throw new IllegalStateException("Cluster failed to start", e.getCause());
+        } catch (CancellationException e) {
+            Thread.currentThread().interrupt();
+            try {
+                stop();
+            } catch (Exception stopEx) {
+                LOG.warn("Failed to cleanup containers after interruption", stopEx);
+            }
+            throw new IllegalStateException("Interrupted while starting cluster", e);
+        } finally {
+            executor.shutdownNow();
         }
     }
 
     @Override
     public void stop() {
+        List<Exception> failures = new ArrayList<>();
         for (EtcdContainer container : containers) {
-            container.stop();
+            try {
+                container.stop();
+            } catch (Exception e) {
+                LOG.warn("Failed to stop container {}", container.node(), e);
+                failures.add(e);
+            }
+        }
+        if (!failures.isEmpty()) {
+            LOG.error("Failed to stop {} container(s)", failures.size());
         }
     }
 

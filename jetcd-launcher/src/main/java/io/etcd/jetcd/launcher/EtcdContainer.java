@@ -204,8 +204,9 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
                 // https://github.com/etcd-io/jetcd/issues/489
                 // Resolve symlink (/var -> /private/var) to don't fail for MacOS because of
                 // docker thing with /var/folders
+                // Use rwxrwx--- (770) instead of rwxrwxrwx (777) for better security
                 final FileAttribute<?> attribute = PosixFilePermissions
-                    .asFileAttribute(EnumSet.allOf(PosixFilePermission.class));
+                    .asFileAttribute(PosixFilePermissions.fromString("rwxrwx---"));
                 return Files.createTempDirectory(prefix, attribute).toRealPath();
             } else {
                 return Files.createTempDirectory(prefix).toRealPath();
@@ -333,10 +334,11 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
             super.containerIsStarting(containerInfo);
 
             if (shouldMountDataDirectory) {
-                execInContainer("chmod", "o+rwx", "-R", Etcd.ETCD_DATA_DIR);
+                execInContainer("chmod", "770", "-R", Etcd.ETCD_DATA_DIR);
             }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        } catch (IOException | InterruptedException e) {
+            throw new ContainerLaunchException(
+                "Failed to set permissions on data directory for " + node, e);
         }
     }
 
