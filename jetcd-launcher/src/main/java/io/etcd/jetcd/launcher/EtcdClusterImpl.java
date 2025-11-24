@@ -84,6 +84,7 @@ public class EtcdClusterImpl implements EtcdCluster {
 
     @Override
     public void start() {
+        LOG.info("Starting etcd cluster '{}' with {} node(s)", clusterName, containers.size());
         ExecutorService executor = Executors.newFixedThreadPool(containers.size());
 
         try {
@@ -95,7 +96,10 @@ public class EtcdClusterImpl implements EtcdCluster {
                 .orTimeout(startupTimeout, startupTimeoutUnit)
                 .join();
 
+            LOG.info("Successfully started etcd cluster '{}'", clusterName);
+
         } catch (CompletionException e) {
+            LOG.error("Failed to start etcd cluster '{}'", clusterName, e);
             try {
                 stop();
             } catch (Exception stopEx) {
@@ -108,6 +112,7 @@ public class EtcdClusterImpl implements EtcdCluster {
             }
             throw new EtcdClusterStartException("Cluster failed to start", cause);
         } catch (CancellationException e) {
+            LOG.warn("Etcd cluster '{}' startup was interrupted", clusterName);
             Thread.currentThread().interrupt();
             try {
                 stop();
@@ -122,6 +127,7 @@ public class EtcdClusterImpl implements EtcdCluster {
 
     @Override
     public void stop() {
+        LOG.info("Stopping etcd cluster '{}'", clusterName);
         List<Exception> failures = new ArrayList<>();
         for (EtcdContainer container : containers) {
             try {
@@ -132,12 +138,15 @@ public class EtcdClusterImpl implements EtcdCluster {
             }
         }
         if (!failures.isEmpty()) {
-            LOG.error("Failed to stop {} container(s)", failures.size());
+            LOG.error("Failed to stop {} container(s) in cluster '{}'", failures.size(), clusterName);
+        } else {
+            LOG.info("Successfully stopped etcd cluster '{}'", clusterName);
         }
     }
 
     @Override
     public void close() {
+        LOG.debug("Closing etcd cluster '{}'", clusterName);
         // Close containers first
         for (EtcdContainer container : containers) {
             container.close();
@@ -148,13 +157,14 @@ public class EtcdClusterImpl implements EtcdCluster {
         if (network != null && network != Network.SHARED) {
             try {
                 network.close();
-                LOG.debug("Successfully closed network for cluster: {}", clusterName);
+                LOG.debug("Successfully closed network for cluster '{}'", clusterName);
             } catch (Exception e) {
                 // Log but don't fail - cleanup is best-effort
                 // This is a fallback for when Ryuk service is not active
-                LOG.warn("Failed to cleanup network for cluster {}: {}", clusterName, e.getMessage());
+                LOG.warn("Failed to cleanup network for cluster '{}': {}", clusterName, e.getMessage());
             }
         }
+        LOG.debug("Closed etcd cluster '{}'", clusterName);
     }
 
     @Override
