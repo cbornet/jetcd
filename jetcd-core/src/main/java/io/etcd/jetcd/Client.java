@@ -20,8 +20,8 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.Collection;
 
-import io.etcd.jetcd.resolver.EndpointResolver;
-import io.etcd.jetcd.resolver.EndpointResolvers;
+import io.etcd.jetcd.resolver.ServiceResolver;
+import io.etcd.jetcd.resolver.ServiceResolvers;
 
 /**
  * Etcd Client.
@@ -98,7 +98,7 @@ public interface Client extends AutoCloseable {
      * @return           the builder.
      */
     static ClientBuilder builder(String... addresses) {
-        return new ClientBuilder(EndpointResolvers.endpoints(addresses));
+        return new ClientBuilder(ServiceResolvers.endpoints(addresses));
     }
 
     /**
@@ -112,7 +112,7 @@ public interface Client extends AutoCloseable {
         String[] addressStrings = Arrays.stream(addresses)
             .map(URI::toString)
             .toArray(String[]::new);
-        return new ClientBuilder(EndpointResolvers.endpoints(addressStrings));
+        return new ClientBuilder(ServiceResolvers.endpoints(addressStrings));
     }
 
     /**
@@ -125,17 +125,17 @@ public interface Client extends AutoCloseable {
         String[] addressStrings = addresses.stream()
             .map(URI::toString)
             .toArray(String[]::new);
-        return new ClientBuilder(EndpointResolvers.endpoints(addressStrings));
+        return new ClientBuilder(ServiceResolvers.endpoints(addressStrings));
     }
 
     /**
      * Returns a new {@link ClientBuilder} with a custom endpoint resolver.
      * Use this for advanced service discovery scenarios.
      *
-     * @param  endpointResolver custom endpoint resolver
+     * @param  serviceResolver custom endpoint resolver
      * @return                  the builder.
      */
-    static ClientBuilder builder(EndpointResolver endpointResolver) {
-        return new ClientBuilder(endpointResolver);
+    static ClientBuilder builder(ServiceResolver serviceResolver) {
+        return new ClientBuilder(serviceResolver);
     }
 }

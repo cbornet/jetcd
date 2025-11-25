@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 import io.etcd.jetcd.launcher.EtcdCluster;
 import io.etcd.jetcd.launcher.EtcdContainer;
-import io.etcd.jetcd.resolver.AbstractEndpointResolver;
+import io.etcd.jetcd.resolver.AbstractServiceResolver;
 import io.vertx.core.net.Address;
 import io.vertx.core.net.AddressResolver;
 import io.vertx.core.net.SocketAddress;
@@ -28,7 +28,7 @@ import io.vertx.core.net.SocketAddress;
 /**
  * An endpoint resolver for testcontainers-based etcd clusters.
  */
-public class EtcdClusterEndpointResolver extends AbstractEndpointResolver {
+public class EtcdClusterEndpointResolver extends AbstractServiceResolver {
 
     private static final int DEFAULT_PORT = 2379;
     private static final String DEFAULT_HOSTNAME = "etcd-test-cluster";

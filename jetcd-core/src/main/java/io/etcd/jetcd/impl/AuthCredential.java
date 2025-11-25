@@ -65,10 +65,10 @@ class AuthCredential {
         checkArgument(!manager.builder().user().isEmpty(), "username can not be empty.");
         checkArgument(!manager.builder().password().isEmpty(), "password can not be empty.");
 
-        io.etcd.jetcd.resolver.EndpointResolver endpointResolver = manager.getEndpointResolver();
+        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = manager.getServiceResolver();
         AuthGrpcClient authClient = AuthGrpcClient.create(
             manager.getGrpcClient(),
-            (io.vertx.core.net.SocketAddress) endpointResolver.getTarget());
+            (io.vertx.core.net.SocketAddress) serviceResolver.getTarget());
 
         final ByteString user = ByteString.copyFrom(this.manager.builder().user().getBytes());
         final ByteString pass = ByteString.copyFrom(this.manager.builder().password().getBytes());

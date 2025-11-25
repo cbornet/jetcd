@@ -28,7 +28,7 @@ import java.util.function.Consumer;
 import io.etcd.jetcd.common.exception.EtcdException;
 import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
 import io.etcd.jetcd.impl.ClientImpl;
-import io.etcd.jetcd.resolver.EndpointResolver;
+import io.etcd.jetcd.resolver.ServiceResolver;
 import io.etcd.jetcd.support.Preconditions;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClientOptions;
@@ -39,7 +39,7 @@ import io.vertx.core.net.endpoint.LoadBalancer;
  */
 public final class ClientBuilder implements Cloneable {
 
-    private final EndpointResolver endpointResolver;
+    private final ServiceResolver<?> serviceResolver;
     private ByteSequence user;
     private ByteSequence password;
     private ExecutorService executorService;
@@ -60,8 +60,8 @@ public final class ClientBuilder implements Cloneable {
     private boolean waitForReady = true;
     private Vertx vertx;
 
-    ClientBuilder(EndpointResolver endpointResolver) {
-        this.endpointResolver = Preconditions.requireNonNull(endpointResolver, "endpointResolver cannot be null");
+    ClientBuilder(ServiceResolver<?> serviceResolver) {
+        this.serviceResolver = Preconditions.requireNonNull(serviceResolver, "serviceResolver cannot be null");
     }
 
     /**
@@ -69,8 +69,8 @@ public final class ClientBuilder implements Cloneable {
      *
      * @return the endpoint resolver.
      */
-    public EndpointResolver endpointResolver() {
-        return endpointResolver;
+    public ServiceResolver<?> serviceResolver() {
+        return serviceResolver;
     }
 
     /**

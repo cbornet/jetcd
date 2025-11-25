@@ -48,10 +48,10 @@ final class ElectionImpl extends Impl implements Election {
     ElectionImpl(ClientConnectionManager connectionManager) {
         super(connectionManager);
 
-        io.etcd.jetcd.resolver.EndpointResolver endpointResolver = connectionManager.getEndpointResolver();
+        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = connectionManager.getServiceResolver();
         this.client = ElectionGrpcClient.create(
             connectionManager.getAuthenticatedGrpcClient(),
-            (io.vertx.core.net.SocketAddress) endpointResolver.getTarget());
+            (io.vertx.core.net.SocketAddress) serviceResolver.getTarget());
         this.namespace = connectionManager.getNamespace();
     }
 

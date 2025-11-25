@@ -51,9 +51,9 @@ final class LockImpl extends Impl implements Lock {
     LockImpl(ClientConnectionManager connectionManager) {
         super(connectionManager);
 
-        io.etcd.jetcd.resolver.EndpointResolver endpointResolver = connectionManager.getEndpointResolver();
+        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = connectionManager.getServiceResolver();
         this.client = LockGrpcClient.create(connectionManager.getAuthenticatedGrpcClient(),
-            (io.vertx.core.net.SocketAddress) endpointResolver.getTarget());
+            (io.vertx.core.net.SocketAddress) serviceResolver.getTarget());
         this.namespace = connectionManager.getNamespace();
     }
 

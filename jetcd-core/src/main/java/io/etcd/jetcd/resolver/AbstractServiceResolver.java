@@ -20,19 +20,21 @@ import io.vertx.core.net.Address;
 import io.vertx.core.net.AddressResolver;
 
 /**
- * Base implementation for endpoint resolvers that holds common resolver and target fields.
+ * Base implementation for service resolvers that holds common resolver and target fields.
+ *
+ * @param <S> the server address type being resolved
  */
-public abstract class AbstractEndpointResolver implements EndpointResolver {
-    private final AddressResolver resolver;
+public abstract class AbstractServiceResolver<S extends Address> implements ServiceResolver<S> {
+    private final AddressResolver<S> resolver;
     private final Address target;
 
-    protected AbstractEndpointResolver(AddressResolver resolver, Address target) {
+    protected AbstractServiceResolver(AddressResolver<S> resolver, Address target) {
         this.resolver = resolver;
         this.target = target;
     }
 
     @Override
-    public AddressResolver getResolver() {
+    public AddressResolver<S> getResolver() {
         return resolver;
     }
 

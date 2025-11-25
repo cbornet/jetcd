@@ -21,14 +21,16 @@ import io.vertx.core.net.AddressResolver;
 
 /**
  * Encapsulates address resolution logic and the target address for etcd connections.
+ *
+ * @param <S> the server address type being resolved
  */
-public interface EndpointResolver {
+public interface ServiceResolver<S extends Address> {
     /**
      * Returns the address resolver that handles the resolution logic.
      *
      * @return the address resolver
      */
-    AddressResolver getResolver();
+    AddressResolver<S> getResolver();
 
     /**
      * Returns the target address that will be passed to the resolver.

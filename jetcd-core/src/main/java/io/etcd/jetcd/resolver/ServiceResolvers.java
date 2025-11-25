@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.etcd.jetcd.resolver.dnssrv.DnsSrvAddressResolver;
+import io.etcd.jetcd.resolver.dnssrv.DnsSrvClientOptions;
 import io.etcd.jetcd.support.Util;
 import io.vertx.core.Vertx;
 import io.vertx.core.dns.DnsClientOptions;
@@ -30,106 +32,105 @@ import io.vertx.core.net.AddressResolver;
 import io.vertx.core.net.SocketAddress;
 
 /**
- * Utility class providing factory methods for creating endpoint resolvers.
+ * Utility class providing factory methods for creating service resolvers.
  *
  * <p>
- * This class offers convenient ways to create endpoint resolvers for various service discovery mechanisms:
+ * This class offers convenient ways to create service resolvers for various service discovery mechanisms:
  * </p>
  * <ul>
  * <li>Static endpoint lists via {@link #endpoints(String...)}</li>
  * <li>DNS SRV-based discovery via {@link #dnsSrv(String)}</li>
  * </ul>
  */
-public final class EndpointResolvers {
+public final class ServiceResolvers {
 
-    private EndpointResolvers() {
+    private ServiceResolvers() {
         // Utility class, no instantiation
     }
 
     /**
-     * Creates an endpoint resolver for static etcd endpoints.
+     * Creates a service resolver for static etcd endpoints.
      *
      * @param  addresses etcd server addresses (e.g., "http://localhost:2379")
-     * @return           an endpoint resolver for the specified addresses
+     * @return           a service resolver for the specified addresses
      */
-    public static EndpointResolver endpoints(String... addresses) {
+    public static ServiceResolver endpoints(String... addresses) {
         List<URI> uris = Stream.of(addresses)
             .map(URI::create)
             .collect(Collectors.toList());
-        return Static.fromEndpoints(uris);
+        return Static.create(uris);
     }
 
     /**
-     * Creates an endpoint resolver for static etcd endpoints.
+     * Creates a service resolver for static etcd endpoints.
      *
      * @param  endpoints etcd server endpoint URIs
-     * @return           an endpoint resolver for the specified endpoints
+     * @return           a service resolver for the specified endpoints
      */
-    public static EndpointResolver endpoints(URI... endpoints) {
-        return Static.fromEndpoints(Arrays.asList(endpoints));
+    public static ServiceResolver endpoints(URI... endpoints) {
+        return Static.create(Arrays.asList(endpoints));
     }
 
     /**
-     * Creates an endpoint resolver that uses DNS SRV records for service discovery.
+     * Creates a service resolver that uses DNS SRV records for service discovery.
      *
      * @param  serviceName the DNS SRV service name (e.g., "_etcd._tcp.example.com")
-     * @return             an endpoint resolver that uses DNS SRV records
+     * @return             a service resolver that uses DNS SRV records
      */
-    public static EndpointResolver dnsSrv(String serviceName) {
+    public static ServiceResolver dnsSrv(String serviceName) {
         return DnsSrv.create(serviceName);
     }
 
     /**
-     * Creates an endpoint resolver that uses DNS SRV records with a custom DNS server.
+     * Creates a service resolver that uses DNS SRV records with a custom DNS server.
      *
      * @param  serviceName the DNS SRV service name (e.g., "_etcd._tcp.example.com")
      * @param  dnsServer   the DNS server hostname
      * @param  dnsPort     the DNS server port (usually 53)
-     * @return             an endpoint resolver that uses DNS SRV records
+     * @return             a service resolver that uses DNS SRV records
      */
-    public static EndpointResolver dnsSrv(String serviceName, String dnsServer, int dnsPort) {
+    public static ServiceResolver dnsSrv(String serviceName, String dnsServer, int dnsPort) {
         return DnsSrv.create(serviceName, dnsServer, dnsPort);
     }
 
     /**
-     * Static endpoint resolver implementation.
+     * Static service resolver implementation.
      *
      * <p>
      * Resolves to a fixed list of etcd server endpoints. Use this when you have a known,
      * unchanging list of etcd servers.
      * </p>
      */
-    public static final class Static extends AbstractEndpointResolver {
+    public static final class Static extends AbstractServiceResolver<SocketAddress> {
 
         /**
-         * Creates a static endpoint resolver from a list of endpoint URIs.
+         * Creates a static service resolver from a list of endpoint URIs.
          *
          * @param  endpoints list of etcd endpoint URIs
-         * @return           a static endpoint resolver
+         * @return           a static service resolver
          */
-        public static Static fromEndpoints(List<URI> endpoints) {
+        public static Static create(List<URI> endpoints) {
             List<SocketAddress> addresses = endpoints.stream()
                 .map(Util::toSocketAddress)
                 .collect(Collectors.toList());
 
-            AddressResolver resolver = AddressResolver.mappingResolver(ignored -> addresses);
+            AddressResolver<SocketAddress> resolver = AddressResolver.mappingResolver(ignored -> addresses);
             Address target = SocketAddress.inetSocketAddress(2379, "etcd-cluster");
 
             return new Static(resolver, target);
         }
 
-        private Static(AddressResolver resolver, Address target) {
+        private Static(AddressResolver<SocketAddress> resolver, Address target) {
             super(resolver, target);
         }
     }
 
     /**
-     * DNS SRV endpoint resolver implementation.
+     * DNS SRV service resolver implementation.
      *
      * <p>
-     * Uses DNS SRV records to discover etcd endpoints dynamically. This is useful in
-     * cloud environments where server addresses may change. Requires the
-     * vertx-service-resolver dependency.
+     * Uses DNS SRV records to discover etcd endpoints dynamically with fully async resolution.
+     * DNS queries are performed lazily on-demand with no blocking calls.
      * </p>
      *
      * <p>
@@ -137,19 +138,22 @@ public final class EndpointResolvers {
      * "_etcd._tcp.example.com" would resolve to multiple etcd servers with
      * priority and weight information.
      * </p>
+     *
+     * <p>
+     * Supports TTL-based automatic refresh to handle dynamic cluster topology changes.
+     * </p>
      */
-    public static final class DnsSrv extends AbstractEndpointResolver {
+    public static final class DnsSrv extends AbstractServiceResolver<SocketAddress> {
 
         /**
          * Creates a DNS SRV resolver with default DNS server.
          *
          * @param  serviceName the DNS SRV service name (e.g., "_etcd._tcp.example.com")
-         * @return             an endpoint resolver that uses DNS SRV records
+         * @return             a service resolver that uses DNS SRV records
          */
         public static DnsSrv create(String serviceName) {
-            DnsClientOptions dnsOptions = new DnsClientOptions();
-            DnsSrvAddressResolver resolver = new DnsSrvAddressResolver(serviceName, dnsOptions);
-            // Use a placeholder SocketAddress that will be resolved by our custom resolver
+            DnsSrvClientOptions options = new DnsSrvClientOptions(serviceName);
+            DnsSrvAddressResolver resolver = new DnsSrvAddressResolver(options);
             Address target = SocketAddress.inetSocketAddress(2379, serviceName);
 
             return new DnsSrv(resolver, target);
@@ -161,20 +165,19 @@ public final class EndpointResolvers {
          * @param  serviceName the DNS SRV service name (e.g., "_etcd._tcp.example.com")
          * @param  dnsServer   the DNS server hostname
          * @param  dnsPort     the DNS server port (usually 53)
-         * @return             an endpoint resolver that uses DNS SRV records
+         * @return             a service resolver that uses DNS SRV records
          */
         public static DnsSrv create(String serviceName, String dnsServer, int dnsPort) {
-            DnsClientOptions dnsOptions = new DnsClientOptions()
+            DnsSrvClientOptions options = new DnsSrvClientOptions(serviceName)
                 .setHost(dnsServer)
                 .setPort(dnsPort);
-            DnsSrvAddressResolver resolver = new DnsSrvAddressResolver(serviceName, dnsOptions);
-            // Use a placeholder SocketAddress that will be resolved by our custom resolver
+            DnsSrvAddressResolver resolver = new DnsSrvAddressResolver(options);
             Address target = SocketAddress.inetSocketAddress(2379, serviceName);
 
             return new DnsSrv(resolver, target);
         }
 
-        private DnsSrv(AddressResolver resolver, Address target) {
+        private DnsSrv(AddressResolver<SocketAddress> resolver, Address target) {
             super(resolver, target);
         }
     }

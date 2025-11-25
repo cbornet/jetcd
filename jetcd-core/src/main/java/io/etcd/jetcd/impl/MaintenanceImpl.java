@@ -42,10 +42,10 @@ final class MaintenanceImpl extends Impl implements Maintenance {
     MaintenanceImpl(ClientConnectionManager connectionManager) {
         super(connectionManager);
 
-        io.etcd.jetcd.resolver.EndpointResolver endpointResolver = connectionManager.getEndpointResolver();
+        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = connectionManager.getServiceResolver();
         client = MaintenanceGrpcClient.create(
             connectionManager.getAuthenticatedGrpcClient(),
-            (io.vertx.core.net.SocketAddress) endpointResolver.getTarget());
+            (io.vertx.core.net.SocketAddress) serviceResolver.getTarget());
     }
 
     @Override

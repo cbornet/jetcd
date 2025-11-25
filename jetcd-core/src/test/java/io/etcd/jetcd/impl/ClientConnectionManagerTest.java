@@ -25,8 +25,8 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.etcd.jetcd.Client;
-import io.etcd.jetcd.resolver.EndpointResolver;
-import io.etcd.jetcd.resolver.EndpointResolvers;
+import io.etcd.jetcd.resolver.ServiceResolver;
+import io.etcd.jetcd.resolver.ServiceResolvers;
 import io.etcd.jetcd.test.EtcdClusterExtension;
 
 import static io.etcd.jetcd.impl.TestUtil.bytesOf;
@@ -57,13 +57,13 @@ public class ClientConnectionManagerTest {
     @Test
     public void testDnsSrvResolverCreation() {
         // Verify DNS SRV resolver can be created with service name only
-        EndpointResolver resolver1 = EndpointResolvers.dnsSrv("_etcd._tcp.example.com");
+        ServiceResolver resolver1 = ServiceResolvers.dnsSrv("_etcd._tcp.example.com");
         assertThat(resolver1).isNotNull();
         assertThat(resolver1.getTarget()).isNotNull();
         assertThat(resolver1.getResolver()).isNotNull();
 
         // Verify DNS SRV resolver can be created with custom DNS server
-        EndpointResolver resolver2 = EndpointResolvers.dnsSrv(
+        ServiceResolver resolver2 = ServiceResolvers.dnsSrv(
             "_etcd._tcp.example.com",
             "8.8.8.8",
             53);

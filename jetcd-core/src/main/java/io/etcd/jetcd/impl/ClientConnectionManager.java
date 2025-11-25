@@ -23,7 +23,7 @@ import java.util.function.Function;
 
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.ClientBuilder;
-import io.etcd.jetcd.resolver.EndpointResolver;
+import io.etcd.jetcd.resolver.ServiceResolver;
 import io.etcd.jetcd.support.Util;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
@@ -94,11 +94,11 @@ final class ClientConnectionManager {
         return authenticatedGrpcClient;
     }
 
-    EndpointResolver getEndpointResolver() {
-        if (builder.endpointResolver() == null) {
+    ServiceResolver getServiceResolver() {
+        if (builder.serviceResolver() == null) {
             throw new IllegalArgumentException("EndpointResolver must be configured");
         }
-        return builder.endpointResolver();
+        return builder.serviceResolver();
     }
 
     ByteSequence getNamespace() {
@@ -153,8 +153,8 @@ final class ClientConnectionManager {
     private GrpcClient createGrpcClient() {
         io.vertx.grpc.client.GrpcClientBuilder grpcBuilder = GrpcClient.builder(vertx());
 
-        EndpointResolver endpointResolver = getEndpointResolver();
-        grpcBuilder.withAddressResolver(endpointResolver.getResolver());
+        ServiceResolver serviceResolver = getServiceResolver();
+        grpcBuilder.withAddressResolver(serviceResolver.getResolver());
 
         // Configure load balancer (default to ROUND_ROBIN if not specified)
         LoadBalancer loadBalancer = builder.loadBalancer();

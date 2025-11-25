@@ -84,10 +84,10 @@ final class WatchImpl extends Impl implements Watch {
      * This ensures we always use the current cluster endpoint, even after restarts.
      */
     private WatchGrpcClient createWatchClient() {
-        io.etcd.jetcd.resolver.EndpointResolver endpointResolver = connectionManager().getEndpointResolver();
+        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = connectionManager().getServiceResolver();
         return WatchGrpcClient.create(
             connectionManager().getAuthenticatedGrpcClient(),
-            (io.vertx.core.net.SocketAddress) endpointResolver.getTarget());
+            (io.vertx.core.net.SocketAddress) serviceResolver.getTarget());
     }
 
     @Override

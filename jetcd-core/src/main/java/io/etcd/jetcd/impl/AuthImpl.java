@@ -67,10 +67,10 @@ final class AuthImpl extends Impl implements Auth {
     AuthImpl(ClientConnectionManager connectionManager) {
         super(connectionManager);
 
-        io.etcd.jetcd.resolver.EndpointResolver endpointResolver = connectionManager.getEndpointResolver();
+        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = connectionManager.getServiceResolver();
         this.client = AuthGrpcClient.create(
             connectionManager.getAuthenticatedGrpcClient(),
-            (io.vertx.core.net.SocketAddress) endpointResolver.getTarget());
+            (io.vertx.core.net.SocketAddress) serviceResolver.getTarget());
     }
 
     @Override

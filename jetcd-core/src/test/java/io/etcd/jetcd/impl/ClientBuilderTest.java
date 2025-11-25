@@ -27,8 +27,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.ClientBuilder;
-import io.etcd.jetcd.resolver.EndpointResolver;
-import io.etcd.jetcd.resolver.EndpointResolvers;
+import io.etcd.jetcd.resolver.ServiceResolver;
+import io.etcd.jetcd.resolver.ServiceResolvers;
 import io.vertx.core.net.endpoint.LoadBalancer;
 
 import static io.etcd.jetcd.impl.TestUtil.bytesOf;
@@ -86,7 +86,7 @@ public class ClientBuilderTest {
     @Test
     public void testEndpointResolvers_DnsSrv() {
         // Test creating a DNS SRV resolver with default DNS server
-        EndpointResolver resolver = EndpointResolvers.dnsSrv("_etcd._tcp.example.com");
+        ServiceResolver resolver = ServiceResolvers.dnsSrv("_etcd._tcp.example.com");
 
         assertThat(resolver).isNotNull();
         assertThat(resolver.getResolver()).isNotNull();
@@ -96,7 +96,7 @@ public class ClientBuilderTest {
     @Test
     public void testEndpointResolvers_DnsSrvWithCustomDns() {
         // Test creating a DNS SRV resolver with custom DNS server
-        EndpointResolver resolver = EndpointResolvers.dnsSrv("_etcd._tcp.example.com", "dns.example.com", 53);
+        ServiceResolver resolver = ServiceResolvers.dnsSrv("_etcd._tcp.example.com", "dns.example.com", 53);
 
         assertThat(resolver).isNotNull();
         assertThat(resolver.getResolver()).isNotNull();
@@ -106,7 +106,7 @@ public class ClientBuilderTest {
     @Test
     public void testEndpointResolvers_Endpoints() throws URISyntaxException {
         // Test creating a static endpoint resolver
-        EndpointResolver resolver = EndpointResolvers.endpoints("http://127.0.0.1:2379", "http://127.0.0.1:2380");
+        ServiceResolver resolver = ServiceResolvers.endpoints("http://127.0.0.1:2379", "http://127.0.0.1:2380");
 
         assertThat(resolver).isNotNull();
         assertThat(resolver.getResolver()).isNotNull();
@@ -116,12 +116,12 @@ public class ClientBuilderTest {
     @Test
     public void testClient_BuilderWithDnsSrvResolver() {
         // Test creating client with DNS SRV resolver
-        ClientBuilder builder = Client.builder(EndpointResolvers.dnsSrv("_etcd._tcp.example.com"));
+        ClientBuilder builder = Client.builder(ServiceResolvers.dnsSrv("_etcd._tcp.example.com"));
 
         assertThat(builder).isNotNull();
-        assertThat(builder.endpointResolver()).isNotNull();
-        assertThat(builder.endpointResolver().getResolver()).isNotNull();
-        assertThat(builder.endpointResolver().getTarget()).isNotNull();
+        assertThat(builder.serviceResolver()).isNotNull();
+        assertThat(builder.serviceResolver().getResolver()).isNotNull();
+        assertThat(builder.serviceResolver().getTarget()).isNotNull();
     }
 
     @Test

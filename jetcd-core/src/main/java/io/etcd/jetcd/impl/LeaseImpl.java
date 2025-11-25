@@ -68,10 +68,10 @@ final class LeaseImpl extends Impl implements Lease {
     LeaseImpl(ClientConnectionManager connectionManager) {
         super(connectionManager);
 
-        io.etcd.jetcd.resolver.EndpointResolver endpointResolver = connectionManager.getEndpointResolver();
+        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = connectionManager.getServiceResolver();
         this.client = LeaseGrpcClient.create(
             connectionManager.getAuthenticatedGrpcClient(),
-            (io.vertx.core.net.SocketAddress) endpointResolver.getTarget());
+            (io.vertx.core.net.SocketAddress) serviceResolver.getTarget());
         this.keepAlives = new ConcurrentHashMap<>();
         this.keepAlive = new KeepAlive();
         this.deadLine = new DeadLine();
