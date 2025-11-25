@@ -41,8 +41,7 @@ class EtcdClusterEndpointResolverTest {
         EtcdClusterEndpointResolver resolver = EtcdClusterEndpointResolver.create(
             cluster.cluster(),
             2379,
-            "custom-cluster-name"
-        );
+            "custom-cluster-name");
 
         assertThat(resolver).isNotNull();
     }
@@ -79,4 +78,3 @@ class EtcdClusterEndpointResolverTest {
             .hasMessageContaining("Hostname cannot be null");
     }
 }
-

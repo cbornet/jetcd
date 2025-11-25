@@ -69,7 +69,7 @@ import io.etcd.jetcd.launcher.EtcdCluster;
  *
  *         {@literal @}Test
  *         public void testSomething() {
- *             List<URI> endpoints = cluster.clientEndpoints();
+ *             List&lt;URI&gt; endpoints = cluster.clientEndpoints();
  *             // use endpoints to connect
  *         }
  *     }

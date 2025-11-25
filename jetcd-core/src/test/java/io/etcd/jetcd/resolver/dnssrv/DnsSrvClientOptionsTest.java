@@ -16,10 +16,10 @@
 
 package io.etcd.jetcd.resolver.dnssrv;
 
+import org.junit.jupiter.api.Test;
+
 import io.netty.handler.logging.ByteBufFormat;
 import io.vertx.core.dns.DnsClientOptions;
-
-import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

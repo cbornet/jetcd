@@ -55,18 +55,20 @@ public final class DnsSrvClientOptions {
      * Sets the minimum TTL (Time To Live) in seconds for DNS SRV record refresh.
      * This value is used as a lower bound when DNS servers return low or zero TTL values.
      *
-     * <p>Default: 30 seconds
+     * <p>
+     * Default: 30 seconds
      *
-     * <p>Use cases:
+     * <p>
+     * Use cases:
      * <ul>
-     *   <li>DNS servers like dnsmasq often return TTL=0 to indicate "don't cache".
-     *       Without a minimum TTL, endpoints would never be refreshed.</li>
-     *   <li>Set to 0 to disable the minimum and use DNS server's TTL exactly as provided.</li>
-     *   <li>Increase (e.g., to 60) for less frequent DNS queries in stable environments.</li>
+     * <li>DNS servers like dnsmasq often return TTL=0 to indicate "don't cache".
+     * Without a minimum TTL, endpoints would never be refreshed.</li>
+     * <li>Set to 0 to disable the minimum and use DNS server's TTL exactly as provided.</li>
+     * <li>Increase (e.g., to 60) for less frequent DNS queries in stable environments.</li>
      * </ul>
      *
-     * @param minTTL minimum TTL in seconds (0 or positive value)
-     * @return this instance for fluent API
+     * @param  minTTL minimum TTL in seconds (0 or positive value)
+     * @return        this instance for fluent API
      */
     public DnsSrvClientOptions setMinTTL(int minTTL) {
         this.minTTL = minTTL;

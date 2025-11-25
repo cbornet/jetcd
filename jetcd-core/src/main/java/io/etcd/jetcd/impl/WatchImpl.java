@@ -255,7 +255,7 @@ final class WatchImpl extends Impl implements Watch {
                 LOG.warn("WatcherImpl.requestProgress: watcher is closed, key={}", key);
                 return;
             }
-            
+
             try {
                 // Wait for the watch to be fully created before sending progress request
                 CountDownLatch latch = createdLatch.get();
@@ -263,13 +263,13 @@ final class WatchImpl extends Impl implements Watch {
                     LOG.warn("WatcherImpl.requestProgress: createdLatch is null, key={}", key);
                     return;
                 }
-                
+
                 LOG.debug("WatcherImpl.requestProgress: waiting for watch to be created, key={}", key);
                 if (!latch.await(5, TimeUnit.SECONDS)) {
                     LOG.warn("WatcherImpl.requestProgress: timeout waiting for watch to be created, key={}", key);
                     return;
                 }
-                
+
                 WriteStream<WatchRequest> ws = wstream.get();
                 if (ws != null) {
                     LOG.debug("WatcherImpl.requestProgress: sending progress request for key={}", key);
@@ -290,15 +290,16 @@ final class WatchImpl extends Impl implements Watch {
         //
         // ************************
 
-            private void onNext(WatchResponse response) {
-                LOG.debug("WatcherImpl.onNext: received response - created={}, canceled={}, eventsCount={}, compactRevision={}, key={}", 
-                    response.getCreated(), response.getCanceled(), response.getEventsCount(), response.getCompactRevision(), key);
-                
-                if (closed.get()) {
-                    // events eventually received when the client is closed should
-                    // not be propagated to the listener
-                    return;
-                }
+        private void onNext(WatchResponse response) {
+            LOG.debug(
+                "WatcherImpl.onNext: received response - created={}, canceled={}, eventsCount={}, compactRevision={}, key={}",
+                response.getCreated(), response.getCanceled(), response.getEventsCount(), response.getCompactRevision(), key);
+
+            if (closed.get()) {
+                // events eventually received when the client is closed should
+                // not be propagated to the listener
+                return;
+            }
 
             // handle a special case when watch has been created and closed at the same time
             if (response.getCreated() && response.getCanceled()
@@ -351,7 +352,7 @@ final class WatchImpl extends Impl implements Watch {
 
                 handleError(toEtcdException(error), false);
             } else if (io.etcd.jetcd.watch.WatchResponse.isProgressNotify(response)) {
-                LOG.debug("WatcherImpl.onNext: Progress notify detected - delivering to listener, revision={}, key={}", 
+                LOG.debug("WatcherImpl.onNext: Progress notify detected - delivering to listener, revision={}, key={}",
                     response.getHeader().getRevision(), key);
                 listener.onNext(new io.etcd.jetcd.watch.WatchResponse(response));
                 revision = Math.max(revision, response.getHeader().getRevision());

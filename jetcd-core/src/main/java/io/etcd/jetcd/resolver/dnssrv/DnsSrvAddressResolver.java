@@ -16,13 +16,13 @@
 
 package io.etcd.jetcd.resolver.dnssrv;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import io.vertx.core.Vertx;
 import io.vertx.core.net.AddressResolver;
 import io.vertx.core.net.SocketAddress;
 import io.vertx.core.spi.endpoint.EndpointResolver;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Fully async AddressResolver that uses DNS SRV records for service discovery.
@@ -52,4 +52,3 @@ public final class DnsSrvAddressResolver implements AddressResolver<SocketAddres
         return new DnsSrvEndpointResolver<>(vertx, options);
     }
 }
-

@@ -30,6 +30,7 @@ import io.etcd.jetcd.resolver.ServiceResolvers;
 import io.etcd.jetcd.test.EtcdClusterExtension;
 
 import static io.etcd.jetcd.impl.TestUtil.bytesOf;
+import static io.etcd.jetcd.test.EtcdConstants.GOOGLE_DNS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Timeout(value = 30, unit = TimeUnit.SECONDS)
@@ -51,7 +52,7 @@ public class ClientConnectionManagerTest {
      * Tests that the DNS SRV resolver API exists and can be created.
      * This verifies the API surface but does not test actual DNS resolution
      * (which would require DNS infrastructure setup).
-     * 
+     *
      * For real DNS SRV usage examples, see docs/DNS_SRV_RESOLUTION.md
      */
     @Test
@@ -65,7 +66,7 @@ public class ClientConnectionManagerTest {
         // Verify DNS SRV resolver can be created with custom DNS server
         ServiceResolver resolver2 = ServiceResolvers.dnsSrv(
             "_etcd._tcp.example.com",
-            "8.8.8.8",
+            GOOGLE_DNS,
             53);
         assertThat(resolver2).isNotNull();
         assertThat(resolver2.getTarget()).isNotNull();

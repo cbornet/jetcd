@@ -133,7 +133,7 @@ public interface Client extends AutoCloseable {
      * Use this for advanced service discovery scenarios.
      *
      * @param  serviceResolver custom endpoint resolver
-     * @return                  the builder.
+     * @return                 the builder.
      */
     static ClientBuilder builder(ServiceResolver serviceResolver) {
         return new ClientBuilder(serviceResolver);

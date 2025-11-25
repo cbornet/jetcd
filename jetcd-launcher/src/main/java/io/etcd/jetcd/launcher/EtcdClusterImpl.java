@@ -104,9 +104,9 @@ public class EtcdClusterImpl implements EtcdCluster {
             Throwable cause = e.getCause();
             if (cause instanceof TimeoutException) {
                 throw new EtcdClusterTimeoutException(
-                    "Cluster startup timed out after " + startupTimeout + " " + startupTimeoutUnit, cause);
+                    "Cluster startup timed out after " + startupTimeout + " " + startupTimeoutUnit, e);
             }
-            throw new EtcdClusterStartException("Cluster failed to start", cause);
+            throw new EtcdClusterStartException("Cluster failed to start", e);
 
         } catch (CancellationException e) {
             LOG.warn("Etcd cluster '{}' startup was interrupted", clusterName);

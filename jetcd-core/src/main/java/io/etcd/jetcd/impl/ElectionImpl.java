@@ -190,12 +190,10 @@ final class ElectionImpl extends Impl implements Election {
                 // We distinguish based on the operation context:
                 // - leader() queries that fail with UNKNOWN mean "no leader exists" (NoLeaderException)
                 // - proclaim()/campaign() that fail with UNKNOWN mean "not the leader" (NotLeaderException)
-                if (invalidStatusException.actualStatus() == io.vertx.grpc.common.GrpcStatus.UNKNOWN) {
-                    if (isLeaderQuery) {
-                        return new NoLeaderException();
-                    } else {
-                        return new NotLeaderException();
-                    }
+                if (invalidStatusException.actualStatus() == io.vertx.grpc.common.GrpcStatus.UNKNOWN && isLeaderQuery) {
+                    return new NoLeaderException();
+                } else if (invalidStatusException.actualStatus() == io.vertx.grpc.common.GrpcStatus.UNKNOWN) {
+                    return new NotLeaderException();
                 }
             }
             cause = cause.getCause();

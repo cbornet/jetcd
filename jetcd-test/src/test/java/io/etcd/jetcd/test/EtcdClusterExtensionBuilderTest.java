@@ -123,4 +123,3 @@ class EtcdClusterExtensionBuilderTest {
         assertThat(extension).isNotNull();
     }
 }
-

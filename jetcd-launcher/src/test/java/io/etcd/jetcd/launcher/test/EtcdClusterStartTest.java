@@ -141,7 +141,8 @@ public class EtcdClusterStartTest {
             assertEquals(3, restartedEndpoints.size(), "Expected 3 endpoints after restart");
 
             // Verify all containers are running
-            etcd.containers().forEach(container -> assertNotNull(container.getContainerId(), "Container should be running after restart"));
+            etcd.containers()
+                .forEach(container -> assertNotNull(container.getContainerId(), "Container should be running after restart"));
         }
     }
 

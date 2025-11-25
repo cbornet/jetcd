@@ -24,7 +24,7 @@ import picocli.CommandLine;
         CommandPut.class
 })
 public class Main implements Runnable {
-    @CommandLine.Option(names = { "--endpoints" }, description = "gRPC endpoints", defaultValue = "http://127.0.0.1:2379")
+    @CommandLine.Option(names = { "--endpoints" }, description = "gRPC endpoints", defaultValue = "127.0.0.1:2379")
     String endpoints;
 
     @Override

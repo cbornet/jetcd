@@ -16,6 +16,13 @@
 
 package io.etcd.jetcd.resolver.dnssrv;
 
+import java.util.concurrent.TimeUnit;
+
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.KV;
@@ -24,24 +31,21 @@ import io.etcd.jetcd.launcher.Etcd;
 import io.etcd.jetcd.launcher.EtcdCluster;
 import io.etcd.jetcd.resolver.ServiceResolvers;
 import io.etcd.jetcd.test.DnsSrvContainer;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Timeout;
-
-import java.util.concurrent.TimeUnit;
 
 import static io.etcd.jetcd.impl.TestUtil.bytesOf;
+import static io.etcd.jetcd.test.EtcdConstants.LOCALHOST;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Integration test for jetcd DNS SRV resolver.
  *
- * <p>Tests that jetcd Client can connect to etcd using DNS SRV records
+ * <p>
+ * Tests that jetcd Client can connect to etcd using DNS SRV records
  * and perform operations correctly. These tests validate the full integration
  * between jetcd's DNS SRV resolver and actual etcd instances.
  *
- * <p>For tests that validate DnsSrvContainer functionality (without jetcd),
+ * <p>
+ * For tests that validate DnsSrvContainer functionality (without jetcd),
  * see {@link io.etcd.jetcd.test.DnsSrvContainerTest}.
  */
 @Timeout(value = 30, unit = TimeUnit.SECONDS)
@@ -83,8 +87,8 @@ public class DnsSrvTest {
     public void testJetcdClientWithDnsSrv() throws Exception {
         var resolver = ServiceResolvers.dnsSrv(
             "_etcd._tcp.single.test.local",
-            "127.0.0.1",
-                dnsContainer.getDnsPort());
+            LOCALHOST,
+            dnsContainer.getDnsPort());
 
         try (Client client = Client.builder(resolver).build()) {
             KV kv = client.getKVClient();
@@ -108,7 +112,7 @@ public class DnsSrvTest {
         // The resolver handles TTL-based refresh internally
         var resolver = ServiceResolvers.dnsSrv(
             "_etcd._tcp.single.test.local",
-            "127.0.0.1",
+            LOCALHOST,
             dnsContainer.getDnsPort());
 
         try (Client client = Client.builder(resolver).build()) {

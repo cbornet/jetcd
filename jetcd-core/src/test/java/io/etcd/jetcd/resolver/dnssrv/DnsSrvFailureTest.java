@@ -16,13 +16,15 @@
 
 package io.etcd.jetcd.resolver.dnssrv;
 
-import io.etcd.jetcd.Client;
-import io.etcd.jetcd.resolver.ServiceResolvers;
-import io.vertx.core.Vertx;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.etcd.jetcd.Client;
+import io.etcd.jetcd.resolver.ServiceResolvers;
+import io.vertx.core.Vertx;
+
+import static io.etcd.jetcd.test.EtcdConstants.LOCALHOST;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -30,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests error scenarios that were not covered in happy path tests.
  */
 public class DnsSrvFailureTest {
+
     private Vertx vertx;
 
     @BeforeEach
@@ -50,8 +53,8 @@ public class DnsSrvFailureTest {
         // This should not crash - DNS resolution is async
         var resolver = ServiceResolvers.dnsSrv(
             "_etcd._tcp.nonexistent.local",
-            "127.0.0.1",
-            99999  // Invalid port - nothing listening here
+            LOCALHOST,
+            99999 // Invalid port - nothing listening here
         );
 
         // Creating the resolver should succeed - DNS resolution happens later
@@ -64,8 +67,8 @@ public class DnsSrvFailureTest {
         // This should not crash - timeouts are handled gracefully
         var resolver = ServiceResolvers.dnsSrv(
             "_etcd._tcp.timeout.local",
-            "127.0.0.1",
-            99999  // Non-existent DNS server - will timeout on first resolution
+            LOCALHOST,
+            99999 // Non-existent DNS server - will timeout on first resolution
         );
 
         // Creating the resolver should succeed
@@ -144,8 +147,8 @@ public class DnsSrvFailureTest {
         // Test that resolver can be created and disposed without errors
         var resolver = ServiceResolvers.dnsSrv(
             "_etcd._tcp.test.local",
-            "127.0.0.1",
-            99999  // Non-existent DNS server
+            LOCALHOST,
+            99999 // Non-existent DNS server
         );
 
         // The resolver is created, even though DNS will fail
@@ -164,9 +167,9 @@ public class DnsSrvFailureTest {
     @Test
     void testMultipleResolversCanCoexist() {
         // Test that multiple DNS SRV resolvers can be created simultaneously
-        var resolver1 = ServiceResolvers.dnsSrv("_etcd1._tcp.test", "127.0.0.1", 5301);
-        var resolver2 = ServiceResolvers.dnsSrv("_etcd2._tcp.test", "127.0.0.1", 5302);
-        var resolver3 = ServiceResolvers.dnsSrv("_etcd3._tcp.test", "127.0.0.1", 5303);
+        var resolver1 = ServiceResolvers.dnsSrv("_etcd1._tcp.test", LOCALHOST, 5301);
+        var resolver2 = ServiceResolvers.dnsSrv("_etcd2._tcp.test", LOCALHOST, 5302);
+        var resolver3 = ServiceResolvers.dnsSrv("_etcd3._tcp.test", LOCALHOST, 5303);
 
         assertThat(resolver1).isNotNull();
         assertThat(resolver2).isNotNull();

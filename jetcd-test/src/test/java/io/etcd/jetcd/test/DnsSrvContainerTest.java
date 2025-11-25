@@ -26,19 +26,20 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+import io.etcd.jetcd.launcher.EtcdContainer;
 import io.vertx.core.Vertx;
 import io.vertx.core.dns.DnsClient;
 import io.vertx.core.dns.DnsClientOptions;
 import io.vertx.core.dns.SrvRecord;
 
-import io.etcd.jetcd.launcher.EtcdContainer;
-
+import static io.etcd.jetcd.test.EtcdConstants.LOCALHOST;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Unit tests for DnsSrvContainer functionality.
  *
- * <p>These tests validate that the DnsSrvContainer correctly serves DNS SRV records
+ * <p>
+ * These tests validate that the DnsSrvContainer correctly serves DNS SRV records
  * by querying the DNS server directly with Vert.x DnsClient. These tests do not
  * involve jetcd client integration.
  */
@@ -79,7 +80,7 @@ public class DnsSrvContainerTest {
         Vertx vertx = Vertx.vertx();
         DnsClient dnsClient = vertx.createDnsClient(
             new DnsClientOptions()
-                .setHost("127.0.0.1")
+                .setHost(LOCALHOST)
                 .setPort(dnsPort));
 
         CountDownLatch latch = new CountDownLatch(1);
@@ -103,7 +104,7 @@ public class DnsSrvContainerTest {
         assertThat(srvRecords).isNotEmpty();
 
         SrvRecord record = srvRecords.get(0);
-        assertThat(record.target()).isEqualTo("127.0.0.1");
+        assertThat(record.target()).isEqualTo(LOCALHOST);
         int expectedPort = etcdContainer.getMappedPort(2379);
         assertThat(record.port()).isEqualTo(expectedPort);
         assertThat(record.priority()).isEqualTo(0);
@@ -117,7 +118,7 @@ public class DnsSrvContainerTest {
         Vertx vertx = Vertx.vertx();
         DnsClient dnsClient = vertx.createDnsClient(
             new DnsClientOptions()
-                .setHost("127.0.0.1")
+                .setHost(LOCALHOST)
                 .setPort(dnsPort));
 
         CountDownLatch latch = new CountDownLatch(1);

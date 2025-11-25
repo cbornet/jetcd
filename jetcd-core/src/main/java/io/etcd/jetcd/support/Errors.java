@@ -70,8 +70,8 @@ public final class Errors {
         // - UNAVAILABLE: server temporarily unavailable
         // - INTERNAL: internal server errors
         // - UNKNOWN: unexpected stream closures (e.g., during cluster restarts)
-        return status != GrpcStatus.UNAVAILABLE 
-            && status != GrpcStatus.INTERNAL 
+        return status != GrpcStatus.UNAVAILABLE
+            && status != GrpcStatus.INTERNAL
             && status != GrpcStatus.UNKNOWN;
     }
 

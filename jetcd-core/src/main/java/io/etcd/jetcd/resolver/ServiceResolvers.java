@@ -25,8 +25,6 @@ import java.util.stream.Stream;
 import io.etcd.jetcd.resolver.dnssrv.DnsSrvAddressResolver;
 import io.etcd.jetcd.resolver.dnssrv.DnsSrvClientOptions;
 import io.etcd.jetcd.support.Util;
-import io.vertx.core.Vertx;
-import io.vertx.core.dns.DnsClientOptions;
 import io.vertx.core.net.Address;
 import io.vertx.core.net.AddressResolver;
 import io.vertx.core.net.SocketAddress;

@@ -32,9 +32,8 @@ import io.vertx.core.spi.endpoint.EndpointResolver;
  * @param <B> the endpoint builder type
  */
 record DnsSrvEndpointResolver<B>(
-        Vertx vertx,
-        DnsSrvClientOptions options
-) implements EndpointResolver<SocketAddress, SrvRecord, DnsSrvState<B>, B> {
+    Vertx vertx,
+    DnsSrvClientOptions options) implements EndpointResolver<SocketAddress, SrvRecord, DnsSrvState<B>, B> {
 
     @Override
     public SocketAddress tryCast(Address address) {

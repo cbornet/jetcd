@@ -16,31 +16,37 @@
 
 package io.etcd.jetcd.test;
 
-import com.github.dockerjava.api.model.ExposedPort;
-import com.github.dockerjava.api.model.InternetProtocol;
-import com.github.dockerjava.api.model.PortBinding;
-import com.github.dockerjava.api.model.Ports;
-import io.etcd.jetcd.launcher.EtcdCluster;
-import io.etcd.jetcd.launcher.EtcdContainer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.output.Slf4jLogConsumer;
-
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
+
+import io.etcd.jetcd.launcher.EtcdCluster;
+import io.etcd.jetcd.launcher.EtcdContainer;
+
+import com.github.dockerjava.api.model.ExposedPort;
+import com.github.dockerjava.api.model.InternetProtocol;
+import com.github.dockerjava.api.model.PortBinding;
+import com.github.dockerjava.api.model.Ports;
+
+import static io.etcd.jetcd.test.EtcdConstants.LOCALHOST;
+
 /**
  * Testcontainer wrapper for a DNS server with SRV record support using dnsmasq.
  *
- * <p>This container provides DNS SRV resolution for testing purposes, particularly
+ * <p>
+ * This container provides DNS SRV resolution for testing purposes, particularly
  * useful for testing etcd DNS SRV discovery. The container uses dnsmasq configured
  * with command-line arguments to serve SRV records.
  *
- * <p>Usage examples:
+ * <p>
+ * Usage examples:
  *
  * <pre>
  * // Single etcd node
@@ -67,12 +73,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * // Manual configuration
  * DnsSrvContainer dns = DnsSrvContainer.create()
- *     .withSrvRecord("_etcd._tcp.test.local", "127.0.0.1", 2379, 10, 100)
- *     .withSrvRecord("_etcd._tcp.test.local", "127.0.0.1", 2380, 10, 50);
+ *     .withSrvRecord("_etcd._tcp.test.local", EtcdConstants.LOCALHOST, 2379, 10, 100)
+ *     .withSrvRecord("_etcd._tcp.test.local", EtcdConstants.LOCALHOST, 2380, 10, 50);
  * </pre>
  *
- * <p><strong>Important:</strong> When using with etcd containers, SRV records should
- * use {@code 127.0.0.1} as the target to avoid secondary A record lookups by
+ * <p>
+ * <strong>Important:</strong> When using with etcd containers, SRV records should
+ * use localhost ({@code EtcdConstants.LOCALHOST}) as the target to avoid secondary A record lookups by
  * gRPC/Netty, which use the system DNS resolver instead of the custom dnsmasq instance.
  */
 public class DnsSrvContainer extends GenericContainer<DnsSrvContainer> {
@@ -87,14 +94,14 @@ public class DnsSrvContainer extends GenericContainer<DnsSrvContainer> {
     private boolean enableLogging = true;
 
     /**
-         * Represents a DNS SRV record configuration.
-         */
-        public record SrvRecord(
-                String domain,
-                String target,
-                int port,
-                int priority,
-                int weight) {
+     * Represents a DNS SRV record configuration.
+     */
+    public record SrvRecord(
+        String domain,
+        String target,
+        int port,
+        int priority,
+        int weight) {
         /**
          * Creates a new SRV record.
          *
@@ -122,7 +129,7 @@ public class DnsSrvContainer extends GenericContainer<DnsSrvContainer> {
             }
 
         }
-        }
+    }
 
     /**
      * Creates a new DNS SRV container with the specified Docker image.
@@ -145,71 +152,67 @@ public class DnsSrvContainer extends GenericContainer<DnsSrvContainer> {
     /**
      * Adds a DNS SRV record with default priority (0) and weight (0).
      *
-     * @param domain the service domain (e.g., "_etcd._tcp.cluster.local")
-     * @param target the target host
-     * @param port   the target port
-     * @return this container
+     * @param  domain the service domain (e.g., "_etcd._tcp.cluster.local")
+     * @param  target the target host
+     * @param  port   the target port
+     * @return        this container
      */
     public DnsSrvContainer withSrvRecord(
         String domain,
         String target,
-        int port
-    ) {
+        int port) {
         return withSrvRecord(domain, target, port, 0, 0);
     }
 
     /**
      * Adds a DNS SRV record with custom priority and weight.
      *
-     * @param domain   the service domain (e.g., "_etcd._tcp.cluster.local")
-     * @param target   the target host
-     * @param port     the target port
-     * @param priority the priority (lower values have higher priority)
-     * @param weight   the weight for load balancing
-     * @return this container
+     * @param  domain   the service domain (e.g., "_etcd._tcp.cluster.local")
+     * @param  target   the target host
+     * @param  port     the target port
+     * @param  priority the priority (lower values have higher priority)
+     * @param  weight   the weight for load balancing
+     * @return          this container
      */
     public DnsSrvContainer withSrvRecord(
         String domain,
         String target,
         int port,
         int priority,
-        int weight
-    ) {
+        int weight) {
         srvRecords.add(new SrvRecord(domain, target, port, priority, weight));
         return self();
     }
 
     /**
      * Adds a DNS SRV record pointing to an etcd container.
-     * Uses 127.0.0.1 as the target to avoid secondary A record lookups.
+     * Uses localhost as the target to avoid secondary A record lookups.
      *
-     * @param domain        the service domain (e.g., "_etcd._tcp.single.test.local")
-     * @param etcdContainer the etcd container to point to
-     * @return this container
+     * @param  domain        the service domain (e.g., "_etcd._tcp.single.test.local")
+     * @param  etcdContainer the etcd container to point to
+     * @return               this container
      */
     public DnsSrvContainer withEtcdSrvRecord(
         String domain,
-        EtcdContainer etcdContainer
-    ) {
+        EtcdContainer etcdContainer) {
         if (!etcdContainer.isRunning()) {
             throw new IllegalStateException("EtcdContainer must be started before adding SRV record");
         }
-        return withSrvRecord(domain, "127.0.0.1", etcdContainer.getMappedPort(2379), 0, 0);
+        return withSrvRecord(domain, LOCALHOST, etcdContainer.getMappedPort(2379), 0, 0);
     }
 
     /**
      * Adds DNS SRV records for all containers in an etcd cluster.
      * Automatically creates one SRV record per cluster node.
-     * Uses 127.0.0.1 as the target to avoid secondary A record lookups.
+     * Uses localhost as the target to avoid secondary A record lookups.
      *
-     * @param domain  the service domain (e.g., "_etcd._tcp.cluster.local")
-     * @param cluster the etcd cluster
-     * @return this container
+     * @param  domain  the service domain (e.g., "_etcd._tcp.cluster.local")
+     * @param  cluster the etcd cluster
+     * @return         this container
      */
     public DnsSrvContainer withEtcdCluster(
         String domain,
-        EtcdCluster cluster
-    ) {
+        EtcdCluster cluster) {
         if (cluster == null) {
             throw new IllegalArgumentException("EtcdCluster cannot be null");
         }
@@ -222,10 +225,9 @@ public class DnsSrvContainer extends GenericContainer<DnsSrvContainer> {
         for (EtcdContainer container : containers) {
             if (!container.isRunning()) {
                 throw new IllegalStateException(
-                    "All containers in EtcdCluster must be started before adding SRV records"
-                );
+                    "All containers in EtcdCluster must be started before adding SRV records");
             }
-            withSrvRecord(domain, "127.0.0.1", container.getMappedPort(2379), 0, 0);
+            withSrvRecord(domain, LOCALHOST, container.getMappedPort(2379), 0, 0);
         }
 
         return self();
@@ -234,8 +236,8 @@ public class DnsSrvContainer extends GenericContainer<DnsSrvContainer> {
     /**
      * Enables or disables query logging in dnsmasq.
      *
-     * @param enabled true to enable logging, false to disable
-     * @return this container
+     * @param  enabled true to enable logging, false to disable
+     * @return         this container
      */
     public DnsSrvContainer withLogging(boolean enabled) {
         this.enableLogging = enabled;
@@ -246,8 +248,8 @@ public class DnsSrvContainer extends GenericContainer<DnsSrvContainer> {
      * Sets the starting port for finding an available DNS port.
      * The container will search for available ports starting from this value.
      *
-     * @param startPort the starting port (default: 15353)
-     * @return this container
+     * @param  startPort the starting port (default: 15353)
+     * @return           this container
      */
     public DnsSrvContainer withStartPort(int startPort) {
         if (startPort < 1 || startPort > 65535) {
@@ -260,7 +262,7 @@ public class DnsSrvContainer extends GenericContainer<DnsSrvContainer> {
     /**
      * Returns the DNS port that the container is bound to on the host.
      *
-     * @return the DNS port number
+     * @return                       the DNS port number
      * @throws IllegalStateException if the container is not running
      */
     public int getDnsPort() {
@@ -296,8 +298,7 @@ public class DnsSrvContainer extends GenericContainer<DnsSrvContainer> {
                 record.target,
                 record.port,
                 record.priority,
-                record.weight
-            ));
+                record.weight));
         }
 
         withCommand(command.toArray(new String[0]));
@@ -307,22 +308,19 @@ public class DnsSrvContainer extends GenericContainer<DnsSrvContainer> {
 
         withCreateContainerCmdModifier(cmd -> {
             cmd.withExposedPorts(
-                new ExposedPort(53, InternetProtocol.UDP)
-            );
+                new ExposedPort(53, InternetProtocol.UDP));
             cmd.getHostConfig().withPortBindings(
                 new PortBinding(
                     Ports.Binding.bindPort(hostPort),
-                    new ExposedPort(53, InternetProtocol.UDP)
-                )
-            );
+                    new ExposedPort(53, InternetProtocol.UDP)));
         });
     }
 
     /**
      * Finds an available port starting from the specified port number.
      *
-     * @param startPort the port to start searching from
-     * @return an available port number
+     * @param  startPort             the port to start searching from
+     * @return                       an available port number
      * @throws IllegalStateException if no available port is found
      */
     private static int findAvailablePort(int startPort) {
@@ -331,8 +329,7 @@ public class DnsSrvContainer extends GenericContainer<DnsSrvContainer> {
             port++;
             if (port > 65535) {
                 throw new IllegalStateException(
-                    "No available ports found starting from " + startPort
-                );
+                    "No available ports found starting from " + startPort);
             }
         }
         return port;
@@ -341,9 +338,10 @@ public class DnsSrvContainer extends GenericContainer<DnsSrvContainer> {
     /**
      * Checks if a port is available for binding.
      *
-     * @param port the port to check
-     * @return true if the port is available, false otherwise
+     * @param  port the port to check
+     * @return      true if the port is available, false otherwise
      */
+    @SuppressWarnings("PMD.UnusedLocalVariable")
     private static boolean isPortAvailable(int port) {
         try (ServerSocket socket = new ServerSocket(port)) {
             return true;

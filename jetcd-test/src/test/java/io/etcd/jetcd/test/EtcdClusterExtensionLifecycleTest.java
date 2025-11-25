@@ -84,4 +84,3 @@ class EtcdClusterExtensionLifecycleTest {
             .hasMessageContaining("Cluster not started");
     }
 }
-

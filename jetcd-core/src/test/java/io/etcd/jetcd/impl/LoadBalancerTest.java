@@ -28,7 +28,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.ClientBuilder;
 import io.etcd.jetcd.KV;
-import io.etcd.jetcd.Response;
 import io.etcd.jetcd.kv.PutResponse;
 import io.etcd.jetcd.test.EtcdClusterExtension;
 import io.vertx.core.net.endpoint.LoadBalancer;

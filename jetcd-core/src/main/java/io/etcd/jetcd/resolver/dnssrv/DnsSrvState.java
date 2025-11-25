@@ -42,8 +42,7 @@ final class DnsSrvState<B> {
     private DnsSrvState(
         Vertx vertx,
         DnsSrvClientOptions options,
-        EndpointBuilder<B, SrvRecord> builder
-    ) {
+        EndpointBuilder<B, SrvRecord> builder) {
         this.vertx = vertx;
         this.client = vertx.createDnsClient(options.getDnsOptions());
         this.serviceName = options.getServiceName();
@@ -54,16 +53,15 @@ final class DnsSrvState<B> {
     /**
      * Factory method that creates a new state and performs initial DNS resolution.
      *
-     * @param vertx   the Vertx instance
-     * @param options the DNS SRV client options
-     * @param builder the endpoint builder
-     * @return a Future that completes with the initialized state
+     * @param  vertx   the Vertx instance
+     * @param  options the DNS SRV client options
+     * @param  builder the endpoint builder
+     * @return         a Future that completes with the initialized state
      */
     static <B> Future<DnsSrvState<B>> create(
         Vertx vertx,
         DnsSrvClientOptions options,
-        EndpointBuilder<B, SrvRecord> builder
-    ) {
+        EndpointBuilder<B, SrvRecord> builder) {
         return new DnsSrvState<>(vertx, options, builder).refresh();
     }
 
@@ -114,7 +112,6 @@ final class DnsSrvState<B> {
         }
 
         endpoints = result.endpoints;
-
 
         if (timerId != null) {
             vertx.cancelTimer(timerId);
