@@ -16,11 +16,12 @@
 
 package io.etcd.jetcd.impl;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
@@ -34,84 +35,73 @@ import io.etcd.jetcd.api.WatchGrpcClient;
 import io.etcd.jetcd.api.WatchProgressRequest;
 import io.etcd.jetcd.api.WatchRequest;
 import io.etcd.jetcd.api.WatchResponse;
-import io.etcd.jetcd.common.exception.ErrorCode;
-import io.etcd.jetcd.common.exception.EtcdException;
-import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
 import io.etcd.jetcd.options.WatchOption;
 import io.etcd.jetcd.support.ReferenceCount;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.WriteStream;
 
-import dev.failsafe.RetryPolicy;
-
-import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.newClosedWatchClientException;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 
 /**
- * Watch implementation with multiplexed stream support.
- * All watchers share a single bidirectional gRPC stream, identified by unique watch_id values.
- * Manages both the watch client API and the underlying gRPC stream lifecycle.
+ * Manages a single shared bidirectional gRPC stream for all watchers.
+ * Uses lazy connection (connects on first watcher) and ref counting (disconnects on last watcher).
+ * Inspired by Apache Camel's ReferenceCount pattern.
  */
-final class WatchImpl extends Impl implements Watch, WatchStream {
-    private static final Logger LOG = LoggerFactory.getLogger(WatchImpl.class);
+public final class WatchStreamManager implements WatchStream {
+    private static final Logger LOG = LoggerFactory.getLogger(WatchStreamManager.class);
     private static final int MAX_PENDING_REQUESTS = 1000;
     private static final int MAX_RECONNECT_ATTEMPTS = 10;
     private static final long INITIAL_RECONNECT_DELAY_MS = 500;
     private static final long MAX_RECONNECT_DELAY_MS = 30000;
 
-    private final Object lock;
-    private final AtomicBoolean closed;
-    private final List<Watcher> watchers;
+    private final ClientConnectionManager connectionManager;
     private final ByteSequence namespace;
+    private final ListeningScheduledExecutorService executor;
+    private final Object parentLock;
+    private final java.util.concurrent.atomic.AtomicBoolean parentClosed;
+    private final java.util.List<Watch.Watcher> parentWatchers;
 
-    // Stream management
     private volatile WriteStream<WatchRequest> writeStream;
     private volatile ReadStream<WatchResponse> readStream;
     private final AtomicBoolean connected = new AtomicBoolean(false);
+    private final Object streamLock = new Object();
 
     private final AtomicLong watchIdGenerator = new AtomicLong(1);
     private final ConcurrentHashMap<Long, WatcherImpl> watcherMap = new ConcurrentHashMap<>();
     private final ReferenceCount refCount;
     private final List<WatchCreateRequest> pendingRequests = new CopyOnWriteArrayList<>();
+    private final AtomicInteger reconnectAttempts = new AtomicInteger(0);
 
-    WatchImpl(ClientConnectionManager connectionManager) {
-        super(connectionManager);
-
-        this.lock = new Object();
-        this.closed = new AtomicBoolean();
-        this.watchers = new CopyOnWriteArrayList<>();
-        this.namespace = connectionManager.getNamespace();
+    public WatchStreamManager(
+            ClientConnectionManager connectionManager,
+            ByteSequence namespace,
+            ListeningScheduledExecutorService executor,
+            Object parentLock,
+            java.util.concurrent.atomic.AtomicBoolean parentClosed,
+            java.util.List<Watch.Watcher> parentWatchers) {
+        this.connectionManager = connectionManager;
+        this.namespace = namespace;
+        this.executor = executor;
+        this.parentLock = parentLock;
+        this.parentClosed = parentClosed;
+        this.parentWatchers = parentWatchers;
 
         // Ref count with callbacks for lazy connect/disconnect
         this.refCount = ReferenceCount.on(
-            this::connect, // Called when first watcher added (0 → 1)
-            this::disconnect // Called when last watcher removed (1 → 0)
+            this::connect,      // Called when first watcher added (0 → 1)
+            this::disconnect    // Called when last watcher removed (1 → 0)
         );
     }
 
-    @Override
-    public Watcher watch(ByteSequence key, WatchOption option, Listener listener) {
-        if (closed.get()) {
-            throw newClosedWatchClientException();
-        }
-
-        // Create watcher with lazy connection
-        WatcherImpl watcher = createWatcher(key, option, listener);
-
-        synchronized (this.lock) {
-            watchers.add(watcher);
-        }
-
-        // Watcher is now active and will notify listener when created
-        return watcher;
-    }
-
-    private WatcherImpl createWatcher(ByteSequence key, WatchOption option, Listener listener) {
+    public WatcherImpl createWatcher(ByteSequence key, WatchOption option, Watch.Listener listener) {
         long watchId = watchIdGenerator.getAndIncrement();
 
         // Create callback for watcher close
         Runnable onClose = () -> {
             onWatcherClosed(watchId);
-            watchers.remove(watcherMap.get(watchId));
+            parentWatchers.remove(watcherMap.get(watchId));
         };
 
         WatcherImpl watcher = new WatcherImpl(
@@ -121,10 +111,12 @@ final class WatchImpl extends Impl implements Watch, WatchStream {
             namespace,
             option,
             listener,
-            lock,
-            closed,
-            connectionManager(),
-            onClose);
+            parentLock,
+            parentClosed,
+            connectionManager,
+            executor,
+            onClose
+        );
 
         // Register and increment ref count (lazy connects if first)
         watcherMap.put(watchId, watcher);
@@ -139,7 +131,7 @@ final class WatchImpl extends Impl implements Watch, WatchStream {
         return watcher;
     }
 
-    private void onWatcherClosed(long watchId) {
+    void onWatcherClosed(long watchId) {
         WatcherImpl removed = watcherMap.remove(watchId);
 
         if (removed != null) {
@@ -158,26 +150,159 @@ final class WatchImpl extends Impl implements Watch, WatchStream {
         }
     }
 
-    @Override
-    public void close() {
-        if (closed.compareAndSet(false, true)) {
-            synchronized (this.lock) {
-                // Close all watchers first (each decrements ref count)
-                watchers.forEach(Watcher::close);
-                // Force disconnect if still connected
-                forceDisconnect();
+    private void connect() {
+        synchronized (streamLock) {
+            if (connected.get()) {
+                LOG.debug("Already connected, skipping connect()");
+                return;
+            }
+
+            LOG.debug("Connecting watch stream (first watcher added), attempt {}", reconnectAttempts.get() + 1);
+
+            WatchGrpcClient client;
+            try {
+                client = createWatchClient();
+            } catch (Exception e) {
+                LOG.error("Failed to create WatchGrpcClient", e);
+                handleConnectError(e);
+                return;
+            }
+
+            // Execute on Vert.x context to ensure async callbacks work
+            io.vertx.core.Vertx vertx = connectionManager.vertx();
+
+            vertx.runOnContext(v -> {
+                try {
+                    io.vertx.core.Future<ReadStream<WatchResponse>> watchFuture = client.watch((ws, err) -> {
+                        if (err != null) {
+                            LOG.error("Failed to establish write stream", err);
+                            handleConnectError(err);
+                        } else {
+                            LOG.debug("Write stream established");
+                            writeStream = ws;
+
+                            // Send pending requests immediately while write stream is ready
+                            // The Future won't complete until server responds, which requires us to send first!
+                            LOG.debug("Sending {} pending watch create requests", pendingRequests.size());
+                            for (WatchCreateRequest req : pendingRequests) {
+                                ws.write(WatchRequest.newBuilder().setCreateRequest(req).build());
+                            }
+                            pendingRequests.clear();
+                        }
+                    });
+
+                    watchFuture.onComplete(ar -> {
+                        if (ar.succeeded()) {
+                            LOG.debug("Read stream established");
+                            readStream = ar.result();
+                            readStream.handler(this::routeResponse);
+                            readStream.endHandler(v2 -> onStreamEnded());
+                            readStream.exceptionHandler(this::onStreamError);
+                            connected.set(true);
+                            reconnectAttempts.set(0);
+                            LOG.debug("Watch stream connected successfully");
+                        } else {
+                            LOG.error("Failed to complete stream setup", ar.cause());
+                            handleConnectError(ar.cause());
+                        }
+                    });
+                } catch (Exception e) {
+                    LOG.error("Exception during client.watch() call", e);
+                    handleConnectError(e);
+                }
+            });
+        }
+    }
+
+    private void disconnect() {
+        synchronized (streamLock) {
+            if (!connected.get()) {
+                return;
+            }
+
+            LOG.debug("Disconnecting watch stream (last watcher removed)");
+
+            connected.set(false);
+
+            if (writeStream != null) {
+                try {
+                    writeStream.end();
+                } catch (Exception e) {
+                    LOG.warn("Error ending write stream", e);
+                }
+                writeStream = null;
+            }
+
+            readStream = null;
+
+            // Reset watch_id counter for fresh start on next connection
+            watchIdGenerator.set(1);
+            pendingRequests.clear();
+            reconnectAttempts.set(0);
+
+            LOG.debug("Watch stream disconnected, watch_id counter and reconnect attempts reset");
+        }
+    }
+
+    public void forceDisconnect() {
+        synchronized (streamLock) {
+            if (connected.get()) {
+                LOG.info("Force disconnecting watch stream");
+                connected.set(false);
+
+                if (writeStream != null) {
+                    try {
+                        writeStream.end();
+                    } catch (Exception e) {
+                        LOG.warn("Error ending write stream during force disconnect", e);
+                    }
+                    writeStream = null;
+                }
+
+                readStream = null;
+
+                // Reset state for clean shutdown
+                watchIdGenerator.set(1);
+                pendingRequests.clear();
             }
         }
     }
 
-    @Override
-    public void requestProgress() {
-        if (!closed.get()) {
-            sendProgressRequest();
+    private void reconnect() {
+        synchronized (streamLock) {
+            if (refCount.get() == 0) {
+                LOG.debug("No active watchers, skipping reconnect");
+                reconnectAttempts.set(0);
+                return;
+            }
+
+            int currentAttempt = reconnectAttempts.incrementAndGet();
+            if (currentAttempt > MAX_RECONNECT_ATTEMPTS) {
+                LOG.error("Max reconnect attempts ({}) reached, giving up. Notifying all watchers.", MAX_RECONNECT_ATTEMPTS);
+                notifyWatchersOfPermanentFailure();
+                return;
+            }
+
+            LOG.info("Reconnecting watch stream, attempt {}/{}", currentAttempt, MAX_RECONNECT_ATTEMPTS);
+            disconnect();
+            connect();
+
+            if (connected.get()) {
+                recreateAllWatches();
+            } else {
+                scheduleReconnect();
+            }
         }
     }
 
-    // WatchStream interface implementation
+    private void recreateAllWatches() {
+        LOG.info("Recreating {} watches after reconnect", watcherMap.size());
+        watcherMap.values().forEach(watcher -> {
+            if (!watcher.isClosed()) {
+                watcher.resume();
+            }
+        });
+    }
 
     @Override
     public void sendCreateRequest(WatchCreateRequest req) {
@@ -188,9 +313,10 @@ final class WatchImpl extends Impl implements Watch, WatchStream {
 
                 WatcherImpl watcher = watcherMap.get(req.getWatchId());
                 if (watcher != null) {
-                    EtcdException queueFullError = EtcdExceptionFactory.newEtcdException(
-                        ErrorCode.RESOURCE_EXHAUSTED,
-                        "Pending watch requests queue is full (" + MAX_PENDING_REQUESTS + ")");
+                    io.etcd.jetcd.common.exception.EtcdException queueFullError =
+                        io.etcd.jetcd.common.exception.EtcdExceptionFactory.newEtcdException(
+                            io.etcd.jetcd.common.exception.ErrorCode.RESOURCE_EXHAUSTED,
+                            "Pending watch requests queue is full (" + MAX_PENDING_REQUESTS + ")");
                     watcher.notifyError(queueFullError);
                 }
                 return;
@@ -241,152 +367,6 @@ final class WatchImpl extends Impl implements Watch, WatchStream {
     @Override
     public boolean isConnected() {
         return connected.get();
-    }
-
-    // Stream lifecycle management
-
-    private void connect() {
-        synchronized (lock) {
-            if (connected.get()) {
-                LOG.debug("Already connected, skipping connect()");
-                return;
-            }
-
-            LOG.debug("Connecting watch stream (first watcher added)");
-
-            WatchGrpcClient client;
-            try {
-                client = createWatchClient();
-            } catch (Exception e) {
-                LOG.error("Failed to create WatchGrpcClient", e);
-                handleConnectError(e);
-                return;
-            }
-
-            // Execute on Vert.x context to ensure async callbacks work
-            io.vertx.core.Vertx vertx = connectionManager().vertx();
-
-            vertx.runOnContext(v -> {
-                try {
-                    io.vertx.core.Future<ReadStream<WatchResponse>> watchFuture = client.watch((ws, err) -> {
-                        if (err != null) {
-                            LOG.error("Failed to establish write stream", err);
-                            handleConnectError(err);
-                        } else {
-                            LOG.debug("Write stream established");
-                            writeStream = ws;
-
-                            // Send pending requests immediately while write stream is ready
-                            LOG.debug("Sending {} pending watch create requests", pendingRequests.size());
-                            for (WatchCreateRequest req : pendingRequests) {
-                                ws.write(WatchRequest.newBuilder().setCreateRequest(req).build());
-                            }
-                            pendingRequests.clear();
-                        }
-                    });
-
-                    watchFuture.onComplete(ar -> {
-                        if (ar.succeeded()) {
-                            LOG.debug("Read stream established");
-                            readStream = ar.result();
-                            readStream.handler(this::routeResponse);
-                            readStream.endHandler(v2 -> onStreamEnded());
-                            readStream.exceptionHandler(this::onStreamError);
-                            connected.set(true);
-                            LOG.debug("Watch stream connected successfully");
-                        } else {
-                            LOG.error("Failed to complete stream setup", ar.cause());
-                            handleConnectError(ar.cause());
-                        }
-                    });
-                } catch (Exception e) {
-                    LOG.error("Exception during client.watch() call", e);
-                    handleConnectError(e);
-                }
-            });
-        }
-    }
-
-    private void disconnect() {
-        synchronized (lock) {
-            if (!connected.get()) {
-                return;
-            }
-
-            LOG.debug("Disconnecting watch stream (last watcher removed)");
-
-            connected.set(false);
-
-            if (writeStream != null) {
-                try {
-                    writeStream.end();
-                } catch (Exception e) {
-                    LOG.warn("Error ending write stream", e);
-                }
-                writeStream = null;
-            }
-
-            readStream = null;
-
-            // Reset watch_id counter for fresh start on next connection
-            watchIdGenerator.set(1);
-            pendingRequests.clear();
-
-            LOG.debug("Watch stream disconnected, watch_id counter reset");
-        }
-    }
-
-    private void forceDisconnect() {
-        synchronized (lock) {
-            if (connected.get()) {
-                LOG.info("Force disconnecting watch stream");
-                connected.set(false);
-
-                if (writeStream != null) {
-                    try {
-                        writeStream.end();
-                    } catch (Exception e) {
-                        LOG.warn("Error ending write stream during force disconnect", e);
-                    }
-                    writeStream = null;
-                }
-
-                readStream = null;
-
-                // Reset state for clean shutdown
-                watchIdGenerator.set(1);
-                pendingRequests.clear();
-            }
-        }
-    }
-
-    private void reconnect() {
-        synchronized (lock) {
-            if (refCount.get() == 0) {
-                LOG.debug("No active watchers, skipping reconnect");
-                return;
-            }
-
-            LOG.info("Attempting to reconnect watch stream");
-            disconnect();
-            connect();
-
-            if (!connected.get()) {
-                throw new RuntimeException("Failed to establish watch stream connection");
-            }
-
-            recreateAllWatches();
-            LOG.info("Successfully reconnected and recreated {} watches", watcherMap.size());
-        }
-    }
-
-    private void recreateAllWatches() {
-        LOG.info("Recreating {} watches after reconnect", watcherMap.size());
-        watcherMap.values().forEach(watcher -> {
-            if (!watcher.isClosed()) {
-                watcher.resume();
-            }
-        });
     }
 
     private void routeResponse(WatchResponse response) {
@@ -461,7 +441,8 @@ final class WatchImpl extends Impl implements Watch, WatchStream {
     }
 
     private void notifyWaitingWatchers(Throwable error) {
-        EtcdException etcdError = EtcdExceptionFactory.toEtcdException(error);
+        io.etcd.jetcd.common.exception.EtcdException etcdError =
+            io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdException(error);
 
         watcherMap.values().forEach(watcher -> {
             if (!watcher.isClosed()) {
@@ -475,25 +456,28 @@ final class WatchImpl extends Impl implements Watch, WatchStream {
     }
 
     private void scheduleReconnect() {
-        RetryPolicy<Void> reconnectPolicy = RetryPolicy.<Void> builder()
-            .withMaxRetries(MAX_RECONNECT_ATTEMPTS)
-            .withBackoff(Duration.ofMillis(INITIAL_RECONNECT_DELAY_MS), Duration.ofMillis(MAX_RECONNECT_DELAY_MS))
-            .onRetry(e -> LOG.info("Reconnection attempt {} failed, will retry after backoff",
-                e.getAttemptCount()))
-            .onRetriesExceeded(e -> {
-                LOG.error("Max reconnect attempts ({}) reached, giving up", MAX_RECONNECT_ATTEMPTS);
-                notifyWatchersOfPermanentFailure();
-            })
-            .build();
+        int attempt = reconnectAttempts.get();
+        long delay = Math.min(INITIAL_RECONNECT_DELAY_MS * (1L << attempt), MAX_RECONNECT_DELAY_MS);
 
-        @SuppressWarnings("unused")
-        var unused = connectionManager().runAsync(this::reconnect, reconnectPolicy);
+        LOG.debug("Scheduling reconnect attempt {} with delay {}ms", attempt + 1, delay);
+
+        Futures.addCallback(executor.schedule(this::reconnect, delay, TimeUnit.MILLISECONDS), new FutureCallback<Object>() {
+            @Override
+            public void onFailure(Throwable t) {
+                LOG.warn("Scheduled reconnect failed", t);
+            }
+
+            @Override
+            public void onSuccess(Object result) {
+            }
+        }, executor);
     }
 
     private void notifyWatchersOfPermanentFailure() {
-        EtcdException permanentError = EtcdExceptionFactory.newEtcdException(
-            ErrorCode.UNAVAILABLE,
-            "Watch stream failed to connect after " + MAX_RECONNECT_ATTEMPTS + " attempts");
+        io.etcd.jetcd.common.exception.EtcdException permanentError =
+            io.etcd.jetcd.common.exception.EtcdExceptionFactory.newEtcdException(
+                io.etcd.jetcd.common.exception.ErrorCode.UNAVAILABLE,
+                "Watch stream failed to connect after " + MAX_RECONNECT_ATTEMPTS + " attempts");
 
         watcherMap.values().forEach(watcher -> {
             if (!watcher.isClosed()) {
@@ -507,10 +491,11 @@ final class WatchImpl extends Impl implements Watch, WatchStream {
     }
 
     private WatchGrpcClient createWatchClient() {
-        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = connectionManager().getServiceResolver();
-        io.vertx.grpc.client.GrpcClient grpcClient = connectionManager().getAuthenticatedGrpcClient();
+        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = connectionManager.getServiceResolver();
+        io.vertx.grpc.client.GrpcClient grpcClient = connectionManager.getAuthenticatedGrpcClient();
         io.vertx.core.net.SocketAddress targetAddress = (io.vertx.core.net.SocketAddress) serviceResolver.getTarget();
 
         return WatchGrpcClient.create(grpcClient, targetAddress);
     }
 }
+

@@ -16,11 +16,6 @@
 
 package io.etcd.jetcd.impl;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.function.Function;
-
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.ClientBuilder;
 import io.etcd.jetcd.resolver.ServiceResolver;
@@ -30,6 +25,11 @@ import io.vertx.core.VertxOptions;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.net.endpoint.LoadBalancer;
 import io.vertx.grpc.client.GrpcClient;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdException;
 
@@ -127,7 +127,13 @@ final class ClientConnectionManager {
             }
             if (vertx != null && builder.vertx() == null) {
                 // Only close Vertx if we created it ourselves
-                vertx.close();
+                // Use CompletableFuture to wait for completion to ensure proper cleanup
+                try {
+                    vertx.close().toCompletionStage().toCompletableFuture()
+                        .get(5, java.util.concurrent.TimeUnit.SECONDS);
+                } catch (Exception e) {
+                    // Log but don't throw - best effort cleanup
+                }
             }
         }
 
@@ -151,9 +157,9 @@ final class ClientConnectionManager {
     }
 
     private GrpcClient createGrpcClient() {
-        io.vertx.grpc.client.GrpcClientBuilder grpcBuilder = GrpcClient.builder(vertx());
+        io.vertx.grpc.client.GrpcClientBuilder<?> grpcBuilder = GrpcClient.builder(vertx());
 
-        ServiceResolver serviceResolver = getServiceResolver();
+        ServiceResolver<?> serviceResolver = getServiceResolver();
         grpcBuilder.withAddressResolver(serviceResolver.getResolver());
 
         // Configure load balancer (default to ROUND_ROBIN if not specified)
@@ -176,7 +182,9 @@ final class ClientConnectionManager {
         if (this.vertx == null) {
             synchronized (this.lock) {
                 if (this.vertx == null) {
-                    this.vertx = Vertx.vertx(new VertxOptions().setUseDaemonThread(true));
+                    VertxOptions options = new VertxOptions()
+                        .setUseDaemonThread(true);
+                    this.vertx = Vertx.vertx(options);
                 }
             }
         }
