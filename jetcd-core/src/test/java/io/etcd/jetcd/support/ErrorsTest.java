@@ -16,11 +16,12 @@
 
 package io.etcd.jetcd.support;
 
-import io.vertx.grpc.common.GrpcStatus;
+import java.util.concurrent.TimeUnit;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
-import java.util.concurrent.TimeUnit;
+import io.vertx.grpc.common.GrpcStatus;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

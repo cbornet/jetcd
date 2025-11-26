@@ -22,6 +22,7 @@ import io.vertx.grpc.common.GrpcStatus;
 public final class Errors {
     public static final String NO_LEADER_ERROR_MESSAGE = "etcdserver: no leader";
     public static final String INVALID_AUTH_TOKEN_ERROR_MESSAGE = "etcdserver: invalid auth token";
+    public static final String PERMISSION_DENIED_ERROR_MESSAGE = "etcdserver: permission denied";
     public static final String ERROR_AUTH_STORE_OLD = "etcdserver: revision of auth store is old";
 
     private Errors() {
@@ -77,5 +78,26 @@ public final class Errors {
 
     public static boolean isNoLeaderError(final GrpcStatus status) {
         return status == GrpcStatus.UNAVAILABLE;
+    }
+
+    /**
+     * Checks if the error message indicates a permission denied error.
+     */
+    public static boolean isPermissionDenied(String message) {
+        return message != null && message.contains(PERMISSION_DENIED_ERROR_MESSAGE);
+    }
+
+    /**
+     * Checks if the error message indicates an invalid auth token error.
+     */
+    public static boolean isInvalidAuthToken(String message) {
+        return message != null && message.contains(INVALID_AUTH_TOKEN_ERROR_MESSAGE);
+    }
+
+    /**
+     * Checks if the error message indicates an authentication error (permission denied or invalid token).
+     */
+    public static boolean isAuthenticationError(String message) {
+        return isPermissionDenied(message) || isInvalidAuthToken(message);
     }
 }
