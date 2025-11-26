@@ -16,21 +16,23 @@
 
 package io.etcd.jetcd.support;
 
-import dev.failsafe.Failsafe;
-import dev.failsafe.RetryPolicy;
-import dev.failsafe.spi.Scheduler;
-import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
+import dev.failsafe.spi.Scheduler;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -55,7 +57,7 @@ class UtilTest {
         CountDownLatch latch = new CountDownLatch(1);
 
         Scheduler scheduler = Util.vertxScheduler(vertx);
-        RetryPolicy<Void> policy = RetryPolicy.<Void>builder().build();
+        RetryPolicy<Void> policy = RetryPolicy.<Void> builder().build();
 
         @SuppressWarnings("unused")
         var unused = Failsafe.with(policy)
@@ -77,7 +79,7 @@ class UtilTest {
         AtomicReference<Long> secondAttemptTime = new AtomicReference<>();
 
         Scheduler scheduler = Util.vertxScheduler(vertx);
-        RetryPolicy<Void> policy = RetryPolicy.<Void>builder()
+        RetryPolicy<Void> policy = RetryPolicy.<Void> builder()
             .withMaxRetries(3)
             .withDelay(Duration.ofMillis(100))
             .build();
@@ -117,7 +119,7 @@ class UtilTest {
         long start = System.currentTimeMillis();
 
         Scheduler scheduler = Util.vertxScheduler(vertx);
-        RetryPolicy<Void> policy = RetryPolicy.<Void>builder().build();
+        RetryPolicy<Void> policy = RetryPolicy.<Void> builder().build();
 
         @SuppressWarnings("unused")
         var unused = Failsafe.with(policy)
@@ -136,7 +138,7 @@ class UtilTest {
         AtomicInteger totalAttempts = new AtomicInteger(0);
 
         Scheduler scheduler = Util.vertxScheduler(vertx);
-        RetryPolicy<Void> policy = RetryPolicy.<Void>builder()
+        RetryPolicy<Void> policy = RetryPolicy.<Void> builder()
             .withMaxRetries(2)
             .withDelay(Duration.ofMillis(50))
             .build();

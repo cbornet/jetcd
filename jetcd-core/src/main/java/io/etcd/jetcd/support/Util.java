@@ -23,14 +23,19 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Constants;
 import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import io.vertx.core.net.SocketAddress;
 
 import com.google.protobuf.ByteString;
+
+import dev.failsafe.spi.DefaultScheduledFuture;
+import dev.failsafe.spi.Scheduler;
 
 public final class Util {
 
@@ -160,6 +165,45 @@ public final class Util {
             // set a proper name so it is easier to find out the where the thread was created
             t.setName(prefix + t.getName());
             return t;
+        };
+    }
+
+    /**
+     * Creates a Failsafe Scheduler that executes on Vert.x event loop.
+     * Eliminates thread pool overhead by using vertx.setTimer() for delayed execution.
+     * Based on official Failsafe VertxExample pattern.
+     *
+     * @param  vertx the Vert.x instance
+     * @return       a Scheduler that executes on Vert.x event loop
+     */
+    public static Scheduler vertxScheduler(Vertx vertx) {
+        return (callable, delay, unit) -> {
+            Runnable runnable = () -> {
+                try {
+                    callable.call();
+                } catch (Exception ignore) {
+                    // Failsafe handles exceptions internally
+                }
+            };
+
+            final AtomicLong timerId = new AtomicLong();
+            final long timerDelay = unit.toMillis(delay);
+
+            return new DefaultScheduledFuture<>() {
+                {
+                    if (delay == 0) {
+                        vertx.getOrCreateContext().runOnContext(v -> runnable.run());
+                    } else {
+                        timerId.set(
+                            vertx.setTimer(timerDelay, tid -> runnable.run()));
+                    }
+                }
+
+                @Override
+                public boolean cancel(boolean mayInterruptIfRunning) {
+                    return delay != 0 && vertx.cancelTimer(timerId.get());
+                }
+            };
         };
     }
 }
