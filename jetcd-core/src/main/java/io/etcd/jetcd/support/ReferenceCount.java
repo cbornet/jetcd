@@ -21,8 +21,10 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * Thread-safe reference counter with callbacks.
  * Inspired by Apache Camel's ReferenceCount implementation.
- * 
- * @see <a href="https://github.com/apache/camel/blob/main/core/camel-util/src/main/java/org/apache/camel/util/ReferenceCount.java">Apache Camel ReferenceCount</a>
+ *
+ * @see <a href=
+ *      "https://github.com/apache/camel/blob/main/core/camel-util/src/main/java/org/apache/camel/util/ReferenceCount.java">Apache
+ *      Camel ReferenceCount</a>
  */
 public final class ReferenceCount {
     private final AtomicLong count;
@@ -89,12 +91,11 @@ public final class ReferenceCount {
     /**
      * Creates a ReferenceCount with callbacks for first retain and last release.
      *
-     * @param  onFirst    callback invoked when count goes from 0 to 1
-     * @param  onRelease  callback invoked when count goes from 1 to 0
-     * @return            new ReferenceCount instance
+     * @param  onFirst   callback invoked when count goes from 0 to 1
+     * @param  onRelease callback invoked when count goes from 1 to 0
+     * @return           new ReferenceCount instance
      */
     public static ReferenceCount on(Runnable onFirst, Runnable onRelease) {
         return new ReferenceCount(onFirst, onRelease);
     }
 }
-
