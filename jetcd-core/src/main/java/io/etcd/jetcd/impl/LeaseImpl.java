@@ -143,6 +143,7 @@ final class LeaseImpl extends Impl implements Lease {
     @Override
     public CompletableFuture<LeaseKeepAliveResponse> keepAliveOnce(long leaseId) {
         final AtomicReference<WriteStream<LeaseKeepAliveRequest>> writeStreamRef = new AtomicReference<>();
+        final AtomicReference<ReadStream<io.etcd.jetcd.api.LeaseKeepAliveResponse>> readStreamRef = new AtomicReference<>();
         final CompletableFuture<LeaseKeepAliveResponse> future = new CompletableFuture<>();
         final LeaseKeepAliveRequest req = LeaseKeepAliveRequest.newBuilder().setID(leaseId).build();
 
@@ -158,26 +159,47 @@ final class LeaseImpl extends Impl implements Lease {
                 future.completeExceptionally(ar.cause());
             } else {
                 ReadStream<io.etcd.jetcd.api.LeaseKeepAliveResponse> readStream = ar.result();
+                readStreamRef.set(readStream);
+
                 readStream.handler(r -> {
-                    if (r.getTTL() != 0) {
-                        future.complete(new LeaseKeepAliveResponse(r));
-                        writeStreamRef.get().end();
-                    } else {
-                        future.completeExceptionally(
-                            newEtcdException(ErrorCode.NOT_FOUND, "etcdserver: requested lease not found"));
-                        writeStreamRef.get().end();
+                    try {
+                        if (r.getTTL() != 0) {
+                            future.complete(new LeaseKeepAliveResponse(r));
+                        } else {
+                            future.completeExceptionally(
+                                newEtcdException(ErrorCode.NOT_FOUND, "etcdserver: requested lease not found"));
+                        }
+                    } finally {
+                        cleanupKeepAliveOnce(readStreamRef.get(), writeStreamRef.get());
                     }
                 });
+
                 readStream.exceptionHandler(t -> {
-                    future.completeExceptionally(t);
-                    if (writeStreamRef.get() != null) {
-                        writeStreamRef.get().end();
+                    try {
+                        future.completeExceptionally(t);
+                    } finally {
+                        cleanupKeepAliveOnce(readStreamRef.get(), writeStreamRef.get());
                     }
                 });
             }
         });
 
         return future;
+    }
+
+    private void cleanupKeepAliveOnce(
+        ReadStream<io.etcd.jetcd.api.LeaseKeepAliveResponse> readStream,
+        WriteStream<LeaseKeepAliveRequest> writeStream) {
+
+        if (readStream != null) {
+            readStream.handler(null);
+            readStream.exceptionHandler(null);
+            readStream.endHandler(null);
+        }
+
+        if (writeStream != null) {
+            writeStream.end();
+        }
     }
 
     @Override
