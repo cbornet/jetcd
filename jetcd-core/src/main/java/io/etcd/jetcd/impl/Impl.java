@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
 import io.etcd.jetcd.support.Errors;
+import io.etcd.jetcd.support.Util;
 import io.vertx.core.Future;
 import io.vertx.grpc.client.InvalidStatusException;
 import io.vertx.grpc.common.GrpcStatus;
@@ -114,7 +115,7 @@ abstract class Impl {
 
         return Failsafe
             .with(retryPolicy(doRetry))
-            .with(connectionManager.getExecutorService())
+            .with(Util.vertxScheduler(connectionManager.vertx()))
             .getStageAsync(() -> supplier.get().toCompletionStage())
             .thenApply(resultConvert);
     }

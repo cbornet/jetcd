@@ -31,4 +31,3 @@ public interface WatchStream {
 
     boolean isConnected();
 }
-
