@@ -107,6 +107,10 @@ final class ClientConnectionManager {
         return this.credential;
     }
 
+    Vertx vertx() {
+        return this.vertx;
+    }
+
     void close() {
         synchronized (lock) {
             if (authenticatedGrpcClient != null) {
