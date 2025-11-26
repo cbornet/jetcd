@@ -34,11 +34,11 @@ import io.etcd.jetcd.api.WatchGrpcClient;
 import io.etcd.jetcd.api.WatchProgressRequest;
 import io.etcd.jetcd.api.WatchRequest;
 import io.etcd.jetcd.api.WatchResponse;
+import io.etcd.jetcd.common.ReferenceCount;
 import io.etcd.jetcd.common.exception.ErrorCode;
 import io.etcd.jetcd.common.exception.EtcdException;
 import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
 import io.etcd.jetcd.options.WatchOption;
-import io.etcd.jetcd.support.ReferenceCount;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.WriteStream;
 
@@ -326,6 +326,12 @@ final class WatchImpl extends Impl implements Watch, WatchStream {
                 writeStream = null;
             }
 
+            // Remove ReadStream handlers before nulling to prevent handler leaks
+            if (readStream != null) {
+                readStream.handler(null);
+                readStream.endHandler(null);
+                readStream.exceptionHandler(null);
+            }
             readStream = null;
 
             // Reset watch_id counter for fresh start on next connection
@@ -351,6 +357,12 @@ final class WatchImpl extends Impl implements Watch, WatchStream {
                     writeStream = null;
                 }
 
+                // Remove ReadStream handlers before nulling to prevent handler leaks
+                if (readStream != null) {
+                    readStream.handler(null);
+                    readStream.endHandler(null);
+                    readStream.exceptionHandler(null);
+                }
                 readStream = null;
 
                 // Reset state for clean shutdown
