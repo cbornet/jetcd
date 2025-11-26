@@ -17,25 +17,20 @@
 package io.etcd.jetcd.impl;
 
 import com.google.common.base.Strings;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Watch;
 import io.etcd.jetcd.api.WatchCreateRequest;
-import io.etcd.jetcd.api.WatchResponse;
 import io.etcd.jetcd.common.exception.EtcdException;
 import io.etcd.jetcd.options.OptionsUtil;
 import io.etcd.jetcd.options.WatchOption;
 import io.etcd.jetcd.support.Util;
+import io.etcd.jetcd.watch.WatchResponse;
+import io.vertx.core.Vertx;
 import io.vertx.grpc.common.GrpcStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static io.etcd.jetcd.common.exception.ErrorCode.FAILED_PRECONDITION;
 import static io.etcd.jetcd.common.exception.ErrorCode.INTERNAL;
@@ -57,38 +52,35 @@ public final class WatcherImpl implements Watch.Watcher {
     private final WatchOption option;
     private final Watch.Listener listener;
     private final AtomicBoolean closed = new AtomicBoolean();
-    private final AtomicReference<CountDownLatch> createdLatch;
-    private final Object parentLock;
+    private final Object lock;
     private final AtomicBoolean parentClosed;
     private final ClientConnectionManager connectionManager;
-    private final ListeningScheduledExecutorService executor;
+    private final Vertx vertx;
     private final Runnable onClose;
     private long revision;
 
     public WatcherImpl(
-            WatchStream stream,
-            long watchId,
-            ByteSequence key,
-            ByteSequence namespace,
-            WatchOption option,
-            Watch.Listener listener,
-            Object parentLock,
-            AtomicBoolean parentClosed,
-            ClientConnectionManager connectionManager,
-            ListeningScheduledExecutorService executor,
-            Runnable onClose) {
+        WatchStream stream,
+        long watchId,
+        ByteSequence key,
+        ByteSequence namespace,
+        WatchOption option,
+        Watch.Listener listener,
+        Object lock,
+        AtomicBoolean parentClosed,
+        ClientConnectionManager connectionManager,
+        Runnable onClose) {
         this.stream = stream;
         this.watchId = watchId;
         this.key = key;
         this.namespace = namespace;
         this.option = option;
         this.listener = listener;
-        this.createdLatch = new AtomicReference<>(new CountDownLatch(1));
         this.revision = option.getRevision();
-        this.parentLock = parentLock;
+        this.lock = lock;
         this.parentClosed = parentClosed;
         this.connectionManager = connectionManager;
-        this.executor = executor;
+        this.vertx = connectionManager.vertx();
         this.onClose = onClose;
     }
 
@@ -101,17 +93,11 @@ public final class WatcherImpl implements Watch.Watcher {
         return this.closed.get() || this.parentClosed.get();
     }
 
-    public CountDownLatch getCreatedLatch() {
-        return createdLatch.get();
-    }
-
     public void resume() {
         if (isClosed()) {
             LOG.debug("Watcher {} is closed, skipping resume", watchId);
             return;
         }
-
-        createdLatch.set(new CountDownLatch(1));
 
         WatchCreateRequest.Builder builder = WatchCreateRequest.newBuilder()
             .setWatchId(watchId)
@@ -145,7 +131,7 @@ public final class WatcherImpl implements Watch.Watcher {
 
     @Override
     public void close() {
-        synchronized (parentLock) {
+        synchronized (lock) {
             if (closed.compareAndSet(false, true)) {
                 // Notify listener
                 listener.onCompleted();
@@ -163,90 +149,156 @@ public final class WatcherImpl implements Watch.Watcher {
             return;
         }
 
-        try {
-            CountDownLatch latch = createdLatch.get();
-            if (latch != null && !latch.await(5, TimeUnit.SECONDS)) {
-                LOG.warn("Timeout waiting for watch creation");
-                return;
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return;
-        }
-
         stream.sendProgressRequest();
     }
 
     public void notifyError(EtcdException error) {
-        synchronized (parentLock) {
+        synchronized (lock) {
             if (!isClosed()) {
                 listener.onError(error);
             }
         }
     }
 
-    public void onNext(WatchResponse response) {
+    public void onNext(io.etcd.jetcd.api.WatchResponse response) {
         if (closed.get()) {
             return;
         }
 
-        // Handle special case: created and canceled simultaneously (auth error)
-        if (response.getCreated() && response.getCanceled()
-            && !response.getCancelReason().isEmpty()
-            && (response.getCancelReason().contains("etcdserver: permission denied") ||
-                response.getCancelReason().contains("etcdserver: invalid auth token"))) {
+        if (handleAuthError(response)) {
+            return;
+        }
+
+        if (handleWatchCreated(response)) {
+            return;
+        }
+
+        if (handleWatchCanceled(response)) {
+            return;
+        }
+
+        if (handleProgressNotify(response)) {
+            return;
+        }
+
+        if (handleEvents(response)) {
+            return;
+        }
+
+        LOG.debug("Received WatchResponse with no matching scenario: {}", response);
+    }
+
+    private void updateRevision(long newRevision) {
+        revision = Math.max(revision, newRevision);
+    }
+
+    private void updateRevisionFromEvents(io.etcd.jetcd.api.WatchResponse response) {
+        if (response.getEventsCount() > 0) {
+            long eventRevision = response.getEvents(response.getEventsCount() - 1)
+                .getKv()
+                .getModRevision() + 1;
+            revision = eventRevision;
+        }
+    }
+
+    private void notifyListener(io.etcd.jetcd.api.WatchResponse response, boolean withNamespace) {
+        WatchResponse watchResponse = withNamespace
+            ? new WatchResponse(response, namespace)
+            : new WatchResponse(response);
+
+        listener.onNext(watchResponse);
+    }
+
+    private boolean handleAuthError(io.etcd.jetcd.api.WatchResponse response) {
+        if (!response.getCreated() || !response.getCanceled()) {
+            return false;
+        }
+
+        String cancelReason = response.getCancelReason();
+        if (cancelReason.isEmpty()) {
+            return false;
+        }
+
+        if (cancelReason.contains("etcdserver: permission denied") ||
+            cancelReason.contains("etcdserver: invalid auth token")) {
 
             connectionManager.authCredential().refresh();
             GrpcStatus error = GrpcStatus.CANCELLED;
             handleError(toEtcdException(error), true);
-        } else if (response.getCreated()) {
-            // Watch created
-            if (response.getWatchId() == -1) {
-                listener.onError(newEtcdException(INTERNAL, "etcd server failed to create watch id"));
-                return;
-            }
-
-            revision = Math.max(revision, response.getHeader().getRevision());
-
-            CountDownLatch latch = createdLatch.get();
-            if (latch != null) {
-                latch.countDown();
-            }
-
-            if (option.isCreatedNotify()) {
-                listener.onNext(new io.etcd.jetcd.watch.WatchResponse(response));
-            }
-        } else if (response.getCanceled()) {
-            // Watch canceled
-            String reason = response.getCancelReason();
-            Throwable error;
-
-            if (response.getCompactRevision() != 0) {
-                error = newCompactedException(response.getCompactRevision());
-            } else if (Strings.isNullOrEmpty(reason)) {
-                error = newEtcdException(OUT_OF_RANGE,
-                    "etcdserver: mvcc: required revision is a future revision");
-            } else {
-                error = newEtcdException(FAILED_PRECONDITION, reason);
-            }
-
-            handleError(toEtcdException(error), false);
-        } else if (io.etcd.jetcd.watch.WatchResponse.isProgressNotify(response)) {
-            listener.onNext(new io.etcd.jetcd.watch.WatchResponse(response));
-            revision = Math.max(revision, response.getHeader().getRevision());
-        } else if (response.getEventsCount() == 0 && option.isProgressNotify()) {
-            // Progress notify
-            listener.onNext(new io.etcd.jetcd.watch.WatchResponse(response, namespace));
-            revision = response.getHeader().getRevision();
-        } else if (response.getEventsCount() > 0) {
-            // Events
-            listener.onNext(new io.etcd.jetcd.watch.WatchResponse(response, namespace));
-            revision = response.getEvents(response.getEventsCount() - 1).getKv().getModRevision() + 1;
+            return true;
         }
+
+        return false;
+    }
+
+    private boolean handleWatchCreated(io.etcd.jetcd.api.WatchResponse response) {
+        if (!response.getCreated()) {
+            return false;
+        }
+
+        if (response.getWatchId() == -1) {
+            listener.onError(newEtcdException(INTERNAL, "etcd server failed to create watch id"));
+            return true;
+        }
+
+        updateRevision(response.getHeader().getRevision());
+
+        if (option.isCreatedNotify()) {
+            notifyListener(response, false);
+        }
+
+        return true;
+    }
+
+    private boolean handleWatchCanceled(io.etcd.jetcd.api.WatchResponse response) {
+        if (!response.getCanceled()) {
+            return false;
+        }
+
+        Throwable error;
+        String reason = response.getCancelReason();
+
+        if (response.getCompactRevision() != 0) {
+            error = newCompactedException(response.getCompactRevision());
+        } else if (Strings.isNullOrEmpty(reason)) {
+            error = newEtcdException(OUT_OF_RANGE,
+                "etcdserver: mvcc: required revision is a future revision");
+        } else {
+            error = newEtcdException(FAILED_PRECONDITION, reason);
+        }
+
+        handleError(toEtcdException(error), false);
+        return true;
+    }
+
+    private boolean handleProgressNotify(io.etcd.jetcd.api.WatchResponse response) {
+        if (WatchResponse.isProgressNotify(response)) {
+            notifyListener(response, false);
+            updateRevision(response.getHeader().getRevision());
+            return true;
+        }
+
+        if (response.getEventsCount() == 0 && option.isProgressNotify()) {
+            notifyListener(response, true);
+            revision = response.getHeader().getRevision();
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean handleEvents(io.etcd.jetcd.api.WatchResponse response) {
+        if (response.getEventsCount() == 0) {
+            return false;
+        }
+
+        notifyListener(response, true);
+        updateRevisionFromEvents(response);
+        return true;
     }
 
     private void handleError(EtcdException etcdException, boolean shouldReschedule) {
-        synchronized (parentLock) {
+        synchronized (lock) {
             if (isClosed()) {
                 return;
             }
@@ -267,16 +319,12 @@ public final class WatcherImpl implements Watch.Watcher {
     }
 
     private void reschedule() {
-        Futures.addCallback(executor.schedule(this::resume, 500, TimeUnit.MILLISECONDS), new FutureCallback<Object>() {
-            @Override
-            public void onFailure(Throwable t) {
-                LOG.warn("scheduled resume failed for watch_id={}", watchId, t);
+        vertx.setTimer(500, timerId -> {
+            try {
+                resume();
+            } catch (Exception e) {
+                LOG.warn("scheduled resume failed for watch_id={}", watchId, e);
             }
-
-            @Override
-            public void onSuccess(Object result) {
-            }
-        }, executor);
+        });
     }
 }
-
