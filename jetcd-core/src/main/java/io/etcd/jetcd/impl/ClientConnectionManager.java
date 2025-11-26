@@ -16,6 +16,9 @@
 
 package io.etcd.jetcd.impl;
 
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
+import dev.failsafe.function.CheckedRunnable;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.ClientBuilder;
 import io.etcd.jetcd.resolver.ServiceResolver;
@@ -27,8 +30,6 @@ import io.vertx.core.net.endpoint.LoadBalancer;
 import io.vertx.grpc.client.GrpcClient;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdException;
@@ -36,9 +37,9 @@ import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdExceptio
 final class ClientConnectionManager {
     private final Object lock;
     private final ClientBuilder builder;
-    private final ExecutorService executorService;
     private final AuthCredential credential;
-    private volatile Vertx vertx;
+    private final Vertx vertx;
+    private final boolean closeVertx;
     private volatile GrpcClient grpcClient;
     private volatile GrpcClient authenticatedGrpcClient;
 
@@ -51,17 +52,10 @@ final class ClientConnectionManager {
         this.builder = builder;
         this.grpcClient = grpcClient;
         this.credential = new AuthCredential(this);
-
-        if (builder.executorService() == null) {
-            // default to daemon
-            this.executorService = Executors.newCachedThreadPool(Util.createThreadFactory("jetcd-", true));
-        } else {
-            this.executorService = builder.executorService();
-        }
-
-        if (builder.vertx() != null) {
-            this.vertx = builder.vertx();
-        }
+        this.closeVertx =  builder.vertx() != null;
+        this.vertx = builder.vertx() != null
+                ? builder.vertx()
+                : Vertx.vertx(new VertxOptions().setUseDaemonThread(true));
     }
 
     GrpcClient getGrpcClient() {
@@ -105,10 +99,6 @@ final class ClientConnectionManager {
         return builder.namespace();
     }
 
-    ExecutorService getExecutorService() {
-        return executorService;
-    }
-
     ClientBuilder builder() {
         return builder;
     }
@@ -125,7 +115,7 @@ final class ClientConnectionManager {
             if (grpcClient != null) {
                 grpcClient.close();
             }
-            if (vertx != null && builder.vertx() == null) {
+            if (vertx != null && closeVertx) {
                 // Only close Vertx if we created it ourselves
                 // Use CompletableFuture to wait for completion to ensure proper cleanup
                 try {
@@ -136,17 +126,13 @@ final class ClientConnectionManager {
                 }
             }
         }
-
-        if (builder.executorService() == null) {
-            executorService.shutdownNow();
-        }
     }
 
     <R> CompletableFuture<R> withNewClient(
         String target,
         Function<GrpcClient, CompletableFuture<R>> clientConsumer) {
 
-        final GrpcClient client = GrpcClient.client(vertx());
+        final GrpcClient client = GrpcClient.client(this.vertx);
 
         try {
             return clientConsumer.apply(client).whenComplete((r, t) -> client.close());
@@ -157,7 +143,7 @@ final class ClientConnectionManager {
     }
 
     private GrpcClient createGrpcClient() {
-        io.vertx.grpc.client.GrpcClientBuilder<?> grpcBuilder = GrpcClient.builder(vertx());
+        io.vertx.grpc.client.GrpcClientBuilder<?> grpcBuilder = GrpcClient.builder(this.vertx);
 
         ServiceResolver<?> serviceResolver = getServiceResolver();
         grpcBuilder.withAddressResolver(serviceResolver.getResolver());
@@ -178,17 +164,19 @@ final class ClientConnectionManager {
         return (GrpcClient) grpcBuilder.build();
     }
 
-    Vertx vertx() {
-        if (this.vertx == null) {
-            synchronized (this.lock) {
-                if (this.vertx == null) {
-                    VertxOptions options = new VertxOptions()
-                        .setUseDaemonThread(true);
-                    this.vertx = Vertx.vertx(options);
-                }
-            }
-        }
-
-        return this.vertx;
+    /**
+     * Execute an async task with retry policy on Vert.x event loop.
+     * Integrates Failsafe retry logic with Vert.x scheduler for efficient async execution.
+     *
+     * @param  task        the task to execute
+     * @param  retryPolicy the retry policy configuration
+     * @return             a CompletableFuture representing the async execution
+     */
+    public CompletableFuture<Void> runAsync(
+        CheckedRunnable task,
+        RetryPolicy<Void> retryPolicy) {
+        return Failsafe.with(retryPolicy)
+            .with(Util.vertxScheduler(this.vertx))
+            .runAsync(task);
     }
 }

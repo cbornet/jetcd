@@ -16,15 +16,6 @@
 
 package io.etcd.jetcd;
 
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.function.Consumer;
-
 import io.etcd.jetcd.common.exception.EtcdException;
 import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
 import io.etcd.jetcd.impl.ClientImpl;
@@ -34,6 +25,14 @@ import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.net.endpoint.LoadBalancer;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Consumer;
+
 /**
  * ClientBuilder knows how to create a Client instance.
  */
@@ -42,7 +41,6 @@ public final class ClientBuilder implements Cloneable {
     private final ServiceResolver<?> serviceResolver;
     private ByteSequence user;
     private ByteSequence password;
-    private ExecutorService executorService;
     private LoadBalancer loadBalancer;
     private Map<String, String> headers;
     private HttpClientOptions httpClientOptions;
@@ -137,28 +135,6 @@ public final class ClientBuilder implements Cloneable {
     public ClientBuilder namespace(ByteSequence namespace) {
         Objects.requireNonNull(namespace, "namespace can't be null");
         this.namespace = namespace;
-        return this;
-    }
-
-    /**
-     * Returns the executor service
-     *
-     * @return the executor service.
-     */
-    public ExecutorService executorService() {
-        return executorService;
-    }
-
-    /**
-     * config executor service.
-     *
-     * @param  executorService      executor service
-     * @return                      this builder
-     * @throws NullPointerException if executorService is <code>null</code>
-     */
-    public ClientBuilder executorService(ExecutorService executorService) {
-        Objects.requireNonNull(executorService, "executorService can't be null");
-        this.executorService = executorService;
         return this;
     }
 
