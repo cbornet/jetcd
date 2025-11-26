@@ -52,7 +52,7 @@ final class ClientConnectionManager {
         this.builder = builder;
         this.grpcClient = grpcClient;
         this.credential = new AuthCredential(this);
-        this.closeVertx =  builder.vertx() != null;
+        this.closeVertx = builder.vertx() == null;
         this.vertx = builder.vertx() != null
                 ? builder.vertx()
                 : Vertx.vertx(new VertxOptions().setUseDaemonThread(true));
