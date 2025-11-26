@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.etcd.jetcd.support;
+package io.etcd.jetcd.common;
 
 import java.util.concurrent.atomic.AtomicLong;
 

@@ -16,11 +16,12 @@
 
 package io.etcd.jetcd;
 
+import io.etcd.jetcd.common.Preconditions;
 import io.etcd.jetcd.common.exception.EtcdException;
 import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
+import io.etcd.jetcd.common.vertx.Ssl;
 import io.etcd.jetcd.impl.ClientImpl;
 import io.etcd.jetcd.resolver.ServiceResolver;
-import io.etcd.jetcd.support.Preconditions;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.net.endpoint.LoadBalancer;
@@ -203,11 +204,11 @@ public final class ClientBuilder implements Cloneable {
      * </pre>
      *
      * <p>
-     * For SSL/TLS configuration, see {@link io.etcd.jetcd.support.SslUtil} for helper methods:
+     * For SSL/TLS configuration, see {@link Ssl} for helper methods:
      * </p>
      *
      * <pre>
-     * import io.etcd.jetcd.support.SslUtil;
+     * import io.etcd.jetcd.common.vertx.SslUtil;
      *
      * Client client = Client.builder("https://localhost:2379")
      *     .httpClientOptions(SslUtil.withTrustManager("/path/to/ca.pem")
@@ -217,7 +218,7 @@ public final class ClientBuilder implements Cloneable {
      *
      * @param  consumer a consumer that configures the HttpClientOptions
      * @return          this builder
-     * @see             io.etcd.jetcd.support.SslUtil
+     * @see             Ssl
      */
     public ClientBuilder httpClientOptions(Consumer<HttpClientOptions> consumer) {
         // If options already exist, modify them. Otherwise create new ones.

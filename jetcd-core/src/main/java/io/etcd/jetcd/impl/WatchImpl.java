@@ -16,16 +16,7 @@
 
 package io.etcd.jetcd.impl;
 
-import java.time.Duration;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import dev.failsafe.RetryPolicy;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Watch;
 import io.etcd.jetcd.api.WatchCancelRequest;
@@ -38,11 +29,19 @@ import io.etcd.jetcd.common.ReferenceCount;
 import io.etcd.jetcd.common.exception.ErrorCode;
 import io.etcd.jetcd.common.exception.EtcdException;
 import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
+import io.etcd.jetcd.common.vertx.Failsafe;
 import io.etcd.jetcd.options.WatchOption;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.WriteStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import dev.failsafe.RetryPolicy;
+import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.newClosedWatchClientException;
 
@@ -487,19 +486,21 @@ final class WatchImpl extends Impl implements Watch, WatchStream {
     }
 
     private void scheduleReconnect() {
-        RetryPolicy<Void> reconnectPolicy = RetryPolicy.<Void> builder()
-            .withMaxRetries(MAX_RECONNECT_ATTEMPTS)
-            .withBackoff(Duration.ofMillis(INITIAL_RECONNECT_DELAY_MS), Duration.ofMillis(MAX_RECONNECT_DELAY_MS))
-            .onRetry(e -> LOG.info("Reconnection attempt {} failed, will retry after backoff",
-                e.getAttemptCount()))
-            .onRetriesExceeded(e -> {
-                LOG.error("Max reconnect attempts ({}) reached, giving up", MAX_RECONNECT_ATTEMPTS);
-                notifyWatchersOfPermanentFailure();
-            })
-            .build();
-
-        @SuppressWarnings("unused")
-        var unused = connectionManager().runAsync(this::reconnect, reconnectPolicy);
+       var ignored = Failsafe.runAsync(
+            connectionManager().vertx(),
+            this::reconnect,
+            RetryPolicy.<Void> builder()
+                .withMaxRetries(MAX_RECONNECT_ATTEMPTS)
+                .withBackoff(Duration.ofMillis(INITIAL_RECONNECT_DELAY_MS), Duration.ofMillis(MAX_RECONNECT_DELAY_MS))
+                .onRetry(e -> {
+                    LOG.info("Reconnection attempt {} failed, will retry after backoff", e.getAttemptCount());
+                })
+                .onRetriesExceeded(e -> {
+                    LOG.error("Max reconnect attempts ({}) reached, giving up", MAX_RECONNECT_ATTEMPTS);
+                    notifyWatchersOfPermanentFailure();
+                })
+                .build()
+        );
     }
 
     private void notifyWatchersOfPermanentFailure() {

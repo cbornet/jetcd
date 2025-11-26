@@ -28,7 +28,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.KV;
-import io.etcd.jetcd.support.SslUtil;
+import io.etcd.jetcd.common.vertx.Ssl;
 import io.etcd.jetcd.test.EtcdClusterExtension;
 
 import static io.etcd.jetcd.impl.TestUtil.bytesOf;
@@ -57,7 +57,7 @@ public class SslTest {
             : new File(Objects.requireNonNull(getClass().getResource(DEFAULT_SSL_CA_PATH)).toURI());
 
         Client client = Client.builder(endpoint.toString())
-            .httpClientOptions(SslUtil.withTrustManager(caFile)
+            .httpClientOptions(Ssl.withTrustManager(caFile)
                 .andThen(options -> options.setVerifyHost(false)))
             .build();
 

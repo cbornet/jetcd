@@ -5,17 +5,16 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import io.etcd.jetcd.common.vertx.Failsafe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
 import io.etcd.jetcd.support.Errors;
-import io.etcd.jetcd.support.Util;
 import io.vertx.core.Future;
 import io.vertx.grpc.client.InvalidStatusException;
 import io.vertx.grpc.common.GrpcStatus;
 
-import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import dev.failsafe.RetryPolicyBuilder;
 
@@ -113,9 +112,9 @@ abstract class Impl {
         Function<S, T> resultConvert,
         Predicate<GrpcStatus> doRetry) {
 
-        return Failsafe
+        return dev.failsafe.Failsafe
             .with(retryPolicy(doRetry))
-            .with(Util.vertxScheduler(connectionManager.vertx()))
+            .with(Failsafe.vertxScheduler(connectionManager.vertx()))
             .getStageAsync(() -> supplier.get().toCompletionStage())
             .thenApply(resultConvert);
     }

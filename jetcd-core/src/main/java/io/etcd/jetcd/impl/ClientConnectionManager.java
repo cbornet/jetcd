@@ -16,13 +16,12 @@
 
 package io.etcd.jetcd.impl;
 
-import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import dev.failsafe.function.CheckedRunnable;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.ClientBuilder;
+import io.etcd.jetcd.common.vertx.Failsafe;
 import io.etcd.jetcd.resolver.ServiceResolver;
-import io.etcd.jetcd.support.Util;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import io.vertx.core.http.HttpClientOptions;
@@ -166,21 +165,5 @@ final class ClientConnectionManager {
         }
 
         return (GrpcClient) grpcBuilder.build();
-    }
-
-    /**
-     * Execute an async task with retry policy on Vert.x event loop.
-     * Integrates Failsafe retry logic with Vert.x scheduler for efficient async execution.
-     *
-     * @param  task        the task to execute
-     * @param  retryPolicy the retry policy configuration
-     * @return             a CompletableFuture representing the async execution
-     */
-    public CompletableFuture<Void> runAsync(
-        CheckedRunnable task,
-        RetryPolicy<Void> retryPolicy) {
-        return Failsafe.with(retryPolicy)
-            .with(Util.vertxScheduler(this.vertx))
-            .runAsync(task);
     }
 }

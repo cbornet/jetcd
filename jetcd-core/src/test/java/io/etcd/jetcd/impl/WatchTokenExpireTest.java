@@ -37,7 +37,7 @@ import io.etcd.jetcd.KV;
 import io.etcd.jetcd.Watch;
 import io.etcd.jetcd.auth.Permission;
 import io.etcd.jetcd.options.WatchOption;
-import io.etcd.jetcd.support.SslUtil;
+import io.etcd.jetcd.common.vertx.Ssl;
 import io.etcd.jetcd.test.EtcdClusterExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -68,7 +68,7 @@ public class WatchTokenExpireTest {
         final File caFile = new File(Objects.requireNonNull(getClass().getResource("/ssl/cert/ca.pem")).toURI());
 
         Client client = TestUtil.client(cluster)
-            .httpClientOptions(SslUtil.withTrustManager(caFile)
+            .httpClientOptions(Ssl.withTrustManager(caFile)
                 .andThen(options -> options.setVerifyHost(false)))
             .build();
 
@@ -90,7 +90,7 @@ public class WatchTokenExpireTest {
         return TestUtil.client(cluster)
             .user(user)
             .password(password)
-            .httpClientOptions(SslUtil.withTrustManager(caFile)
+            .httpClientOptions(Ssl.withTrustManager(caFile)
                 .andThen(options -> options.setVerifyHost(false)))
             .build();
     }

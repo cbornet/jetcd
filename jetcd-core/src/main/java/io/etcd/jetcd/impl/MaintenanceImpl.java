@@ -30,7 +30,7 @@ import io.etcd.jetcd.maintenance.HashKVResponse;
 import io.etcd.jetcd.maintenance.MoveLeaderResponse;
 import io.etcd.jetcd.maintenance.StatusResponse;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static io.etcd.jetcd.common.Preconditions.checkArgument;
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdException;
 
 /**

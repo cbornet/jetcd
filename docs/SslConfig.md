@@ -19,7 +19,7 @@ For basic SSL configuration where you only need to trust a custom CA certificate
 
 ```java
 import io.etcd.jetcd.Client;
-import io.etcd.jetcd.support.SslUtil;
+import io.etcd.jetcd.common.vertx.SslUtil;
 import java.io.File;
 
 File caCert = new File("/etc/etcd/pki/ca.crt");
@@ -37,7 +37,7 @@ client.getClusterClient().listMember().get().getMembers().forEach(member -> {
 You can also use a file path directly:
 
 ```java
-import io.etcd.jetcd.support.SslUtil;
+import io.etcd.jetcd.common.vertx.SslUtil;
 
 Client client = Client.builder()
     .endpoints("https://10.168.168.66:2379")
@@ -48,7 +48,7 @@ Client client = Client.builder()
 Or load from classpath using InputStream:
 
 ```java
-import io.etcd.jetcd.support.SslUtil;
+import io.etcd.jetcd.common.vertx.SslUtil;
 
 try (InputStream is = getClass().getResourceAsStream("/ssl/cert/ca.pem")) {
     Client client = Client.builder()
@@ -64,7 +64,7 @@ For mTLS (mutual TLS) where the client needs to present its own certificate, use
 
 ```java
 import io.etcd.jetcd.Client;
-import io.etcd.jetcd.support.SslUtil;
+import io.etcd.jetcd.common.vertx.SslUtil;
 import java.io.File;
 
 File caCert = new File("/etc/etcd/pki/ca.crt");
@@ -80,7 +80,7 @@ Client client = Client.builder()
 Or using file paths directly:
 
 ```java
-import io.etcd.jetcd.support.SslUtil;
+import io.etcd.jetcd.common.vertx.SslUtil;
 
 Client client = Client.builder()
     .endpoints("https://10.168.168.66:2379")
@@ -97,7 +97,7 @@ The `SslUtil` helper methods return `Consumer<HttpClientOptions>`, which can be 
 
 ```java
 import io.etcd.jetcd.Client;
-import io.etcd.jetcd.support.SslUtil;
+import io.etcd.jetcd.common.vertx.SslUtil;
 
 Client client = Client.builder()
     .endpoints("https://10.168.168.66:2379")
@@ -135,7 +135,7 @@ For testing with self-signed certificates that don't match the hostname, you can
 
 ```java
 import io.etcd.jetcd.Client;
-import io.etcd.jetcd.support.SslUtil;
+import io.etcd.jetcd.common.vertx.SslUtil;
 
 Client client = Client.builder()
     .endpoints("https://localhost:2379")

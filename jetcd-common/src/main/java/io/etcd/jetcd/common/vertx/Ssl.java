@@ -14,41 +14,59 @@
  * limitations under the License.
  */
 
-package io.etcd.jetcd.support;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.function.Consumer;
+package io.etcd.jetcd.common.vertx;
 
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.net.PemKeyCertOptions;
 import io.vertx.core.net.PemTrustOptions;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.function.Consumer;
+
 /**
- * Utility class for SSL/TLS configuration helpers.
+ * SSL/TLS configuration utilities for Vert.x HttpClientOptions.
  *
  * <p>
- * This class provides static methods that return {@link Consumer} instances for configuring
+ * This class provides static factory methods that return {@link Consumer} instances for configuring
  * {@link HttpClientOptions} with SSL/TLS settings. The returned consumers can be composed
  * using {@link Consumer#andThen(Consumer)} for flexible configuration.
  * </p>
  *
  * <p>
- * Example usage:
+ * All methods in this class enable SSL, ALPN (required for HTTP/2), and configure trust managers
+ * and/or key managers with PEM-formatted certificates.
+ * </p>
+ *
+ * <p>
+ * Example usage with custom SSL configuration:
  * </p>
  *
  * <pre>
  * Client client = Client.builder("https://localhost:2379")
- *     .httpClientOptions(SslUtil.withTrustManager(caFile)
+ *     .httpClientOptions(Ssl.withTrustManager(caFile)
  *         .andThen(options -> options.setVerifyHost(false)))
  *     .build();
  * </pre>
+ *
+ * <p>
+ * Example usage with mutual TLS (mTLS):
+ * </p>
+ *
+ * <pre>
+ * Client client = Client.builder("https://localhost:2379")
+ *     .httpClientOptions(Ssl.withTrustAndKeyManager(
+ *         new File("/path/to/ca.pem"),
+ *         new File("/path/to/client-cert.pem"),
+ *         new File("/path/to/client-key.pem")))
+ *     .build();
+ * </pre>
  */
-public final class SslUtil {
+public final class Ssl {
 
-    private SslUtil() {
+    private Ssl() {
         // Utility class, prevent instantiation
     }
 
@@ -70,7 +88,7 @@ public final class SslUtil {
      *
      * <pre>
      * Client client = Client.builder("https://localhost:2379")
-     *     .httpClientOptions(SslUtil.withTrustManager(new File("/path/to/ca.pem")))
+     *     .httpClientOptions(Ssl.withTrustManager(new File("/path/to/ca.pem")))
      *     .build();
      * </pre>
      *
@@ -126,7 +144,7 @@ public final class SslUtil {
      * <pre>
      * try (InputStream is = getClass().getResourceAsStream("/ssl/ca.pem")) {
      *     Client client = Client.builder("https://localhost:2379")
-     *         .httpClientOptions(SslUtil.withTrustManager(is))
+     *         .httpClientOptions(Ssl.withTrustManager(is))
      *         .build();
      * }
      * </pre>
@@ -163,7 +181,7 @@ public final class SslUtil {
      *
      * <pre>
      * Client client = Client.builder("https://localhost:2379")
-     *     .httpClientOptions(SslUtil.withTrustAndKeyManager(
+     *     .httpClientOptions(Ssl.withTrustAndKeyManager(
      *         new File("/path/to/ca.pem"),
      *         new File("/path/to/client-cert.pem"),
      *         new File("/path/to/client-key.pem")))

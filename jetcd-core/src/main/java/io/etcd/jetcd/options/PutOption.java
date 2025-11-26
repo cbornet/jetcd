@@ -16,7 +16,7 @@
 
 package io.etcd.jetcd.options;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static io.etcd.jetcd.common.Preconditions.checkArgument;
 
 /**
  * The options for put operation.
@@ -98,7 +98,7 @@ public final class PutOption {
          * @throws IllegalArgumentException if lease is less than zero.
          */
         public Builder withLeaseId(long leaseId) {
-            checkArgument(leaseId >= 0, "leaseId should greater than or equal to zero: leaseId=%s", leaseId);
+            checkArgument(leaseId >= 0, "leaseId should greater than or equal to zero: leaseId=" + leaseId);
             this.leaseId = leaseId;
             return this;
         }

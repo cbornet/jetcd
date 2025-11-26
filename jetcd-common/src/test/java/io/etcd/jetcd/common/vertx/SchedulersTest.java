@@ -14,7 +14,15 @@
  * limitations under the License.
  */
 
-package io.etcd.jetcd.support;
+package io.etcd.jetcd.common.vertx;
+
+import dev.failsafe.RetryPolicy;
+import dev.failsafe.spi.Scheduler;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
@@ -23,20 +31,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
-
-import dev.failsafe.Failsafe;
-import dev.failsafe.RetryPolicy;
-import dev.failsafe.spi.Scheduler;
-
-import static org.junit.jupiter.api.Assertions.*;
-
-class UtilTest {
+class SchedulersTest {
     private Vertx vertx;
 
     @BeforeEach
@@ -56,11 +55,11 @@ class UtilTest {
         AtomicReference<String> threadName = new AtomicReference<>();
         CountDownLatch latch = new CountDownLatch(1);
 
-        Scheduler scheduler = Util.vertxScheduler(vertx);
+        Scheduler scheduler = Failsafe.vertxScheduler(vertx);
         RetryPolicy<Void> policy = RetryPolicy.<Void> builder().build();
 
         @SuppressWarnings("unused")
-        var unused = Failsafe.with(policy)
+        var unused = dev.failsafe.Failsafe.with(policy)
             .with(scheduler)
             .runAsync(() -> {
                 threadName.set(Thread.currentThread().getName());
@@ -78,7 +77,7 @@ class UtilTest {
         AtomicReference<Long> firstAttemptTime = new AtomicReference<>();
         AtomicReference<Long> secondAttemptTime = new AtomicReference<>();
 
-        Scheduler scheduler = Util.vertxScheduler(vertx);
+        Scheduler scheduler = Failsafe.vertxScheduler(vertx);
         RetryPolicy<Void> policy = RetryPolicy.<Void> builder()
             .withMaxRetries(3)
             .withDelay(Duration.ofMillis(100))
@@ -87,7 +86,7 @@ class UtilTest {
         CompletableFuture<Void> future = new CompletableFuture<>();
 
         @SuppressWarnings("unused")
-        var unused = Failsafe.with(policy)
+        var unused = dev.failsafe.Failsafe.with(policy)
             .with(scheduler)
             .getAsyncExecution(execution -> {
                 int attempt = attempts.incrementAndGet();
@@ -118,11 +117,11 @@ class UtilTest {
         CountDownLatch latch = new CountDownLatch(1);
         long start = System.currentTimeMillis();
 
-        Scheduler scheduler = Util.vertxScheduler(vertx);
+        Scheduler scheduler = Failsafe.vertxScheduler(vertx);
         RetryPolicy<Void> policy = RetryPolicy.<Void> builder().build();
 
         @SuppressWarnings("unused")
-        var unused = Failsafe.with(policy)
+        var unused = dev.failsafe.Failsafe.with(policy)
             .with(scheduler)
             .runAsync(() -> latch.countDown());
 
@@ -137,7 +136,7 @@ class UtilTest {
         CountDownLatch latch = new CountDownLatch(concurrentTasks);
         AtomicInteger totalAttempts = new AtomicInteger(0);
 
-        Scheduler scheduler = Util.vertxScheduler(vertx);
+        Scheduler scheduler = Failsafe.vertxScheduler(vertx);
         RetryPolicy<Void> policy = RetryPolicy.<Void> builder()
             .withMaxRetries(2)
             .withDelay(Duration.ofMillis(50))
@@ -148,7 +147,7 @@ class UtilTest {
             AtomicInteger taskAttempts = new AtomicInteger(0);
 
             @SuppressWarnings("unused")
-            var unused = Failsafe.with(policy)
+            var unused = dev.failsafe.Failsafe.with(policy)
                 .with(scheduler)
                 .getAsyncExecution(execution -> {
                     int attempt = taskAttempts.incrementAndGet();
@@ -170,7 +169,7 @@ class UtilTest {
 
     @Test
     void testVertxSchedulerCancellation() throws Exception {
-        Scheduler scheduler = Util.vertxScheduler(vertx);
+        Scheduler scheduler = Failsafe.vertxScheduler(vertx);
         CountDownLatch latch = new CountDownLatch(1);
         AtomicInteger executions = new AtomicInteger(0);
 

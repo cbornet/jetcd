@@ -21,6 +21,7 @@ dependencies {
     // For GrpcStatus and InvalidStatusException used in exception handling
     api "io.vertx:vertx-grpc-common:${libs.versions.vertx.get()}"
     api libs.vertxGrpcClient
+    api libs.failsafe
 
     testImplementation libs.bundles.testing
     testRuntimeOnly libs.bundles.log4j

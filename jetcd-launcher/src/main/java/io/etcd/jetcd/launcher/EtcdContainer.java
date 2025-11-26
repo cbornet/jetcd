@@ -193,6 +193,7 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
     private Path createDataDirectory(String name) {
         try {
             final String prefix = "jetcd_test_" + name + "_";
+            Path dir;
             if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
                 // https://github.com/etcd-io/jetcd/issues/489
                 // Resolve symlink (/var -> /private/var) to don't fail for MacOS because of
@@ -200,10 +201,12 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
                 // Use rwxrwx--- (770) instead of rwxrwxrwx (777) for better security
                 final FileAttribute<?> attribute = PosixFilePermissions
                     .asFileAttribute(PosixFilePermissions.fromString("rwxrwx---"));
-                return Files.createTempDirectory(prefix, attribute).toRealPath();
+                dir = Files.createTempDirectory(prefix, attribute).toRealPath();
             } else {
-                return Files.createTempDirectory(prefix).toRealPath();
+                dir = Files.createTempDirectory(prefix).toRealPath();
             }
+            EtcdSupport.registerDirectoryForCleanup(dir);
+            return dir;
         } catch (IOException e) {
             throw new ContainerLaunchException("Error creating data directory", e);
         }
@@ -292,7 +295,10 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
     @Override
     public void close() {
         super.close();
-        EtcdSupport.deleteDataDirectory(dataDirectory);
+        if (dataDirectory != null) {
+            EtcdSupport.unregisterDirectoryForCleanup(dataDirectory);
+            EtcdSupport.deleteDataDirectory(dataDirectory);
+        }
     }
 
     /**

@@ -23,7 +23,7 @@ import io.etcd.jetcd.api.AuthenticateRequest;
 
 import com.google.protobuf.ByteString;
 
-import static io.etcd.jetcd.support.Preconditions.checkArgument;
+import static io.etcd.jetcd.common.Preconditions.checkArgument;
 
 /**
  * Handles authentication token management for etcd requests.

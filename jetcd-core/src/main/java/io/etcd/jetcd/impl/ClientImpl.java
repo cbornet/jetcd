@@ -26,7 +26,8 @@ import io.etcd.jetcd.Lease;
 import io.etcd.jetcd.Lock;
 import io.etcd.jetcd.Maintenance;
 import io.etcd.jetcd.Watch;
-import io.etcd.jetcd.support.MemorizingClientSupplier;
+import io.etcd.jetcd.common.suppliers.Suppliers;
+import io.etcd.jetcd.common.suppliers.CloseableSupplier;
 
 /**
  * Etcd Client.
@@ -34,25 +35,25 @@ import io.etcd.jetcd.support.MemorizingClientSupplier;
 public final class ClientImpl implements Client {
 
     private final ClientConnectionManager connectionManager;
-    private final MemorizingClientSupplier<KV> kvClient;
-    private final MemorizingClientSupplier<Auth> authClient;
-    private final MemorizingClientSupplier<Maintenance> maintenanceClient;
-    private final MemorizingClientSupplier<Cluster> clusterClient;
-    private final MemorizingClientSupplier<Lease> leaseClient;
-    private final MemorizingClientSupplier<Watch> watchClient;
-    private final MemorizingClientSupplier<Lock> lockClient;
-    private final MemorizingClientSupplier<Election> electionClient;
+    private final CloseableSupplier<KV> kvClient;
+    private final CloseableSupplier<Auth> authClient;
+    private final CloseableSupplier<Maintenance> maintenanceClient;
+    private final CloseableSupplier<Cluster> clusterClient;
+    private final CloseableSupplier<Lease> leaseClient;
+    private final CloseableSupplier<Watch> watchClient;
+    private final CloseableSupplier<Lock> lockClient;
+    private final CloseableSupplier<Election> electionClient;
 
     public ClientImpl(ClientBuilder clientBuilder) {
         this.connectionManager = new ClientConnectionManager(clientBuilder.copy());
-        this.kvClient = new MemorizingClientSupplier<>(() -> new KVImpl(this.connectionManager));
-        this.authClient = new MemorizingClientSupplier<>(() -> new AuthImpl(this.connectionManager));
-        this.maintenanceClient = new MemorizingClientSupplier<>(() -> new MaintenanceImpl(this.connectionManager));
-        this.clusterClient = new MemorizingClientSupplier<>(() -> new ClusterImpl(this.connectionManager));
-        this.leaseClient = new MemorizingClientSupplier<>(() -> new LeaseImpl(this.connectionManager));
-        this.watchClient = new MemorizingClientSupplier<>(() -> new WatchImpl(this.connectionManager));
-        this.lockClient = new MemorizingClientSupplier<>(() -> new LockImpl(this.connectionManager));
-        this.electionClient = new MemorizingClientSupplier<>(() -> new ElectionImpl(this.connectionManager));
+        this.kvClient = Suppliers.memoizingCloseable(() -> new KVImpl(this.connectionManager));
+        this.authClient = Suppliers.memoizingCloseable(() -> new AuthImpl(this.connectionManager));
+        this.maintenanceClient = Suppliers.memoizingCloseable(() -> new MaintenanceImpl(this.connectionManager));
+        this.clusterClient = Suppliers.memoizingCloseable(() -> new ClusterImpl(this.connectionManager));
+        this.leaseClient = Suppliers.memoizingCloseable(() -> new LeaseImpl(this.connectionManager));
+        this.watchClient = Suppliers.memoizingCloseable(() -> new WatchImpl(this.connectionManager));
+        this.lockClient = Suppliers.memoizingCloseable(() -> new LockImpl(this.connectionManager));
+        this.electionClient = Suppliers.memoizingCloseable(() -> new ElectionImpl(this.connectionManager));
     }
 
     @Override
@@ -97,14 +98,46 @@ public final class ClientImpl implements Client {
 
     @Override
     public synchronized void close() {
-        authClient.close();
-        kvClient.close();
-        clusterClient.close();
-        maintenanceClient.close();
-        leaseClient.close();
-        watchClient.close();
-        lockClient.close();
-        electionClient.close();
+        try {
+            authClient.close();
+        } catch (Exception e) {
+            // Ignore
+        }
+        try {
+            kvClient.close();
+        } catch (Exception e) {
+            // Ignore
+        }
+        try {
+            clusterClient.close();
+        } catch (Exception e) {
+            // Ignore
+        }
+        try {
+            maintenanceClient.close();
+        } catch (Exception e) {
+            // Ignore
+        }
+        try {
+            leaseClient.close();
+        } catch (Exception e) {
+            // Ignore
+        }
+        try {
+            watchClient.close();
+        } catch (Exception e) {
+            // Ignore
+        }
+        try {
+            lockClient.close();
+        } catch (Exception e) {
+            // Ignore
+        }
+        try {
+            electionClient.close();
+        } catch (Exception e) {
+            // Ignore
+        }
 
         connectionManager.close();
     }

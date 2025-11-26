@@ -22,6 +22,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
@@ -33,13 +36,40 @@ import org.slf4j.LoggerFactory;
  */
 final class EtcdSupport {
     private static final Logger LOGGER = LoggerFactory.getLogger(EtcdSupport.class);
+    private static final Set<Path> DIRECTORIES_TO_CLEANUP = ConcurrentHashMap.newKeySet();
+    private static final AtomicBoolean SHUTDOWN_HOOK_REGISTERED = new AtomicBoolean(false);
+
+    static {
+        registerShutdownHook();
+    }
 
     private EtcdSupport() {
     }
 
+    private static void registerShutdownHook() {
+        if (SHUTDOWN_HOOK_REGISTERED.compareAndSet(false, true)) {
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                LOGGER.debug("JVM shutdown hook: cleaning up {} etcd data directories", DIRECTORIES_TO_CLEANUP.size());
+                DIRECTORIES_TO_CLEANUP.forEach(EtcdSupport::deleteDataDirectory);
+            }, "etcd-cleanup"));
+        }
+    }
+
+    static void registerDirectoryForCleanup(Path dir) {
+        if (dir != null) {
+            DIRECTORIES_TO_CLEANUP.add(dir);
+        }
+    }
+
+    static void unregisterDirectoryForCleanup(Path dir) {
+        if (dir != null) {
+            DIRECTORIES_TO_CLEANUP.remove(dir);
+        }
+    }
+
     /**
      * Deletes a directory and all its contents recursively.
-     * Logs warnings for individual file failures but continues deletion.
+     * Retries deletion with backoff to handle Docker container unmount timing issues.
      *
      * @param dir the directory to delete
      */
@@ -48,17 +78,45 @@ final class EtcdSupport {
             return;
         }
 
+        int maxRetries = 10;
+        long initialDelayMs = 10;
+
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                deleteDirectoryContents(dir);
+                if (attempt > 0) {
+                    LOGGER.debug("Successfully deleted {} after {} retries", dir, attempt);
+                }
+                return;
+            } catch (IOException e) {
+                if (attempt < maxRetries - 1) {
+                    long delay = initialDelayMs * (1L << attempt);
+                    LOGGER.debug("Failed to delete {} (attempt {}/{}): {}. Retrying in {}ms",
+                        dir, attempt + 1, maxRetries, e.getMessage(), delay);
+                    try {
+                        Thread.sleep(delay);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        LOGGER.warn("Interrupted while retrying deletion of {}", dir);
+                        break;
+                    }
+                } else {
+                    LOGGER.warn("Failed to delete directory {} after {} attempts: {}", dir, maxRetries, e.getMessage());
+                }
+            }
+        }
+    }
+
+    private static void deleteDirectoryContents(Path dir) throws IOException {
         try (Stream<Path> stream = Files.walk(dir)) {
             stream.sorted(Comparator.reverseOrder())
                 .forEach(path -> {
                     try {
                         Files.delete(path);
                     } catch (IOException e) {
-                        LOGGER.warn("Failed to delete {}: {}", path, e.getMessage());
+                        throw new java.io.UncheckedIOException(e);
                     }
                 });
-        } catch (IOException e) {
-            LOGGER.error("Error walking directory {} for deletion", dir, e);
         }
     }
 
