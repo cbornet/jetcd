@@ -58,6 +58,7 @@ public final class WatcherImpl implements Watch.Watcher {
     private final Vertx vertx;
     private final Runnable onClose;
     private long revision;
+    private volatile Long pendingTimerId;
 
     public WatcherImpl(
         WatchStream stream,
@@ -133,6 +134,12 @@ public final class WatcherImpl implements Watch.Watcher {
     public void close() {
         synchronized (lock) {
             if (closed.compareAndSet(false, true)) {
+                // Cancel pending timer
+                if (pendingTimerId != null) {
+                    vertx.cancelTimer(pendingTimerId);
+                    pendingTimerId = null;
+                }
+
                 // Notify listener
                 listener.onCompleted();
 
@@ -319,12 +326,25 @@ public final class WatcherImpl implements Watch.Watcher {
     }
 
     private void reschedule() {
-        vertx.setTimer(500, timerId -> {
-            try {
-                resume();
-            } catch (Exception e) {
-                LOG.warn("scheduled resume failed for watch_id={}", watchId, e);
+        synchronized (lock) {
+            if (isClosed()) {
+                return;
             }
-        });
+
+            pendingTimerId = vertx.setTimer(500, timerId -> {
+                synchronized (lock) {
+                    pendingTimerId = null;
+                    if (isClosed()) {
+                        return;
+                    }
+                }
+
+                try {
+                    resume();
+                } catch (Exception e) {
+                    LOG.warn("scheduled resume failed for watch_id={}", watchId, e);
+                }
+            });
+        }
     }
 }
