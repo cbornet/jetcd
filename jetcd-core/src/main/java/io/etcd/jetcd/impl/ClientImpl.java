@@ -28,11 +28,20 @@ import io.etcd.jetcd.Maintenance;
 import io.etcd.jetcd.Watch;
 import io.etcd.jetcd.common.suppliers.Suppliers;
 import io.etcd.jetcd.common.suppliers.CloseableSupplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Etcd Client.
  */
 public final class ClientImpl implements Client {
+    private static final Logger LOG = LoggerFactory.getLogger(ClientImpl.class);
 
     private final ClientConnectionManager connectionManager;
     private final CloseableSupplier<KV> kvClient;
@@ -99,46 +108,47 @@ public final class ClientImpl implements Client {
     @Override
     public synchronized void close() {
         try {
-            authClient.close();
+            closeAsync().get(15, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            LOG.warn("Timeout waiting for Client to close, forcing shutdown");
+            connectionManager.close();
         } catch (Exception e) {
-            // Ignore
+            LOG.error("Error closing Client", e);
         }
-        try {
-            kvClient.close();
-        } catch (Exception e) {
-            // Ignore
-        }
-        try {
-            clusterClient.close();
-        } catch (Exception e) {
-            // Ignore
-        }
-        try {
-            maintenanceClient.close();
-        } catch (Exception e) {
-            // Ignore
-        }
-        try {
-            leaseClient.close();
-        } catch (Exception e) {
-            // Ignore
-        }
-        try {
-            watchClient.close();
-        } catch (Exception e) {
-            // Ignore
-        }
-        try {
-            lockClient.close();
-        } catch (Exception e) {
-            // Ignore
-        }
-        try {
-            electionClient.close();
-        } catch (Exception e) {
-            // Ignore
-        }
+    }
 
-        connectionManager.close();
+    @Override
+    public synchronized CompletableFuture<Void> closeAsync() {
+        // Close all clients in parallel
+        List<CompletableFuture<Void>> closeFutures = new ArrayList<>();
+
+        closeFutures.add(closeClientSupplier(authClient, "authClient"));
+        closeFutures.add(closeClientSupplier(kvClient, "kvClient"));
+        closeFutures.add(closeClientSupplier(clusterClient, "clusterClient"));
+        closeFutures.add(closeClientSupplier(maintenanceClient, "maintenanceClient"));
+        closeFutures.add(closeClientSupplier(leaseClient, "leaseClient"));
+        closeFutures.add(closeClientSupplier(watchClient, "watchClient"));
+        closeFutures.add(closeClientSupplier(lockClient, "lockClient"));
+        closeFutures.add(closeClientSupplier(electionClient, "electionClient"));
+
+        // After all clients close, close connection manager
+        return CompletableFuture.allOf(closeFutures.toArray(new CompletableFuture[0]))
+            .whenComplete((v, error) -> {
+                try {
+                    connectionManager.closeAsync().get(10, TimeUnit.SECONDS);
+                } catch (Exception e) {
+                    LOG.error("Error closing connectionManager", e);
+                }
+            });
+    }
+
+    private CompletableFuture<Void> closeClientSupplier(CloseableSupplier<?> supplier, String name) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                supplier.close();
+            } catch (Exception e) {
+                LOG.warn("Error closing {}", name, e);
+            }
+        });
     }
 }

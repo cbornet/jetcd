@@ -48,18 +48,19 @@ public class WatchErrorTest {
     @ParameterizedTest
     @ValueSource(strings = { "test-namespace/", "" })
     public void testWatchOnError(String ns) {
-        final Client client = ns != null && ns.length() == 0
-            ? TestUtil.client(cluster).namespace(bytesOf(ns)).build()
-            : TestUtil.client(cluster).build();
+        try (Client client = ns != null && ns.length() == 0
+                ? TestUtil.client(cluster).namespace(bytesOf(ns)).build()
+                : TestUtil.client(cluster).build()) {
 
-        final ByteSequence key = randomByteSequence();
-        final List<Throwable> events = Collections.synchronizedList(new ArrayList<>());
+            final ByteSequence key = randomByteSequence();
+            final List<Throwable> events = Collections.synchronizedList(new ArrayList<>());
 
-        try (Watcher watcher = client.getWatchClient().watch(key, TestUtil::noOpWatchResponseConsumer, events::add)) { // NOPMD - UnusedLocalVariable
-            cluster.cluster().stop();
-            await().atMost(15, TimeUnit.SECONDS).untilAsserted(() -> assertThat(events).isNotEmpty());
+            try (Watcher watcher = client.getWatchClient().watch(key, TestUtil::noOpWatchResponseConsumer, events::add)) { // NOPMD - UnusedLocalVariable
+                cluster.cluster().stop();
+                await().atMost(15, TimeUnit.SECONDS).untilAsserted(() -> assertThat(events).isNotEmpty());
+            }
+
+            assertThat(events).allMatch(EtcdException.class::isInstance);
         }
-
-        assertThat(events).allMatch(EtcdException.class::isInstance);
     }
 }

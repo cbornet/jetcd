@@ -92,6 +92,14 @@ public interface Client extends AutoCloseable {
     void close();
 
     /**
+     * Asynchronously closes the client and all its resources.
+     * Provides better control over shutdown timeout compared to synchronous close().
+     *
+     * @return CompletableFuture that completes when client is fully closed
+     */
+    java.util.concurrent.CompletableFuture<Void> closeAsync();
+
+    /**
      * Returns a new {@link ClientBuilder} preconfigured with static addresses.
      *
      * @param  addresses etcd server addresses (host:port format)

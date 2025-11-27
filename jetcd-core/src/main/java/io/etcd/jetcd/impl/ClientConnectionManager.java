@@ -16,24 +16,27 @@
 
 package io.etcd.jetcd.impl;
 
-import dev.failsafe.RetryPolicy;
-import dev.failsafe.function.CheckedRunnable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
+
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.ClientBuilder;
-import io.etcd.jetcd.common.vertx.Failsafe;
 import io.etcd.jetcd.resolver.ServiceResolver;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.net.endpoint.LoadBalancer;
 import io.vertx.grpc.client.GrpcClient;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdException;
 
 final class ClientConnectionManager {
+    private static final Logger LOG = LoggerFactory.getLogger(ClientConnectionManager.class);
+
     private final Object lock;
     private final ClientBuilder builder;
     private final AuthCredential credential;
@@ -110,24 +113,33 @@ final class ClientConnectionManager {
         return this.vertx;
     }
 
-    void close() {
-        synchronized (lock) {
-            if (authenticatedGrpcClient != null) {
-                authenticatedGrpcClient.close();
-            }
-            if (grpcClient != null) {
-                grpcClient.close();
-            }
-            if (vertx != null && closeVertx) {
-                // Only close Vertx if we created it ourselves
-                // Use CompletableFuture to wait for completion to ensure proper cleanup
-                try {
-                    vertx.close().toCompletionStage().toCompletableFuture()
-                        .get(5, java.util.concurrent.TimeUnit.SECONDS);
-                } catch (Exception e) {
-                    // Log but don't throw - best effort cleanup
+    CompletableFuture<Void> closeAsync() {
+        return CompletableFuture.runAsync(() -> {
+            synchronized (lock) {
+                if (authenticatedGrpcClient != null) {
+                    authenticatedGrpcClient.close();
+                }
+                if (grpcClient != null) {
+                    grpcClient.close();
                 }
             }
+        }).thenCompose(v -> {
+            if (vertx != null && closeVertx) {
+                // Return async Vertx close - no blocking!
+                return vertx.close().toCompletionStage().toCompletableFuture();
+            } else {
+                return CompletableFuture.completedFuture(null);
+            }
+        });
+    }
+
+    void close() {
+        try {
+            closeAsync().get(15, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            LOG.warn("Timeout waiting for ConnectionManager to close");
+        } catch (Exception e) {
+            LOG.error("Error closing ConnectionManager", e);
         }
     }
 

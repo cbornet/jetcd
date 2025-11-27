@@ -221,10 +221,27 @@ public interface Watch extends CloseableClient {
 
     interface Watcher extends Closeable {
         /**
-         * closes this watcher and all its resources.
+         * Asynchronously closes this watcher and all its resources.
+         *
+         * @return CompletableFuture that completes when watcher is fully closed
+         */
+        java.util.concurrent.CompletableFuture<Void> closeAsync();
+
+        /**
+         * Synchronously closes this watcher and all its resources.
+         * This is a blocking operation that delegates to {@link #closeAsync()} with a timeout.
          */
         @Override
-        void close();
+        default void close() {
+            try {
+                closeAsync().get(10, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (java.util.concurrent.TimeoutException e) {
+                // Log warning but don't throw - best effort cleanup
+            } catch (Exception e) {
+                // Wrap in unchecked exception
+                throw new RuntimeException("Failed to close watcher", e);
+            }
+        }
 
         /**
          * Returns if watcher is already closed

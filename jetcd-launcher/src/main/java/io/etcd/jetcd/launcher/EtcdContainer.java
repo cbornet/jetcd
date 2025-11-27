@@ -169,7 +169,9 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
 
         withExposedPorts(Etcd.ETCD_PEER_PORT, Etcd.ETCD_CLIENT_PORT);
         withNetworkAliases(node);
-        withLogConsumer(new Slf4jLogConsumer(LOGGER).withPrefix(node));
+        if (this.debug) {
+            withLogConsumer(new Slf4jLogConsumer(LOGGER).withPrefix(node));
+        }
         withCommand(createCommand());
         withEnv("ETCD_LOG_LEVEL", this.debug ? "debug" : "info");
         withEnv("ETCD_LOGGER", "zap");

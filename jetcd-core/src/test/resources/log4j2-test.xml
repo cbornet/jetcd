@@ -31,6 +31,8 @@
     <Logger name="io.etcd.jetcd.launcher.EtcdCluster" level="INFO"/>
     <Logger name="io.etcd.jetcd.launcher.EtcdContainer" level="INFO"/>
     <Logger name="io.etcd" level="INFO"/>
+    <Logger name="io.vertx" level="DEBUG"/>
+    <Logger name="io.net" level="DEBUG"/>
 
     <!-- main logger -->
     <Root level="INFO">

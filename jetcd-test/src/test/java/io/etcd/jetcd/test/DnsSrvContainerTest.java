@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Timeout;
 
 import io.etcd.jetcd.launcher.EtcdContainer;
 import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
 import io.vertx.core.dns.DnsClient;
 import io.vertx.core.dns.DnsClientOptions;
 import io.vertx.core.dns.SrvRecord;
@@ -77,7 +78,13 @@ public class DnsSrvContainerTest {
 
     @Test
     public void testDnsSrvRecordResolution() throws Exception {
-        Vertx vertx = Vertx.vertx();
+        // Note: Vert.x's built-in blocked thread checker is enabled by default.
+        // If event loop is blocked > 2 seconds, it will log to stderr with:
+        //   - Thread name and ID
+        //   - How long blocked (in ms)
+        //   - Full stack trace showing what's blocking
+        // This information helps debug blocking operations during tests.
+        Vertx vertx = Vertx.vertx(new VertxOptions().setUseDaemonThread(true));
         DnsClient dnsClient = vertx.createDnsClient(
             new DnsClientOptions()
                 .setHost(LOCALHOST)
@@ -110,12 +117,23 @@ public class DnsSrvContainerTest {
         assertThat(record.priority()).isEqualTo(0);
         assertThat(record.weight()).isEqualTo(0);
 
-        vertx.close();
+        try {
+            vertx.close().toCompletionStage().toCompletableFuture()
+                .get(5, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            // Log but don't fail test - best effort cleanup
+        }
     }
 
     @Test
     public void testDnsSrvRecordTTL() throws Exception {
-        Vertx vertx = Vertx.vertx();
+        // Note: Vert.x's built-in blocked thread checker is enabled by default.
+        // If event loop is blocked > 2 seconds, it will log to stderr with:
+        //   - Thread name and ID
+        //   - How long blocked (in ms)
+        //   - Full stack trace showing what's blocking
+        // This information helps debug blocking operations during tests.
+        Vertx vertx = Vertx.vertx(new VertxOptions().setUseDaemonThread(true));
         DnsClient dnsClient = vertx.createDnsClient(
             new DnsClientOptions()
                 .setHost(LOCALHOST)
@@ -142,6 +160,11 @@ public class DnsSrvContainerTest {
         // In production with real DNS (Route53, CloudDNS, etc.), TTL would be 60s+
         assertThat(recordTTL).isGreaterThanOrEqualTo(0);
 
-        vertx.close();
+        try {
+            vertx.close().toCompletionStage().toCompletableFuture()
+                .get(5, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            // Log but don't fail test - best effort cleanup
+        }
     }
 }

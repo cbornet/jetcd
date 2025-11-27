@@ -52,8 +52,7 @@ public final class WatcherImpl implements Watch.Watcher {
     private final WatchOption option;
     private final Watch.Listener listener;
     private final AtomicBoolean closed = new AtomicBoolean();
-    private final Object lock;
-    private final AtomicBoolean parentClosed;
+    private final Object watcherLock;  // Independent lock for this watcher
     private final ClientConnectionManager connectionManager;
     private final Vertx vertx;
     private final Runnable onClose;
@@ -67,8 +66,6 @@ public final class WatcherImpl implements Watch.Watcher {
         ByteSequence namespace,
         WatchOption option,
         Watch.Listener listener,
-        Object lock,
-        AtomicBoolean parentClosed,
         ClientConnectionManager connectionManager,
         Runnable onClose) {
         this.stream = stream;
@@ -78,8 +75,7 @@ public final class WatcherImpl implements Watch.Watcher {
         this.option = option;
         this.listener = listener;
         this.revision = option.getRevision();
-        this.lock = lock;
-        this.parentClosed = parentClosed;
+        this.watcherLock = new Object();  // Independent lock for this watcher
         this.connectionManager = connectionManager;
         this.vertx = connectionManager.vertx();
         this.onClose = onClose;
@@ -91,7 +87,7 @@ public final class WatcherImpl implements Watch.Watcher {
 
     @Override
     public boolean isClosed() {
-        return this.closed.get() || this.parentClosed.get();
+        return this.closed.get();
     }
 
     public void resume() {
@@ -131,8 +127,11 @@ public final class WatcherImpl implements Watch.Watcher {
     }
 
     @Override
-    public void close() {
-        synchronized (lock) {
+    public java.util.concurrent.CompletableFuture<Void> closeAsync() {
+        Watch.Listener callbackListener = null;
+        Runnable closeCallback = null;
+
+        synchronized (watcherLock) {  // Use independent watcherLock
             if (closed.compareAndSet(false, true)) {
                 // Cancel pending timer
                 if (pendingTimerId != null) {
@@ -140,13 +139,33 @@ public final class WatcherImpl implements Watch.Watcher {
                     pendingTimerId = null;
                 }
 
-                // Notify listener
-                listener.onCompleted();
-
-                // Notify parent (WatchImpl) to remove from list and call streamManager.onWatcherClosed
-                onClose.run();
+                // Capture callbacks to execute outside lock
+                callbackListener = listener;
+                closeCallback = onClose;
+            } else {
+                // Already closed
+                return java.util.concurrent.CompletableFuture.completedFuture(null);
             }
         }
+
+        // Execute callbacks OUTSIDE synchronized block to avoid deadlock
+        if (callbackListener != null) {
+            try {
+                callbackListener.onCompleted();
+            } catch (Exception e) {
+                LOG.warn("Error in onCompleted callback for watch_id={}", watchId, e);
+            }
+        }
+
+        if (closeCallback != null) {
+            try {
+                closeCallback.run();
+            } catch (Exception e) {
+                LOG.warn("Error in close callback for watch_id={}", watchId, e);
+            }
+        }
+
+        return java.util.concurrent.CompletableFuture.completedFuture(null);
     }
 
     @Override
@@ -160,10 +179,17 @@ public final class WatcherImpl implements Watch.Watcher {
     }
 
     public void notifyError(EtcdException error) {
-        synchronized (lock) {
+        Watch.Listener callbackListener = null;
+
+        synchronized (watcherLock) {  // Use independent watcherLock
             if (!isClosed()) {
-                listener.onError(error);
+                callbackListener = listener;  // Capture reference only
             }
+        }
+
+        // CRITICAL FIX: Invoke callback OUTSIDE lock to prevent deadlock
+        if (callbackListener != null) {
+            callbackListener.onError(error);
         }
     }
 
@@ -305,12 +331,18 @@ public final class WatcherImpl implements Watch.Watcher {
     }
 
     private void handleError(EtcdException etcdException, boolean shouldReschedule) {
-        synchronized (lock) {
+        Watch.Listener callbackListener = null;
+
+        synchronized (watcherLock) {  // Use independent watcherLock
             if (isClosed()) {
                 return;
             }
+            callbackListener = listener;  // Capture reference only
+        }
 
-            listener.onError(etcdException);
+        // CRITICAL FIX: Invoke callback OUTSIDE lock to prevent deadlock
+        if (callbackListener != null) {
+            callbackListener.onError(etcdException);
         }
 
         if (shouldReschedule) {
@@ -326,25 +358,46 @@ public final class WatcherImpl implements Watch.Watcher {
     }
 
     private void reschedule() {
-        synchronized (lock) {
-            if (isClosed()) {
-                return;
+        boolean shouldSchedule;
+
+        synchronized (watcherLock) {  // Use independent watcherLock
+            shouldSchedule = !isClosed();
+        }
+
+        if (!shouldSchedule) {
+            return;
+        }
+
+        // FIX NESTED LOCK: Schedule timer OUTSIDE lock
+        long timerId = vertx.setTimer(500, id -> {
+            boolean shouldResume;
+
+            synchronized (watcherLock) {
+                // Clear timer if it matches (prevent stale timer)
+                if (pendingTimerId != null && pendingTimerId.equals(id)) {
+                    pendingTimerId = null;
+                    shouldResume = !isClosed();
+                } else {
+                    shouldResume = false;  // Timer was cancelled
+                }
             }
 
-            pendingTimerId = vertx.setTimer(500, timerId -> {
-                synchronized (lock) {
-                    pendingTimerId = null;
-                    if (isClosed()) {
-                        return;
-                    }
-                }
-
+            if (shouldResume) {
                 try {
                     resume();
                 } catch (Exception e) {
-                    LOG.warn("scheduled resume failed for watch_id={}", watchId, e);
+                    LOG.warn("Scheduled resume failed for watch_id={}", watchId, e);
                 }
-            });
+            }
+        });
+
+        synchronized (watcherLock) {
+            if (!isClosed()) {
+                pendingTimerId = timerId;
+            } else {
+                // Closed while scheduling, cancel immediately
+                vertx.cancelTimer(timerId);
+            }
         }
     }
 }

@@ -67,21 +67,20 @@ public class WatchTokenExpireTest {
     private void setUpEnvironment() throws Exception {
         final File caFile = new File(Objects.requireNonNull(getClass().getResource("/ssl/cert/ca.pem")).toURI());
 
-        Client client = TestUtil.client(cluster)
-            .httpClientOptions(Ssl.withTrustManager(caFile)
-                .andThen(options -> options.setVerifyHost(false)))
-            .build();
+        try (Client client = TestUtil.client(cluster)
+                .httpClientOptions(Ssl.withTrustManager(caFile)
+                    .andThen(options -> options.setVerifyHost(false)))
+                .build()) {
 
-        // enable authentication to enforce usage of access token
-        ByteSequence role = TestUtil.bytesOf("root");
-        client.getAuthClient().roleAdd(role).get();
-        client.getAuthClient().userAdd(user, password).get();
-        // grant access only to given key
-        client.getAuthClient().roleGrantPermission(role, key, keyEnd, Permission.Type.READWRITE).get();
-        client.getAuthClient().userGrantRole(user, role).get();
-        client.getAuthClient().authEnable().get();
-
-        client.close();
+            // enable authentication to enforce usage of access token
+            ByteSequence role = TestUtil.bytesOf("root");
+            client.getAuthClient().roleAdd(role).get();
+            client.getAuthClient().userAdd(user, password).get();
+            // grant access only to given key
+            client.getAuthClient().roleGrantPermission(role, key, keyEnd, Permission.Type.READWRITE).get();
+            client.getAuthClient().userGrantRole(user, role).get();
+            client.getAuthClient().authEnable().get();
+        }
     }
 
     private Client createAuthClient() throws Exception {
@@ -99,51 +98,50 @@ public class WatchTokenExpireTest {
     public void testRefreshExpiredToken() throws Exception {
         setUpEnvironment();
 
-        Client authClient = createAuthClient();
-        Watch authWatchClient = authClient.getWatchClient();
-        KV authKVClient = authClient.getKVClient();
+        try (Client authClient = createAuthClient()) {
+            Watch authWatchClient = authClient.getWatchClient();
+            KV authKVClient = authClient.getKVClient();
 
-        authKVClient.put(key, TestUtil.randomByteSequence()).get(1, TimeUnit.SECONDS);
-        Thread.sleep(3000);
+            authKVClient.put(key, TestUtil.randomByteSequence()).get(1, TimeUnit.SECONDS);
+            Thread.sleep(3000);
 
-        AtomicInteger modifications = new AtomicInteger();
+            AtomicInteger modifications = new AtomicInteger();
 
-        // watch should handle token refresh automatically
-        // token is already expired when we attempt to create a watch
-        Watch.Watcher watcher = authWatchClient.watch(
-            key,
-            WatchOption.builder().withRange(keyEnd).build(),
-            response -> {
-                modifications.incrementAndGet();
-            },
-            error -> {
-                LoggerFactory.getLogger(getClass()).info(">>> {}", error.toString());
-            });
+            // watch should handle token refresh automatically
+            // token is already expired when we attempt to create a watch
+            try (Watch.Watcher watcher = authWatchClient.watch(
+                    key,
+                    WatchOption.builder().withRange(keyEnd).build(),
+                    response -> {
+                        modifications.incrementAndGet();
+                    },
+                    error -> {
+                        LoggerFactory.getLogger(getClass()).info(">>> {}", error.toString());
+                    })) {
 
-        // create single thread pool, so that tasks are executed one after another
-        ExecutorService executor = Executors.newFixedThreadPool(1);
-        List<Future<?>> futures = new ArrayList<>(2);
-        Client anotherClient = createAuthClient();
-        for (int i = 0; i < 2; ++i) {
-            futures.add(executor.submit(() -> {
-                try {
-                    // wait 3 seconds for token to expire. during the test token will be refreshed twice
-                    Thread.sleep(3000);
-                    anotherClient.getKVClient().put(key, TestUtil.randomByteSequence()).get(1, TimeUnit.SECONDS);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
+                // create single thread pool, so that tasks are executed one after another
+                ExecutorService executor = Executors.newFixedThreadPool(1);
+                List<Future<?>> futures = new ArrayList<>(2);
+                try (Client anotherClient = createAuthClient()) {
+                    for (int i = 0; i < 2; ++i) {
+                        futures.add(executor.submit(() -> {
+                            try {
+                                // wait 3 seconds for token to expire. during the test token will be refreshed twice
+                                Thread.sleep(3000);
+                                anotherClient.getKVClient().put(key, TestUtil.randomByteSequence()).get(1, TimeUnit.SECONDS);
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+                        }));
+                    }
+
+                    await().atMost(15, TimeUnit.SECONDS).untilAsserted(() -> assertThat(modifications.get()).isEqualTo(2));
+
+                    executor.shutdownNow();
+                    futures.forEach(f -> assertThat(f).isDone());
                 }
-            }));
+            }
+            authWatchClient.close();
         }
-
-        await().atMost(15, TimeUnit.SECONDS).untilAsserted(() -> assertThat(modifications.get()).isEqualTo(2));
-
-        executor.shutdownNow();
-        futures.forEach(f -> assertThat(f).isDone());
-
-        anotherClient.close();
-        watcher.close();
-        authWatchClient.close();
-        authClient.close();
     }
 }

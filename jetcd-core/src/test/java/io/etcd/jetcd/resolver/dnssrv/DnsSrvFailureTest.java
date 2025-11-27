@@ -23,6 +23,9 @@ import org.junit.jupiter.api.Test;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.resolver.ServiceResolvers;
 import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+
+import java.util.concurrent.TimeUnit;
 
 import static io.etcd.jetcd.test.EtcdConstants.LOCALHOST;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,13 +40,24 @@ public class DnsSrvFailureTest {
 
     @BeforeEach
     void setup() {
-        vertx = Vertx.vertx();
+        // Note: Vert.x's built-in blocked thread checker is enabled by default.
+        // If event loop is blocked > 2 seconds, it will log to stderr with:
+        //   - Thread name and ID
+        //   - How long blocked (in ms)
+        //   - Full stack trace showing what's blocking
+        // This information helps debug blocking operations during tests.
+        vertx = Vertx.vertx(new VertxOptions().setUseDaemonThread(true));
     }
 
     @AfterEach
     void cleanup() {
         if (vertx != null) {
-            vertx.close();
+            try {
+                vertx.close().toCompletionStage().toCompletableFuture()
+                    .get(5, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                // Log but don't throw - best effort cleanup
+            }
         }
     }
 

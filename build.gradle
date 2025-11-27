@@ -63,7 +63,7 @@ subprojects {
     }
 
     compileJava {
-        options.release = 17
+        options.release = 21
     }
 
     test {
@@ -86,7 +86,7 @@ subprojects {
 
     testlogger {
         theme = 'mocha-parallel'
-        showStandardStreams = false
+        showStandardStreams = true
     }
 
     tasks.register('allDeps', DependencyReportTask)
