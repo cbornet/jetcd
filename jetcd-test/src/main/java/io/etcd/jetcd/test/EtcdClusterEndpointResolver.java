@@ -16,8 +16,6 @@
 
 package io.etcd.jetcd.test;
 
-import java.util.stream.Collectors;
-
 import io.etcd.jetcd.launcher.EtcdCluster;
 import io.etcd.jetcd.launcher.EtcdContainer;
 import io.etcd.jetcd.resolver.AbstractServiceResolver;
@@ -25,10 +23,12 @@ import io.vertx.core.net.Address;
 import io.vertx.core.net.AddressResolver;
 import io.vertx.core.net.SocketAddress;
 
+import java.util.stream.Collectors;
+
 /**
  * An endpoint resolver for testcontainers-based etcd clusters.
  */
-public class EtcdClusterEndpointResolver extends AbstractServiceResolver {
+public class EtcdClusterEndpointResolver extends AbstractServiceResolver<SocketAddress> {
 
     private static final int DEFAULT_PORT = 2379;
     private static final String DEFAULT_HOSTNAME = "etcd-test-cluster";
@@ -70,7 +70,7 @@ public class EtcdClusterEndpointResolver extends AbstractServiceResolver {
         }
 
         // Create resolver that queries fresh endpoints on each resolution
-        AddressResolver resolver = AddressResolver.mappingResolver(ignored -> {
+        AddressResolver<SocketAddress> resolver = AddressResolver.mappingResolver(ignored -> {
             return cluster.containers().stream()
                 .map(EtcdContainer::getClientAddress)
                 .map(addr -> SocketAddress.inetSocketAddress(addr.getPort(), addr.getHostName()))
@@ -82,7 +82,7 @@ public class EtcdClusterEndpointResolver extends AbstractServiceResolver {
         return new EtcdClusterEndpointResolver(resolver, target);
     }
 
-    private EtcdClusterEndpointResolver(AddressResolver resolver, Address target) {
+    private EtcdClusterEndpointResolver(AddressResolver<SocketAddress> resolver, Address target) {
         super(resolver, target);
     }
 }

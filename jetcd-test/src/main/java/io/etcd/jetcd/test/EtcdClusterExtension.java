@@ -16,6 +16,15 @@
 
 package io.etcd.jetcd.test;
 
+import io.etcd.jetcd.launcher.Etcd;
+import io.etcd.jetcd.launcher.EtcdCluster;
+import org.junit.jupiter.api.extension.AfterAllCallback;
+import org.junit.jupiter.api.extension.AfterEachCallback;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
+import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.testcontainers.containers.Network;
+
 import java.net.URI;
 import java.util.Collection;
 import java.util.List;
@@ -24,16 +33,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import org.junit.jupiter.api.extension.AfterAllCallback;
-import org.junit.jupiter.api.extension.AfterEachCallback;
-import org.junit.jupiter.api.extension.BeforeAllCallback;
-import org.junit.jupiter.api.extension.BeforeEachCallback;
-import org.junit.jupiter.api.extension.ExtensionContext;
-import org.testcontainers.containers.Network;
-
-import io.etcd.jetcd.launcher.Etcd;
-import io.etcd.jetcd.launcher.EtcdCluster;
 
 /**
  * JUnit5 Extension to have etcd cluster in tests.
@@ -118,8 +117,7 @@ public class EtcdClusterExtension implements BeforeAllCallback, BeforeEachCallba
      * @return the etcd cluster instance, or null if not started
      */
     public EtcdCluster cluster() {
-        ClusterReference ref = CLUSTERS.get(clusterName);
-        return ref != null ? ref.cluster : null;
+        return cluster(clusterName);
     }
 
     /**
