@@ -427,11 +427,7 @@ final class WatchImpl extends Impl implements Watch {
                 return;
             }
 
-            if (handleEvents(response)) {
-                return;
-            }
-
-            return;
+            handleEvents(response);
         }
 
         private void onStreamEnded() {
