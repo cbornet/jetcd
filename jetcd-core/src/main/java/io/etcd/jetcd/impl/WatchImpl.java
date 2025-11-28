@@ -144,11 +144,13 @@ final class WatchImpl extends AbstractService implements Watch {
 
         private final AtomicBoolean closed = new AtomicBoolean();
         private final AtomicBoolean connected = new AtomicBoolean();
+        private final AtomicBoolean pendingProgressRequest = new AtomicBoolean();
 
         private volatile WriteStream<WatchRequest> writeStream;
         private volatile ReadStream<io.etcd.jetcd.api.WatchResponse> readStream;
         private volatile WatchGrpcClient grpcClient;
         private volatile Long pendingTimerId;
+        private volatile CompletableFuture<Void> reconnectFuture;
         private long revision;
 
         WatcherImpl(
@@ -192,6 +194,11 @@ final class WatchImpl extends AbstractService implements Watch {
                         pendingTimerId = null;
                     }
 
+                    if (reconnectFuture != null && !reconnectFuture.isDone()) {
+                        reconnectFuture.cancel(true);
+                        reconnectFuture = null;
+                    }
+
                     callbackListener = listener;
                     closeCallback = onClose;
                 } else {
@@ -215,7 +222,12 @@ final class WatchImpl extends AbstractService implements Watch {
 
         @Override
         public void requestProgress() {
-            if (closed.get() || !connected.get()) {
+            if (closed.get()) {
+                return;
+            }
+
+            if (!connected.get()) {
+                pendingProgressRequest.set(true);
                 return;
             }
 
@@ -228,6 +240,7 @@ final class WatchImpl extends AbstractService implements Watch {
                         Exceptions.quietly(() -> {
                             WatchProgressRequest progress = WatchProgressRequest.newBuilder().build();
                             ws.write(WatchRequest.newBuilder().setProgressRequest(progress).build());
+                            pendingProgressRequest.set(false);
                         });
                     }
                 }
@@ -271,6 +284,17 @@ final class WatchImpl extends AbstractService implements Watch {
                                 readStream.endHandler(v2 -> onStreamEnded());
                                 readStream.exceptionHandler(this::onStreamError);
                                 connected.set(true);
+                                
+                                // Send pending progress request if one was queued
+                                if (pendingProgressRequest.getAndSet(false)) {
+                                    WriteStream<WatchRequest> ws = writeStream;
+                                    if (ws != null) {
+                                        Exceptions.quietly(() -> {
+                                            WatchProgressRequest progress = WatchProgressRequest.newBuilder().build();
+                                            ws.write(WatchRequest.newBuilder().setProgressRequest(progress).build());
+                                        });
+                                    }
+                                }
                             }
                             connectionFuture.complete(null);
                         } else {
@@ -289,6 +313,7 @@ final class WatchImpl extends AbstractService implements Watch {
             // Called from event loop (during reconnect) or from close (external thread)
             // Set state
             connected.set(false);
+            pendingProgressRequest.set(false);
 
             // Capture references
             WriteStream<WatchRequest> ws = writeStream;
@@ -325,37 +350,51 @@ final class WatchImpl extends AbstractService implements Watch {
         }
 
         private void scheduleReconnect() {
-            if (closed.get()) {
-                return;
+            synchronized (watcherLock) {
+                if (closed.get()) {
+                    return;
+                }
+
+                if (reconnectFuture != null && !reconnectFuture.isDone()) {
+                    return;
+                }
+
+                RetryPolicy<Void> retryPolicy = RetryPolicy.<Void> builder()
+                    .withMaxRetries(MAX_RECONNECT_ATTEMPTS)
+                    .withBackoff(INITIAL_RECONNECT_DELAY, MAX_RECONNECT_DELAY)
+                    .onRetry(e -> {
+                        // Executed via Failsafe on Vertx scheduler - runs on event loop
+                        if (closed.get()) {
+                            return;
+                        }
+
+                        RetryContext ctx = new RetryContext(
+                            RetryContext.RetryType.RESUME,
+                            e.getAttemptCount(),
+                            MAX_RECONNECT_ATTEMPTS,
+                            null,
+                            e.getLastException());
+
+                        Exceptions.quietly(() -> listener.onRetry(ctx));
+                    })
+                    .onRetriesExceeded(e -> {
+                        if (closed.get()) {
+                            return;
+                        }
+                        EtcdException error = newEtcdException(
+                            ErrorCode.UNAVAILABLE,
+                            "Watch stream failed after " + MAX_RECONNECT_ATTEMPTS + " attempts");
+                        notifyError(error);
+                    })
+                    .build();
+
+                reconnectFuture = Failsafe.runAsync(vertx, this::reconnect, retryPolicy)
+                    .whenComplete((result, error) -> {
+                        synchronized (watcherLock) {
+                            reconnectFuture = null;
+                        }
+                    });
             }
-
-            RetryPolicy<Void> retryPolicy = RetryPolicy.<Void> builder()
-                .withMaxRetries(MAX_RECONNECT_ATTEMPTS)
-                .withBackoff(INITIAL_RECONNECT_DELAY, MAX_RECONNECT_DELAY)
-                .onRetry(e -> {
-                    // Executed via Failsafe on Vertx scheduler - runs on event loop
-                    if (closed.get()) {
-                        return;
-                    }
-
-                    RetryContext ctx = new RetryContext(
-                        RetryContext.RetryType.RESUME,
-                        e.getAttemptCount(),
-                        MAX_RECONNECT_ATTEMPTS,
-                        null,
-                        e.getLastException());
-
-                    Exceptions.quietly(() -> listener.onRetry(ctx));
-                })
-                .onRetriesExceeded(e -> {
-                    EtcdException error = newEtcdException(
-                        ErrorCode.UNAVAILABLE,
-                        "Watch stream failed after " + MAX_RECONNECT_ATTEMPTS + " attempts");
-                    notifyError(error);
-                })
-                .build();
-
-            Failsafe.runAsync(vertx, this::reconnect, retryPolicy);
         }
 
         private WatchCreateRequest buildCreateRequest() {
