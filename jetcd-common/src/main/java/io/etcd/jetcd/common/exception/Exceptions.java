@@ -45,10 +45,10 @@ public final class Exceptions {
      * Executes the given action, catching any exceptions and logging them at DEBUG level.
      * Useful for cleanup operations where exceptions should be logged but not propagated.
      *
-     * @param action the action to execute
-     * @param logger the logger to use for exception logging
+     * @param action  the action to execute
+     * @param logger  the logger to use for exception logging
      * @param message the log message pattern (supports SLF4J placeholders)
-     * @param args the log message arguments (exception will be appended automatically)
+     * @param args    the log message arguments (exception will be appended automatically)
      */
     public static void quietly(Runnable action, Logger logger, String message, Object... args) {
         try {

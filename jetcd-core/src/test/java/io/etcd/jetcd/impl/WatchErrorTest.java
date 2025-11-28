@@ -49,8 +49,8 @@ public class WatchErrorTest {
     @ValueSource(strings = { "test-namespace/", "" })
     public void testWatchOnError(String ns) {
         try (Client client = ns != null && ns.length() == 0
-                ? TestUtil.client(cluster).namespace(bytesOf(ns)).build()
-                : TestUtil.client(cluster).build()) {
+            ? TestUtil.client(cluster).namespace(bytesOf(ns)).build()
+            : TestUtil.client(cluster).build()) {
 
             final ByteSequence key = randomByteSequence();
             final List<Throwable> events = Collections.synchronizedList(new ArrayList<>());

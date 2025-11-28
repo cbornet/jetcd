@@ -67,7 +67,7 @@ public class WatchTest {
 
     static Stream<Arguments> parameters() {
         return Stream.of(
-            arguments(true),   // use namespace
+            arguments(true), // use namespace
             arguments(false)); // no namespace
     }
 
@@ -87,7 +87,7 @@ public class WatchTest {
         final AtomicReference<WatchResponse> ref = new AtomicReference<>();
 
         try (Client client = TestUtil.client(cluster).build();
-             Client nsClient = TestUtil.client(cluster).namespace(namespace).build()) {
+            Client nsClient = TestUtil.client(cluster).namespace(namespace).build()) {
 
             // From client with namespace watch for key. Since client is namespaced it should watch for namespaced key.
             try (Watcher watcher = nsClient.getWatchClient().watch(key, ref::set)) { // NOPMD - UnusedLocalVariable

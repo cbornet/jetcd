@@ -5,11 +5,11 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import io.etcd.jetcd.common.vertx.Failsafe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
+import io.etcd.jetcd.common.vertx.Failsafe;
 import io.etcd.jetcd.support.Errors;
 import io.vertx.core.Future;
 import io.vertx.grpc.client.InvalidStatusException;

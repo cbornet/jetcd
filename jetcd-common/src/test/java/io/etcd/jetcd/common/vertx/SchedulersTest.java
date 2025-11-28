@@ -16,20 +16,22 @@
 
 package io.etcd.jetcd.common.vertx;
 
-import dev.failsafe.RetryPolicy;
-import dev.failsafe.spi.Scheduler;
-import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+
+import dev.failsafe.RetryPolicy;
+import dev.failsafe.spi.Scheduler;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

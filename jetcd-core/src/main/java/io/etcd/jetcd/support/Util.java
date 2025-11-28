@@ -16,12 +16,6 @@
 
 package io.etcd.jetcd.support;
 
-import com.google.protobuf.ByteString;
-import io.etcd.jetcd.ByteSequence;
-import io.etcd.jetcd.Constants;
-import io.vertx.core.Future;
-import io.vertx.core.net.SocketAddress;
-
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
@@ -30,6 +24,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.stream.Collectors;
+
+import io.etcd.jetcd.ByteSequence;
+import io.etcd.jetcd.Constants;
+import io.vertx.core.Future;
+import io.vertx.core.net.SocketAddress;
+
+import com.google.protobuf.ByteString;
 
 public final class Util {
 

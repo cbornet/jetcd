@@ -36,8 +36,8 @@ import io.etcd.jetcd.Client;
 import io.etcd.jetcd.KV;
 import io.etcd.jetcd.Watch;
 import io.etcd.jetcd.auth.Permission;
-import io.etcd.jetcd.options.WatchOption;
 import io.etcd.jetcd.common.vertx.Ssl;
+import io.etcd.jetcd.options.WatchOption;
 import io.etcd.jetcd.test.EtcdClusterExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -68,9 +68,9 @@ public class WatchTokenExpireTest {
         final File caFile = new File(Objects.requireNonNull(getClass().getResource("/ssl/cert/ca.pem")).toURI());
 
         try (Client client = TestUtil.client(cluster)
-                .httpClientOptions(Ssl.withTrustManager(caFile)
-                    .andThen(options -> options.setVerifyHost(false)))
-                .build()) {
+            .httpClientOptions(Ssl.withTrustManager(caFile)
+                .andThen(options -> options.setVerifyHost(false)))
+            .build()) {
 
             // enable authentication to enforce usage of access token
             ByteSequence role = TestUtil.bytesOf("root");
@@ -110,14 +110,14 @@ public class WatchTokenExpireTest {
             // watch should handle token refresh automatically
             // token is already expired when we attempt to create a watch
             try (Watch.Watcher watcher = authWatchClient.watch(
-                    key,
-                    WatchOption.builder().withRange(keyEnd).build(),
-                    response -> {
-                        modifications.incrementAndGet();
-                    },
-                    error -> {
-                        LoggerFactory.getLogger(getClass()).info(">>> {}", error.toString());
-                    })) {
+                key,
+                WatchOption.builder().withRange(keyEnd).build(),
+                response -> {
+                    modifications.incrementAndGet();
+                },
+                error -> {
+                    LoggerFactory.getLogger(getClass()).info(">>> {}", error.toString());
+                })) {
 
                 // create single thread pool, so that tasks are executed one after another
                 ExecutorService executor = Executors.newFixedThreadPool(1);

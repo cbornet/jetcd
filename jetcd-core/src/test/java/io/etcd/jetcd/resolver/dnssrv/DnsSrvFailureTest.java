@@ -16,6 +16,8 @@
 
 package io.etcd.jetcd.resolver.dnssrv;
 
+import java.util.concurrent.TimeUnit;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,8 +26,6 @@ import io.etcd.jetcd.Client;
 import io.etcd.jetcd.resolver.ServiceResolvers;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
-
-import java.util.concurrent.TimeUnit;
 
 import static io.etcd.jetcd.test.EtcdConstants.LOCALHOST;
 import static org.assertj.core.api.Assertions.assertThat;

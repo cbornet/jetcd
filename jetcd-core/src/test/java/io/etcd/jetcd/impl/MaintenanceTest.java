@@ -29,7 +29,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
-import org.apache.commons.io.output.NullOutputStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -100,7 +99,11 @@ public class MaintenanceTest {
 
     @Test
     public void testSnapshotChunks() throws ExecutionException, InterruptedException {
-        final Long bytes = maintenance.snapshot(NullOutputStream.INSTANCE).get();
+        final Long bytes = maintenance.snapshot(new OutputStream() {
+            @Override
+            public void write(int b) throws IOException {
+            }
+        }).get();
         final AtomicLong count = new AtomicLong();
         final CountDownLatch latcht = new CountDownLatch(1);
 

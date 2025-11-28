@@ -16,14 +16,15 @@
 
 package io.etcd.jetcd.common.vertx;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
+
+import io.vertx.core.Vertx;
+
 import dev.failsafe.RetryPolicy;
 import dev.failsafe.function.CheckedRunnable;
 import dev.failsafe.spi.DefaultScheduledFuture;
 import dev.failsafe.spi.Scheduler;
-import io.vertx.core.Vertx;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Factory for creating Failsafe {@link Scheduler} instances that execute on the Vert.x event loop.
@@ -44,11 +45,12 @@ import java.util.concurrent.atomic.AtomicLong;
  * </ul>
  *
  * <h2>Usage with Failsafe</h2>
+ *
  * <pre>
  * Vertx vertx = Vertx.vertx();
  * Scheduler scheduler = Schedulers.vertxScheduler(vertx);
  *
- * RetryPolicy&lt;Void&gt; retryPolicy = RetryPolicy.&lt;Void&gt;builder()
+ * RetryPolicy&lt;Void&gt; retryPolicy = RetryPolicy.&lt;Void&gt; builder()
  *     .withMaxRetries(3)
  *     .withDelay(Duration.ofMillis(100))
  *     .build();
@@ -135,8 +137,6 @@ public final class Failsafe {
         };
     }
 
-
-
     /**
      * Execute an async task with retry policy on Vert.x event loop.
      * Integrates Failsafe retry logic with Vert.x scheduler for efficient async execution.
@@ -147,7 +147,7 @@ public final class Failsafe {
      */
     public static CompletableFuture<Void> runAsync(Vertx vertx, CheckedRunnable task, RetryPolicy<Void> retryPolicy) {
         return dev.failsafe.Failsafe.with(retryPolicy)
-                .with(Failsafe.vertxScheduler(vertx))
-                .runAsync(task);
+            .with(Failsafe.vertxScheduler(vertx))
+            .runAsync(task);
     }
 }

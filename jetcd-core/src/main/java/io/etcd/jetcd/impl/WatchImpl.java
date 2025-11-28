@@ -16,14 +16,8 @@
 
 package io.etcd.jetcd.impl;
 
-import java.time.Duration;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
-
+import com.google.common.base.Strings;
+import dev.failsafe.RetryPolicy;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Watch;
 import io.etcd.jetcd.api.WatchCancelRequest;
@@ -45,9 +39,12 @@ import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.WriteStream;
 import io.vertx.grpc.common.GrpcStatus;
 
-import com.google.common.base.Strings;
-
-import dev.failsafe.RetryPolicy;
+import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static io.etcd.jetcd.common.exception.ErrorCode.FAILED_PRECONDITION;
 import static io.etcd.jetcd.common.exception.ErrorCode.INTERNAL;
@@ -84,7 +81,7 @@ final class WatchImpl extends Impl implements Watch {
             option,
             listener,
             connectionManager(),
-            w -> watchers.remove(w));
+            watchers::remove);
 
         watchers.add(watcher);
         return watcher;
@@ -109,11 +106,11 @@ final class WatchImpl extends Impl implements Watch {
             return CompletableFuture.completedFuture(null);
         }
 
-        List<CompletableFuture<Void>> closeFutures = watchers.stream()
+        CompletableFuture<?>[] closeFutures = watchers.stream()
             .map(Watcher::closeAsync)
-            .collect(Collectors.toList());
+            .toArray(CompletableFuture[]::new);
 
-        return CompletableFuture.allOf(closeFutures.toArray(new CompletableFuture[0]));
+        return CompletableFuture.allOf(closeFutures);
     }
 
     @Override
@@ -123,7 +120,7 @@ final class WatchImpl extends Impl implements Watch {
         }
 
         for (Watcher watcher : watchers) {
-            Exceptions.quietly(() -> watcher.requestProgress());
+            Exceptions.quietly(watcher::requestProgress);
         }
     }
 
@@ -496,10 +493,9 @@ final class WatchImpl extends Impl implements Watch {
 
         private void updateRevisionFromEvents(io.etcd.jetcd.api.WatchResponse response) {
             if (response.getEventsCount() > 0) {
-                long eventRevision = response.getEvents(response.getEventsCount() - 1)
+                revision = response.getEvents(response.getEventsCount() - 1)
                     .getKv()
                     .getModRevision() + 1;
-                revision = eventRevision;
             }
         }
 

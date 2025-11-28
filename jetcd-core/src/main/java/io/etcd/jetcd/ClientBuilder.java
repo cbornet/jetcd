@@ -16,6 +16,14 @@
 
 package io.etcd.jetcd;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Consumer;
+
 import io.etcd.jetcd.common.Preconditions;
 import io.etcd.jetcd.common.exception.EtcdException;
 import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
@@ -25,14 +33,6 @@ import io.etcd.jetcd.resolver.ServiceResolver;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.net.endpoint.LoadBalancer;
-
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.Consumer;
 
 /**
  * ClientBuilder knows how to create a Client instance.

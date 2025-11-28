@@ -14,9 +14,9 @@ import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.KV;
 import io.etcd.jetcd.auth.Permission;
+import io.etcd.jetcd.common.vertx.Ssl;
 import io.etcd.jetcd.impl.TestUtil;
 import io.etcd.jetcd.kv.GetResponse;
-import io.etcd.jetcd.common.vertx.Ssl;
 import io.etcd.jetcd.test.EtcdClusterExtension;
 
 @Timeout(value = 30)

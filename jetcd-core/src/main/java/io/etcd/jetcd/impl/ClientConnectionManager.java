@@ -21,6 +21,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.ClientBuilder;
 import io.etcd.jetcd.resolver.ServiceResolver;
@@ -29,8 +32,6 @@ import io.vertx.core.VertxOptions;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.net.endpoint.LoadBalancer;
 import io.vertx.grpc.client.GrpcClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdException;
 
@@ -56,8 +57,8 @@ final class ClientConnectionManager {
         this.credential = new AuthCredential(this);
         this.closeVertx = builder.vertx() == null;
         this.vertx = builder.vertx() != null
-                ? builder.vertx()
-                : Vertx.vertx(new VertxOptions().setUseDaemonThread(true));
+            ? builder.vertx()
+            : Vertx.vertx(new VertxOptions().setUseDaemonThread(true));
     }
 
     GrpcClient getGrpcClient() {

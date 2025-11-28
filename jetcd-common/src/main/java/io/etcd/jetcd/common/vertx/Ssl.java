@@ -16,15 +16,15 @@
 
 package io.etcd.jetcd.common.vertx;
 
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClientOptions;
-import io.vertx.core.net.PemKeyCertOptions;
-import io.vertx.core.net.PemTrustOptions;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.function.Consumer;
+
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.net.PemKeyCertOptions;
+import io.vertx.core.net.PemTrustOptions;
 
 /**
  * SSL/TLS configuration utilities for Vert.x HttpClientOptions.

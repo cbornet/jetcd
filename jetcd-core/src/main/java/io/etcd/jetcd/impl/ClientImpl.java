@@ -16,6 +16,15 @@
 
 package io.etcd.jetcd.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.etcd.jetcd.Auth;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.ClientBuilder;
@@ -26,16 +35,8 @@ import io.etcd.jetcd.Lease;
 import io.etcd.jetcd.Lock;
 import io.etcd.jetcd.Maintenance;
 import io.etcd.jetcd.Watch;
-import io.etcd.jetcd.common.suppliers.Suppliers;
 import io.etcd.jetcd.common.suppliers.CloseableSupplier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import io.etcd.jetcd.common.suppliers.Suppliers;
 
 /**
  * Etcd Client.
