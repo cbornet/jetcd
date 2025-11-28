@@ -99,8 +99,7 @@ final class WatchImpl extends Impl implements Watch {
                 CompletableFuture<?> f = CompletableFuture.allOf(
                     watchers.stream()
                         .map(Watcher::closeAsync)
-                        .toArray(CompletableFuture[]::new)
-                );
+                        .toArray(CompletableFuture[]::new));
 
                 f.get(15, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
@@ -180,8 +179,8 @@ final class WatchImpl extends Impl implements Watch {
 
         @Override
         public CompletableFuture<Void> closeAsync() {
-            Watch.Listener callbackListener = null;
-            java.util.function.Consumer<WatcherImpl> closeCallback = null;
+            final Watch.Listener callbackListener;
+            final java.util.function.Consumer<WatcherImpl> closeCallback;
 
             synchronized (watcherLock) {
                 if (closed.compareAndSet(false, true)) {
@@ -201,13 +200,11 @@ final class WatchImpl extends Impl implements Watch {
             disconnect();
 
             if (callbackListener != null) {
-                Watch.Listener finalListener = callbackListener;
-                Exceptions.quietly(finalListener::onCompleted);
+                Exceptions.quietly(callbackListener::onCompleted);
             }
 
             if (closeCallback != null) {
-                java.util.function.Consumer<WatcherImpl> finalCallback = closeCallback;
-                Exceptions.quietly(() -> finalCallback.accept(this));
+                Exceptions.quietly(() -> closeCallback.accept(this));
             }
 
             return CompletableFuture.completedFuture(null);
@@ -637,8 +634,7 @@ final class WatchImpl extends Impl implements Watch {
 
             return WatchGrpcClient.create(
                 connectionManager.getAuthenticatedGrpcClient(),
-                serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class)
-            );
+                serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class));
         }
     }
 }

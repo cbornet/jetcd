@@ -39,4 +39,8 @@ public interface ServiceResolver<S extends Address> {
      * @return the target address
      */
     Address getTarget();
+
+    default <T> T getTarget(Class<T> type) {
+        return type.cast(getTarget());
+    }
 }
