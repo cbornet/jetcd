@@ -30,7 +30,7 @@ import io.etcd.jetcd.support.Util;
 
 import static java.util.Objects.requireNonNull;
 
-final class LockImpl extends Impl implements Lock {
+final class LockImpl extends AbstractService implements Lock {
     private final LockGrpcClient client;
     private final ByteSequence namespace;
 
@@ -48,13 +48,13 @@ final class LockImpl extends Impl implements Lock {
     // The retry on a different server should happen automatically if the connection manager is using
     // a round robin strategy.
 
-    LockImpl(ClientConnectionManager connectionManager) {
-        super(connectionManager);
+    LockImpl(GrpcService grpcService) {
+        super(grpcService);
 
-        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = connectionManager.getServiceResolver();
-        this.client = LockGrpcClient.create(connectionManager.getAuthenticatedGrpcClient(),
+        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = grpcService.getServiceResolver();
+        this.client = LockGrpcClient.create(grpcService.getAuthenticatedGrpcClient(),
             (io.vertx.core.net.SocketAddress) serviceResolver.getTarget());
-        this.namespace = connectionManager.getNamespace();
+        this.namespace = grpcService.getNamespace();
     }
 
     @Override

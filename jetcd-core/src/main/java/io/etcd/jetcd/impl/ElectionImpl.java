@@ -41,18 +41,18 @@ import com.google.protobuf.ByteString;
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdException;
 import static java.util.Objects.requireNonNull;
 
-final class ElectionImpl extends Impl implements Election {
+final class ElectionImpl extends AbstractService implements Election {
     private final ElectionGrpcClient client;
     private final ByteSequence namespace;
 
-    ElectionImpl(ClientConnectionManager connectionManager) {
-        super(connectionManager);
+    ElectionImpl(GrpcService grpcService) {
+        super(grpcService);
 
-        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = connectionManager.getServiceResolver();
+        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = grpcService.getServiceResolver();
         this.client = ElectionGrpcClient.create(
-            connectionManager.getAuthenticatedGrpcClient(),
+            grpcService.getAuthenticatedGrpcClient(),
             (io.vertx.core.net.SocketAddress) serviceResolver.getTarget());
-        this.namespace = connectionManager.getNamespace();
+        this.namespace = grpcService.getNamespace();
     }
 
     // TODO: Add require leader support for Vert.x client

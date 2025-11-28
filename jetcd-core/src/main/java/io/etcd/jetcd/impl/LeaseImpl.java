@@ -51,7 +51,7 @@ import static java.util.Objects.requireNonNull;
 /**
  * Implementation of lease client.
  */
-final class LeaseImpl extends Impl implements Lease {
+final class LeaseImpl extends AbstractService implements Lease {
 
     /**
      * if there is no user-provided keep-alive timeout from ClientBuilder, then DEFAULT_FIRST_KEEPALIVE_TIMEOUT_MS
@@ -65,12 +65,12 @@ final class LeaseImpl extends Impl implements Lease {
     private final DeadLine deadLine;
     private volatile boolean closed;
 
-    LeaseImpl(ClientConnectionManager connectionManager) {
-        super(connectionManager);
+    LeaseImpl(GrpcService grpcService) {
+        super(grpcService);
 
-        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = connectionManager.getServiceResolver();
+        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = grpcService.getServiceResolver();
         this.client = LeaseGrpcClient.create(
-            connectionManager.getAuthenticatedGrpcClient(),
+            grpcService.getAuthenticatedGrpcClient(),
             (io.vertx.core.net.SocketAddress) serviceResolver.getTarget());
         this.keepAlives = new ConcurrentHashMap<>();
         this.keepAlive = new KeepAlive();
@@ -254,10 +254,10 @@ final class LeaseImpl extends Impl implements Lease {
                 requestStream.end();
             }
             if (this.restart != null) {
-                connectionManager().vertx().cancelTimer(this.restart);
+                grpc().vertx().cancelTimer(this.restart);
             }
             if (this.task != null) {
-                connectionManager().vertx().cancelTimer(this.task);
+                grpc().vertx().cancelTimer(this.task);
             }
         }
 
@@ -272,7 +272,7 @@ final class LeaseImpl extends Impl implements Lease {
         private void writeHandler(WriteStream<LeaseKeepAliveRequest> stream) {
             requestStream = stream;
 
-            task = connectionManager().vertx().setPeriodic(
+            task = grpc().vertx().setPeriodic(
                 0,
                 500,
                 l -> {
@@ -318,7 +318,7 @@ final class LeaseImpl extends Impl implements Lease {
 
             keepAlives.values().forEach(ka -> ka.onError(throwable));
 
-            restart = connectionManager().vertx().setTimer(
+            restart = grpc().vertx().setTimer(
                 500,
                 l -> {
                     if (isRunning()) {
@@ -339,7 +339,7 @@ final class LeaseImpl extends Impl implements Lease {
 
         @Override
         public void doStart() {
-            this.task = connectionManager().vertx().setPeriodic(
+            this.task = grpc().vertx().setPeriodic(
                 0,
                 1000,
                 l -> {
@@ -358,7 +358,7 @@ final class LeaseImpl extends Impl implements Lease {
         @Override
         public void doStop() {
             if (this.task != null) {
-                connectionManager().vertx().cancelTimer(this.task);
+                grpc().vertx().cancelTimer(this.task);
             }
         }
     }
@@ -381,8 +381,8 @@ final class LeaseImpl extends Impl implements Lease {
             this.nextKeepAlive = System.currentTimeMillis();
 
             // Use user-provided timeout if present to avoid removing KeepAlive before first response from server
-            int initialKeepAliveTimeoutMs = connectionManager().builder().keepaliveTimeout() != null
-                ? Math.toIntExact(connectionManager().builder().keepaliveTimeout().toMillis())
+            int initialKeepAliveTimeoutMs = grpc().builder().keepaliveTimeout() != null
+                ? Math.toIntExact(grpc().builder().keepaliveTimeout().toMillis())
                 : DEFAULT_FIRST_KEEPALIVE_TIMEOUT_MS;
             this.deadLine = nextKeepAlive + initialKeepAliveTimeoutMs;
 

@@ -42,18 +42,18 @@ import static java.util.Objects.requireNonNull;
 /**
  * Implementation of etcd kv client.
  */
-final class KVImpl extends Impl implements KV {
+final class KVImpl extends AbstractService implements KV {
     private final KVGrpcClient client;
     private final ByteSequence namespace;
 
-    KVImpl(ClientConnectionManager connectionManager) {
-        super(connectionManager);
+    KVImpl(GrpcService grpcService) {
+        super(grpcService);
 
-        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = connectionManager.getServiceResolver();
+        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = grpcService.getServiceResolver();
         this.client = KVGrpcClient.create(
-            connectionManager.getAuthenticatedGrpcClient(),
+            grpcService.getAuthenticatedGrpcClient(),
             (io.vertx.core.net.SocketAddress) serviceResolver.getTarget());
-        this.namespace = connectionManager.getNamespace();
+        this.namespace = grpcService.getNamespace();
     }
 
     @Override

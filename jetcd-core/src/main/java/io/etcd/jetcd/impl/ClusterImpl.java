@@ -37,16 +37,16 @@ import io.etcd.jetcd.cluster.MemberUpdateResponse;
 /**
  * Implementation of cluster client.
  */
-final class ClusterImpl extends Impl implements Cluster {
+final class ClusterImpl extends AbstractService implements Cluster {
 
     private final ClusterGrpcClient client;
 
-    ClusterImpl(ClientConnectionManager connectionManager) {
-        super(connectionManager);
+    ClusterImpl(GrpcService grpcService) {
+        super(grpcService);
 
-        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = connectionManager.getServiceResolver();
+        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = grpcService.getServiceResolver();
         this.client = ClusterGrpcClient.create(
-            connectionManager.getAuthenticatedGrpcClient(),
+            grpcService.getAuthenticatedGrpcClient(),
             (io.vertx.core.net.SocketAddress) serviceResolver.getTarget());
     }
 

@@ -16,14 +16,6 @@
 
 package io.etcd.jetcd.impl;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Function;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.ClientBuilder;
 import io.etcd.jetcd.resolver.ServiceResolver;
@@ -33,28 +25,33 @@ import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.net.endpoint.LoadBalancer;
 import io.vertx.grpc.client.GrpcClient;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
+
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdException;
 
-final class ClientConnectionManager {
-    private static final Logger LOG = LoggerFactory.getLogger(ClientConnectionManager.class);
-
+/**
+ * Manages gRPC client services and lifecycle for etcd operations.
+ * Provides access to base and authenticated gRPC clients with lazy initialization.
+ */
+final class GrpcService {
     private final Object lock;
     private final ClientBuilder builder;
-    private final AuthCredential credential;
+    private final AuthService auth;
     private final Vertx vertx;
     private final boolean closeVertx;
     private volatile GrpcClient grpcClient;
     private volatile GrpcClient authenticatedGrpcClient;
 
-    ClientConnectionManager(ClientBuilder builder) {
+    GrpcService(ClientBuilder builder) {
         this(builder, null);
     }
 
-    ClientConnectionManager(ClientBuilder builder, GrpcClient grpcClient) {
+    GrpcService(ClientBuilder builder, GrpcClient grpcClient) {
         this.lock = new Object();
         this.builder = builder;
         this.grpcClient = grpcClient;
-        this.credential = new AuthCredential(this);
+        this.auth = new AuthService(this);
         this.closeVertx = builder.vertx() == null;
         this.vertx = builder.vertx() != null
             ? builder.vertx()
@@ -83,7 +80,7 @@ final class ClientConnectionManager {
         if (authenticatedGrpcClient == null) {
             synchronized (lock) {
                 if (authenticatedGrpcClient == null) {
-                    authenticatedGrpcClient = new AuthenticatingGrpcClient(getGrpcClient(), this);
+                    authenticatedGrpcClient = auth.wrapWithAuth(getGrpcClient());
                 }
             }
         }
@@ -106,15 +103,15 @@ final class ClientConnectionManager {
         return builder;
     }
 
-    AuthCredential authCredential() {
-        return this.credential;
+    AuthService auth() {
+        return this.auth;
     }
 
     Vertx vertx() {
         return this.vertx;
     }
 
-    CompletableFuture<Void> closeAsync() {
+    CompletableFuture<Void> close() {
         return CompletableFuture.runAsync(() -> {
             synchronized (lock) {
                 if (authenticatedGrpcClient != null) {
@@ -132,16 +129,6 @@ final class ClientConnectionManager {
                 return CompletableFuture.completedFuture(null);
             }
         });
-    }
-
-    void close() {
-        try {
-            closeAsync().get(15, TimeUnit.SECONDS);
-        } catch (TimeoutException e) {
-            LOG.warn("Timeout waiting for ConnectionManager to close");
-        } catch (Exception e) {
-            LOG.error("Error closing ConnectionManager", e);
-        }
     }
 
     <R> CompletableFuture<R> withNewClient(

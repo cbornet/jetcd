@@ -36,15 +36,15 @@ import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdExceptio
 /**
  * Implementation of maintenance client.
  */
-final class MaintenanceImpl extends Impl implements Maintenance {
+final class MaintenanceImpl extends AbstractService implements Maintenance {
     private final MaintenanceGrpcClient client;
 
-    MaintenanceImpl(ClientConnectionManager connectionManager) {
-        super(connectionManager);
+    MaintenanceImpl(GrpcService grpcService) {
+        super(grpcService);
 
-        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = connectionManager.getServiceResolver();
+        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = grpcService.getServiceResolver();
         client = MaintenanceGrpcClient.create(
-            connectionManager.getAuthenticatedGrpcClient(),
+            grpcService.getAuthenticatedGrpcClient(),
             (io.vertx.core.net.SocketAddress) serviceResolver.getTarget());
     }
 

@@ -1,41 +1,47 @@
+/*
+ * Copyright 2016-2021 The jetcd authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.etcd.jetcd.impl;
+
+import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
+import io.etcd.jetcd.common.vertx.Failsafe;
+import io.etcd.jetcd.support.Errors;
+import io.vertx.core.Future;
+import io.vertx.grpc.common.GrpcStatus;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+/**
+ * Base class for service implementations providing common utilities.
+ * Handles Future to CompletableFuture conversion and retry execution with Failsafe.
+ */
+abstract class AbstractService {
+    private final GrpcService grpcService;
+    private final RetryPolicyFactory retryPolicyFactory;
 
-import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
-import io.etcd.jetcd.common.vertx.Failsafe;
-import io.etcd.jetcd.support.Errors;
-import io.vertx.core.Future;
-import io.vertx.grpc.client.InvalidStatusException;
-import io.vertx.grpc.common.GrpcStatus;
-
-import dev.failsafe.RetryPolicy;
-import dev.failsafe.RetryPolicyBuilder;
-
-import static io.etcd.jetcd.support.Errors.isAuthStoreExpired;
-import static io.etcd.jetcd.support.Errors.isInvalidTokenError;
-
-abstract class Impl {
-    private final Logger logger;
-    private final ClientConnectionManager connectionManager;
-
-    protected Impl(ClientConnectionManager connectionManager) {
-        this.connectionManager = connectionManager;
-        this.logger = LoggerFactory.getLogger(getClass());
+    protected AbstractService(GrpcService grpcService) {
+        this.grpcService = grpcService;
+        this.retryPolicyFactory = new RetryPolicyFactory(grpcService);
     }
 
-    protected ClientConnectionManager connectionManager() {
-        return this.connectionManager;
-    }
-
-    protected Logger logger() {
-        return this.logger;
+    protected GrpcService grpc() {
+        return this.grpcService;
     }
 
     /**
@@ -93,7 +99,9 @@ abstract class Impl {
         Function<S, T> resultConvert,
         boolean autoRetry) {
 
-        return execute(supplier, resultConvert,
+        return execute(
+            supplier,
+            resultConvert,
             autoRetry ? Errors::isRetryableForSafeRedoOp : Errors::isRetryableForNoSafeRedoOp);
     }
 
@@ -113,56 +121,9 @@ abstract class Impl {
         Predicate<GrpcStatus> doRetry) {
 
         return dev.failsafe.Failsafe
-            .with(retryPolicy(doRetry))
-            .with(Failsafe.vertxScheduler(connectionManager.vertx()))
+            .with(retryPolicyFactory.createPolicy(doRetry))
+            .with(Failsafe.vertxScheduler(grpcService.vertx()))
             .getStageAsync(() -> supplier.get().toCompletionStage())
             .thenApply(resultConvert);
-    }
-
-    protected <S> RetryPolicy<S> retryPolicy(Predicate<GrpcStatus> doRetry) {
-        RetryPolicyBuilder<S> policy = RetryPolicy.<S> builder()
-            .onFailure(e -> {
-                logger.warn("retry failure (attempt: {}, error: {})",
-                    e.getAttemptCount(),
-                    e.getException() != null ? e.getException().getMessage() : "<none>");
-            })
-            .onRetry(e -> {
-                logger.debug("retry (attempt: {}, error: {})",
-                    e.getAttemptCount(),
-                    e.getLastException() != null ? e.getLastException().getMessage() : "<none>");
-            })
-            .onRetriesExceeded(e -> {
-                logger.warn("maximum number of auto retries reached (attempt: {}, error: {})",
-                    e.getAttemptCount(),
-                    e.getException() != null ? e.getException().getMessage() : "<none>");
-            })
-            .handleIf(throwable -> {
-                GrpcStatus status = getGrpcStatus(throwable);
-                if (isInvalidTokenError(status)) {
-                    connectionManager.authCredential().refresh();
-                }
-                if (isAuthStoreExpired(status)) {
-                    connectionManager.authCredential().refresh();
-                }
-                return doRetry.test(status);
-            })
-            .withMaxRetries(connectionManager.builder().retryMaxAttempts())
-            .withBackoff(
-                connectionManager.builder().retryDelay(),
-                connectionManager.builder().retryMaxDelay(),
-                connectionManager.builder().retryChronoUnit());
-
-        if (connectionManager.builder().retryMaxDuration() != null) {
-            policy = policy.withMaxDuration(connectionManager.builder().retryMaxDuration());
-        }
-
-        return policy.build();
-    }
-
-    private GrpcStatus getGrpcStatus(Throwable throwable) {
-        if (throwable instanceof InvalidStatusException invalidStatusException) {
-            return invalidStatusException.actualStatus();
-        }
-        return GrpcStatus.UNKNOWN;
     }
 }

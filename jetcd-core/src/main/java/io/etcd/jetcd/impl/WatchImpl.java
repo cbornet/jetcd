@@ -59,18 +59,18 @@ import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdExceptio
 /**
  * Watch implementation where each watcher manages its own dedicated gRPC stream.
  */
-final class WatchImpl extends Impl implements Watch {
+final class WatchImpl extends AbstractService implements Watch {
     private static final Duration CLOSE_TIMEOUT = Duration.ofSeconds(15);
 
     private final AtomicBoolean closed;
     private final List<Watcher> watchers;
     private final ByteSequence namespace;
 
-    WatchImpl(ClientConnectionManager connectionManager) {
-        super(connectionManager);
+    WatchImpl(GrpcService grpcService) {
+        super(grpcService);
         this.closed = new AtomicBoolean();
         this.watchers = new CopyOnWriteArrayList<>();
-        this.namespace = connectionManager.getNamespace();
+        this.namespace = grpcService.getNamespace();
     }
 
     @Override
@@ -84,7 +84,7 @@ final class WatchImpl extends Impl implements Watch {
             namespace,
             option,
             listener,
-            connectionManager(),
+            grpc(),
             watchers::remove);
 
         watchers.add(watcher);
@@ -137,7 +137,7 @@ final class WatchImpl extends Impl implements Watch {
         private final ByteSequence namespace;
         private final WatchOption option;
         private final Watch.Listener listener;
-        private final ClientConnectionManager connectionManager;
+        private final GrpcService grpcService;
         private final Vertx vertx;
         private final java.util.function.Consumer<WatcherImpl> onClose;
         private final Object watcherLock;
@@ -156,7 +156,7 @@ final class WatchImpl extends Impl implements Watch {
             ByteSequence namespace,
             WatchOption option,
             Watch.Listener listener,
-            ClientConnectionManager connectionManager,
+            GrpcService grpcService,
             java.util.function.Consumer<WatcherImpl> onClose) {
 
             this.key = key;
@@ -164,8 +164,8 @@ final class WatchImpl extends Impl implements Watch {
             this.option = option;
             this.listener = listener;
             this.revision = option.getRevision();
-            this.connectionManager = connectionManager;
-            this.vertx = connectionManager.vertx();
+            this.grpcService = grpcService;
+            this.vertx = grpcService.vertx();
             this.onClose = onClose;
             this.watcherLock = new Object();
 
@@ -495,7 +495,7 @@ final class WatchImpl extends Impl implements Watch {
             }
 
             if (Errors.isAuthenticationError(cancelReason)) {
-                connectionManager.authCredential().refresh();
+                grpcService.auth().refreshToken();
                 handleError(toEtcdException(GrpcStatus.CANCELLED), true);
                 return true;
             }
@@ -574,7 +574,7 @@ final class WatchImpl extends Impl implements Watch {
 
             if (shouldReschedule) {
                 if (Errors.isPermissionDenied(etcdException.getMessage())) {
-                    connectionManager.authCredential().refresh();
+                    grpcService.auth().refreshToken();
                 }
 
                 reschedule();
@@ -608,10 +608,10 @@ final class WatchImpl extends Impl implements Watch {
         }
 
         private WatchGrpcClient createWatchClient() {
-            ServiceResolver<?> serviceResolver = connectionManager.getServiceResolver();
+            ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();
 
             return WatchGrpcClient.create(
-                connectionManager.getAuthenticatedGrpcClient(),
+                grpcService.getAuthenticatedGrpcClient(),
                 serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class));
         }
     }

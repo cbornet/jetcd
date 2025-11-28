@@ -16,15 +16,6 @@
 
 package io.etcd.jetcd.impl;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.etcd.jetcd.Auth;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.ClientBuilder;
@@ -37,6 +28,14 @@ import io.etcd.jetcd.Maintenance;
 import io.etcd.jetcd.Watch;
 import io.etcd.jetcd.common.suppliers.CloseableSupplier;
 import io.etcd.jetcd.common.suppliers.Suppliers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Etcd Client.
@@ -44,7 +43,7 @@ import io.etcd.jetcd.common.suppliers.Suppliers;
 public final class ClientImpl implements Client {
     private static final Logger LOG = LoggerFactory.getLogger(ClientImpl.class);
 
-    private final ClientConnectionManager connectionManager;
+    private final GrpcService grpcService;
     private final CloseableSupplier<KV> kvClient;
     private final CloseableSupplier<Auth> authClient;
     private final CloseableSupplier<Maintenance> maintenanceClient;
@@ -55,15 +54,15 @@ public final class ClientImpl implements Client {
     private final CloseableSupplier<Election> electionClient;
 
     public ClientImpl(ClientBuilder clientBuilder) {
-        this.connectionManager = new ClientConnectionManager(clientBuilder.copy());
-        this.kvClient = Suppliers.memoizingCloseable(() -> new KVImpl(this.connectionManager));
-        this.authClient = Suppliers.memoizingCloseable(() -> new AuthImpl(this.connectionManager));
-        this.maintenanceClient = Suppliers.memoizingCloseable(() -> new MaintenanceImpl(this.connectionManager));
-        this.clusterClient = Suppliers.memoizingCloseable(() -> new ClusterImpl(this.connectionManager));
-        this.leaseClient = Suppliers.memoizingCloseable(() -> new LeaseImpl(this.connectionManager));
-        this.watchClient = Suppliers.memoizingCloseable(() -> new WatchImpl(this.connectionManager));
-        this.lockClient = Suppliers.memoizingCloseable(() -> new LockImpl(this.connectionManager));
-        this.electionClient = Suppliers.memoizingCloseable(() -> new ElectionImpl(this.connectionManager));
+        this.grpcService = new GrpcService(clientBuilder.copy());
+        this.kvClient = Suppliers.memoizingCloseable(() -> new KVImpl(this.grpcService));
+        this.authClient = Suppliers.memoizingCloseable(() -> new AuthImpl(this.grpcService));
+        this.maintenanceClient = Suppliers.memoizingCloseable(() -> new MaintenanceImpl(this.grpcService));
+        this.clusterClient = Suppliers.memoizingCloseable(() -> new ClusterImpl(this.grpcService));
+        this.leaseClient = Suppliers.memoizingCloseable(() -> new LeaseImpl(this.grpcService));
+        this.watchClient = Suppliers.memoizingCloseable(() -> new WatchImpl(this.grpcService));
+        this.lockClient = Suppliers.memoizingCloseable(() -> new LockImpl(this.grpcService));
+        this.electionClient = Suppliers.memoizingCloseable(() -> new ElectionImpl(this.grpcService));
     }
 
     @Override
@@ -112,7 +111,14 @@ public final class ClientImpl implements Client {
             closeAsync().get(15, TimeUnit.SECONDS);
         } catch (TimeoutException e) {
             LOG.warn("Timeout waiting for Client to close, forcing shutdown");
-            connectionManager.close();
+        } catch (Exception e) {
+            LOG.error("Error closing Client", e);
+        }
+
+        try {
+            grpcService.close().get(15, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            LOG.warn("Timeout waiting for GrpcService to close, forcing shutdown");
         } catch (Exception e) {
             LOG.error("Error closing Client", e);
         }
@@ -132,13 +138,13 @@ public final class ClientImpl implements Client {
         closeFutures.add(closeClientSupplier(lockClient, "lockClient"));
         closeFutures.add(closeClientSupplier(electionClient, "electionClient"));
 
-        // After all clients close, close connection manager
+        // After all clients close, close GrpcService
         return CompletableFuture.allOf(closeFutures.toArray(new CompletableFuture[0]))
             .whenComplete((v, error) -> {
                 try {
-                    connectionManager.closeAsync().get(10, TimeUnit.SECONDS);
+                    grpcService.close().get(10, TimeUnit.SECONDS);
                 } catch (Exception e) {
-                    LOG.error("Error closing connectionManager", e);
+                    LOG.error("Error closing grpcService", e);
                 }
             });
     }

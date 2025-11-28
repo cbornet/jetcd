@@ -71,16 +71,16 @@ public class ClientBuilderTest {
     public void testDefaultNamespace() throws URISyntaxException {
         // test default namespace setting
         final ClientBuilder builder = Client.builder("http://127.0.0.1:2379");
-        final ClientConnectionManager connectionManager = new ClientConnectionManager(builder);
-        assertThat(connectionManager.getNamespace()).isEqualTo(ByteSequence.EMPTY);
+        final GrpcService grpcService = new GrpcService(builder);
+        assertThat(grpcService.getNamespace()).isEqualTo(ByteSequence.EMPTY);
     }
 
     @ParameterizedTest
     @MethodSource("namespaceProvider")
     public void testNamespace(ByteSequence namespaceSetting, ByteSequence expectedNamespace) throws URISyntaxException {
         final ClientBuilder builder = Client.builder("http://127.0.0.1:2379").namespace(namespaceSetting);
-        final ClientConnectionManager connectionManager = new ClientConnectionManager(builder);
-        assertThat(connectionManager.getNamespace()).isEqualTo(expectedNamespace);
+        final GrpcService grpcService = new GrpcService(builder);
+        assertThat(grpcService.getNamespace()).isEqualTo(expectedNamespace);
     }
 
     @Test
@@ -156,7 +156,7 @@ public class ClientBuilderTest {
     public void testLoadBalancer_DefaultNull() throws URISyntaxException {
         ClientBuilder builder = Client.builder("http://127.0.0.1:2379");
 
-        // Verify default is null when not specified (ClientConnectionManager will default to ROUND_ROBIN)
+        // Verify default is null when not specified (GrpcService will default to ROUND_ROBIN)
         assertThat(builder.loadBalancer()).isNull();
     }
 

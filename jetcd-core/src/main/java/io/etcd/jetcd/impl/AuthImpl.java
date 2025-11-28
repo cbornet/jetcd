@@ -60,16 +60,16 @@ import static java.util.Objects.requireNonNull;
 /**
  * Implementation of etcd auth client.
  */
-final class AuthImpl extends Impl implements Auth {
+final class AuthImpl extends AbstractService implements Auth {
 
     private final AuthGrpcClient client;
 
-    AuthImpl(ClientConnectionManager connectionManager) {
-        super(connectionManager);
+    AuthImpl(GrpcService grpcService) {
+        super(grpcService);
 
-        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = connectionManager.getServiceResolver();
+        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = grpcService.getServiceResolver();
         this.client = AuthGrpcClient.create(
-            connectionManager.getAuthenticatedGrpcClient(),
+            grpcService.getAuthenticatedGrpcClient(),
             (io.vertx.core.net.SocketAddress) serviceResolver.getTarget());
     }
 
