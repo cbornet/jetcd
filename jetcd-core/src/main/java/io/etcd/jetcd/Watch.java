@@ -16,13 +16,14 @@
 
 package io.etcd.jetcd;
 
-import java.io.Closeable;
-import java.util.function.Consumer;
-
 import io.etcd.jetcd.common.exception.ClosedClientException;
 import io.etcd.jetcd.options.WatchOption;
 import io.etcd.jetcd.support.CloseableClient;
+import io.etcd.jetcd.watch.RetryContext;
 import io.etcd.jetcd.watch.WatchResponse;
+
+import java.io.Closeable;
+import java.util.function.Consumer;
 
 /**
  * Interface of the watch client.
@@ -217,6 +218,16 @@ public interface Watch extends CloseableClient {
          * Invoked on completion.
          */
         void onCompleted();
+
+        /**
+         * Invoked when a retry attempt is about to occur.
+         * This allows applications to monitor retry behavior and implement custom handling.
+         *
+         * @param context information about the retry attempt
+         */
+        default void onRetry(RetryContext context) {
+            // Default no-op implementation for backward compatibility
+        }
     }
 
     interface Watcher extends Closeable {
