@@ -32,6 +32,7 @@ import io.etcd.jetcd.common.vertx.Failsafe;
 import io.etcd.jetcd.options.OptionsUtil;
 import io.etcd.jetcd.options.WatchOption;
 import io.etcd.jetcd.resolver.ServiceResolver;
+import io.etcd.jetcd.support.Errors;
 import io.etcd.jetcd.support.Util;
 import io.etcd.jetcd.watch.RetryContext;
 import io.etcd.jetcd.watch.WatchResponse;
@@ -59,6 +60,8 @@ import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdExceptio
  * Watch implementation where each watcher manages its own dedicated gRPC stream.
  */
 final class WatchImpl extends Impl implements Watch {
+    private static final Duration CLOSE_TIMEOUT = Duration.ofSeconds(15);
+
     private final AtomicBoolean closed;
     private final List<Watcher> watchers;
     private final ByteSequence namespace;
@@ -101,7 +104,7 @@ final class WatchImpl extends Impl implements Watch {
                         .map(Watcher::closeAsync)
                         .toArray(CompletableFuture[]::new));
 
-                f.get(15, TimeUnit.SECONDS);
+                f.get(CLOSE_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new RuntimeException(e);
@@ -127,8 +130,8 @@ final class WatchImpl extends Impl implements Watch {
      */
     private static final class WatcherImpl implements Watch.Watcher {
         private static final int MAX_RECONNECT_ATTEMPTS = 10;
-        private static final long INITIAL_RECONNECT_DELAY_MS = 500;
-        private static final long MAX_RECONNECT_DELAY_MS = 30000;
+        private static final Duration INITIAL_RECONNECT_DELAY = Duration.ofMillis(500);
+        private static final Duration MAX_RECONNECT_DELAY = Duration.ofSeconds(30);
 
         private final ByteSequence key;
         private final ByteSequence namespace;
@@ -330,7 +333,7 @@ final class WatchImpl extends Impl implements Watch {
 
             RetryPolicy<Void> retryPolicy = RetryPolicy.<Void> builder()
                 .withMaxRetries(MAX_RECONNECT_ATTEMPTS)
-                .withBackoff(Duration.ofMillis(INITIAL_RECONNECT_DELAY_MS), Duration.ofMillis(MAX_RECONNECT_DELAY_MS))
+                .withBackoff(INITIAL_RECONNECT_DELAY, MAX_RECONNECT_DELAY)
                 .onRetry(e -> {
                     RetryContext ctx = new RetryContext(
                         RetryContext.RetryType.RESUME,
@@ -424,7 +427,11 @@ final class WatchImpl extends Impl implements Watch {
                 return;
             }
 
-            handleEvents(response);
+            if (handleEvents(response)) {
+                return;
+            }
+
+            return;
         }
 
         private void onStreamEnded() {
@@ -505,9 +512,7 @@ final class WatchImpl extends Impl implements Watch {
                 return false;
             }
 
-            if (cancelReason.contains("etcdserver: permission denied") ||
-                cancelReason.contains("etcdserver: invalid auth token")) {
-
+            if (Errors.isAuthenticationError(cancelReason)) {
                 connectionManager.authCredential().refresh();
                 handleError(toEtcdException(GrpcStatus.CANCELLED), true);
                 return true;
@@ -586,7 +591,7 @@ final class WatchImpl extends Impl implements Watch {
             notifyError(etcdException);
 
             if (shouldReschedule) {
-                if (etcdException.getMessage().contains("etcdserver: permission denied")) {
+                if (Errors.isPermissionDenied(etcdException.getMessage())) {
                     connectionManager.authCredential().refresh();
                 }
 
@@ -603,7 +608,7 @@ final class WatchImpl extends Impl implements Watch {
                 }
             }
 
-            long timerId = vertx.setTimer(500, id -> {
+            long timerId = vertx.setTimer(INITIAL_RECONNECT_DELAY.toMillis(), id -> {
                 boolean shouldResume;
 
                 synchronized (watcherLock) {
@@ -616,7 +621,7 @@ final class WatchImpl extends Impl implements Watch {
                 }
 
                 if (shouldResume) {
-                    Exceptions.quietly(() -> reconnect());
+                    Exceptions.quietly(this::reconnect);
                 }
             });
 
