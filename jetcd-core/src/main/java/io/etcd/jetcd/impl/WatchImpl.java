@@ -31,6 +31,7 @@ import io.etcd.jetcd.common.exception.Exceptions;
 import io.etcd.jetcd.common.vertx.Failsafe;
 import io.etcd.jetcd.options.OptionsUtil;
 import io.etcd.jetcd.options.WatchOption;
+import io.etcd.jetcd.resolver.ServiceResolver;
 import io.etcd.jetcd.support.Util;
 import io.etcd.jetcd.watch.RetryContext;
 import io.etcd.jetcd.watch.WatchResponse;
@@ -89,9 +90,19 @@ final class WatchImpl extends Impl implements Watch {
 
     @Override
     public void close() {
+        if (!closed.compareAndSet(false, true)) {
+            return;
+        }
+
         Exceptions.quietly(() -> {
             try {
-                closeAsync().get(15, TimeUnit.SECONDS);
+                CompletableFuture<?> f = CompletableFuture.allOf(
+                    watchers.stream()
+                        .map(Watcher::closeAsync)
+                        .toArray(CompletableFuture[]::new)
+                );
+
+                f.get(15, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new RuntimeException(e);
@@ -99,18 +110,6 @@ final class WatchImpl extends Impl implements Watch {
                 throw new RuntimeException(e);
             }
         });
-    }
-
-    public CompletableFuture<Void> closeAsync() {
-        if (!closed.compareAndSet(false, true)) {
-            return CompletableFuture.completedFuture(null);
-        }
-
-        CompletableFuture<?>[] closeFutures = watchers.stream()
-            .map(Watcher::closeAsync)
-            .toArray(CompletableFuture[]::new);
-
-        return CompletableFuture.allOf(closeFutures);
     }
 
     @Override
@@ -203,7 +202,7 @@ final class WatchImpl extends Impl implements Watch {
 
             if (callbackListener != null) {
                 Watch.Listener finalListener = callbackListener;
-                Exceptions.quietly(() -> finalListener.onCompleted());
+                Exceptions.quietly(finalListener::onCompleted);
             }
 
             if (closeCallback != null) {
@@ -634,11 +633,12 @@ final class WatchImpl extends Impl implements Watch {
         }
 
         private WatchGrpcClient createWatchClient() {
-            io.etcd.jetcd.resolver.ServiceResolver serviceResolver = connectionManager.getServiceResolver();
-            io.vertx.grpc.client.GrpcClient grpcClient = connectionManager.getAuthenticatedGrpcClient();
-            io.vertx.core.net.SocketAddress targetAddress = (io.vertx.core.net.SocketAddress) serviceResolver.getTarget();
+            ServiceResolver<?> serviceResolver = connectionManager.getServiceResolver();
 
-            return WatchGrpcClient.create(grpcClient, targetAddress);
+            return WatchGrpcClient.create(
+                connectionManager.getAuthenticatedGrpcClient(),
+                serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class)
+            );
         }
     }
 }
