@@ -21,13 +21,8 @@ dependencies {
 
     api libs.slf4j
     api libs.guava
-
     api libs.junit
-    api libs.autoServiceAnnotations
-
     api "io.vertx:vertx-core:${libs.versions.vertx.get()}"
-
-    annotationProcessor libs.autoServiceProcessor
 
     testImplementation libs.assertj
 
