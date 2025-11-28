@@ -16,14 +16,14 @@
 
 package io.etcd.jetcd.test;
 
+import java.util.stream.Collectors;
+
 import io.etcd.jetcd.launcher.EtcdCluster;
 import io.etcd.jetcd.launcher.EtcdContainer;
 import io.etcd.jetcd.resolver.AbstractServiceResolver;
 import io.vertx.core.net.Address;
 import io.vertx.core.net.AddressResolver;
 import io.vertx.core.net.SocketAddress;
-
-import java.util.stream.Collectors;
 
 /**
  * An endpoint resolver for testcontainers-based etcd clusters.

@@ -21,11 +21,10 @@ import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.output.Slf4jLogConsumer;
+import org.testcontainers.containers.output.OutputFrame;
 
 import io.etcd.jetcd.launcher.EtcdCluster;
 import io.etcd.jetcd.launcher.EtcdContainer;
@@ -83,7 +82,6 @@ import static io.etcd.jetcd.test.EtcdConstants.LOCALHOST;
  * gRPC/Netty, which use the system DNS resolver instead of the custom dnsmasq instance.
  */
 public class DnsSrvContainer extends GenericContainer<DnsSrvContainer> {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DnsSrvContainer.class);
     private static final String DEFAULT_IMAGE = "andyshinn/dnsmasq:2.83";
     private static final int DEFAULT_START_PORT = 15353;
 
@@ -92,6 +90,7 @@ public class DnsSrvContainer extends GenericContainer<DnsSrvContainer> {
     private int hostPort;
     private int startPort = DEFAULT_START_PORT;
     private boolean enableLogging = true;
+    private Consumer<OutputFrame> logConsumer;
 
     /**
      * Represents a DNS SRV record configuration.
@@ -260,6 +259,18 @@ public class DnsSrvContainer extends GenericContainer<DnsSrvContainer> {
     }
 
     /**
+     * Configure the log consumer for this container.
+     *
+     * @param  logConsumer the log consumer, or null to disable logging
+     * @return             this container
+     */
+    @Override
+    public DnsSrvContainer withLogConsumer(Consumer<OutputFrame> logConsumer) {
+        this.logConsumer = logConsumer;
+        return self();
+    }
+
+    /**
      * Returns the DNS port that the container is bound to on the host.
      *
      * @return                       the DNS port number
@@ -302,7 +313,9 @@ public class DnsSrvContainer extends GenericContainer<DnsSrvContainer> {
         }
 
         withCommand(command.toArray(new String[0]));
-        withLogConsumer(new Slf4jLogConsumer(LOGGER).withPrefix("dnsmasq"));
+        if (logConsumer != null) {
+            withLogConsumer(logConsumer);
+        }
 
         hostPort = findAvailablePort(startPort);
 

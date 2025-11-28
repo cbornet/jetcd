@@ -28,11 +28,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Network;
+import org.testcontainers.containers.output.OutputFrame;
 
 import static java.util.stream.Collectors.toList;
 
@@ -53,6 +55,7 @@ public class EtcdClusterImpl implements EtcdCluster {
         int nodes,
         boolean ssl,
         boolean debug,
+        Consumer<OutputFrame> logConsumer,
         Collection<String> additionalArgs,
         Network network,
         boolean shouldMountDataDirectory,
@@ -75,6 +78,7 @@ public class EtcdClusterImpl implements EtcdCluster {
                 .withClusterToken(clusterName)
                 .withSsl(ssl)
                 .withDebug(debug)
+                .withLogConsumer(logConsumer)
                 .withAdditionalArgs(additionalArgs)
                 .withNetwork(this.network)
                 .withShouldMountDataDirectory(shouldMountDataDirectory)

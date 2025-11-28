@@ -16,15 +16,6 @@
 
 package io.etcd.jetcd.test;
 
-import io.etcd.jetcd.launcher.Etcd;
-import io.etcd.jetcd.launcher.EtcdCluster;
-import org.junit.jupiter.api.extension.AfterAllCallback;
-import org.junit.jupiter.api.extension.AfterEachCallback;
-import org.junit.jupiter.api.extension.BeforeAllCallback;
-import org.junit.jupiter.api.extension.BeforeEachCallback;
-import org.junit.jupiter.api.extension.ExtensionContext;
-import org.testcontainers.containers.Network;
-
 import java.net.URI;
 import java.util.Collection;
 import java.util.List;
@@ -33,6 +24,18 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+
+import org.junit.jupiter.api.extension.AfterAllCallback;
+import org.junit.jupiter.api.extension.AfterEachCallback;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
+import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.testcontainers.containers.Network;
+import org.testcontainers.containers.output.OutputFrame;
+
+import io.etcd.jetcd.launcher.Etcd;
+import io.etcd.jetcd.launcher.EtcdCluster;
 
 /**
  * JUnit5 Extension to have etcd cluster in tests.
@@ -303,6 +306,17 @@ public class EtcdClusterExtension implements BeforeAllCallback, BeforeEachCallba
          */
         public Builder withDebug(boolean debug) {
             builder.withDebug(debug);
+            return this;
+        }
+
+        /**
+         * Configure the log consumer for etcd containers.
+         *
+         * @param  logConsumer the log consumer
+         * @return             this builder
+         */
+        public Builder withLogConsumer(Consumer<OutputFrame> logConsumer) {
+            builder.withLogConsumer(logConsumer);
             return this;
         }
 

@@ -16,6 +16,16 @@
 
 package io.etcd.jetcd.launcher;
 
+import com.github.dockerjava.api.command.InspectContainerResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.BindMode;
+import org.testcontainers.containers.ContainerLaunchException;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.SelinuxContext;
+import org.testcontainers.containers.output.OutputFrame;
+import org.testcontainers.containers.wait.strategy.Wait;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -32,18 +42,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.BindMode;
-import org.testcontainers.containers.ContainerLaunchException;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.SelinuxContext;
-import org.testcontainers.containers.output.Slf4jLogConsumer;
-import org.testcontainers.containers.wait.strategy.Wait;
-
-import com.github.dockerjava.api.command.InspectContainerResponse;
 
 /**
  * Testcontainer wrapper for a single etcd node.
@@ -64,6 +64,7 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
     private Collection<String> additionalArgs;
     private boolean shouldMountDataDirectory = true;
     private String user;
+    private Consumer<OutputFrame> logConsumer;
 
     /**
      * Creates a new etcd container.
@@ -102,6 +103,18 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
      */
     public EtcdContainer withDebug(boolean debug) {
         this.debug = debug;
+        return self();
+    }
+
+    /**
+     * Configure the log consumer for this container.
+     *
+     * @param  logConsumer the log consumer, or null to disable logging
+     * @return             this container
+     */
+    @Override
+    public EtcdContainer withLogConsumer(Consumer<OutputFrame> logConsumer) {
+        this.logConsumer = logConsumer;
         return self();
     }
 
@@ -169,8 +182,8 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
 
         withExposedPorts(Etcd.ETCD_PEER_PORT, Etcd.ETCD_CLIENT_PORT);
         withNetworkAliases(node);
-        if (this.debug) {
-            withLogConsumer(new Slf4jLogConsumer(LOGGER).withPrefix(node));
+        if (logConsumer != null) {
+            withLogConsumer(logConsumer);
         }
         withCommand(createCommand());
         withEnv("ETCD_LOG_LEVEL", this.debug ? "debug" : "info");

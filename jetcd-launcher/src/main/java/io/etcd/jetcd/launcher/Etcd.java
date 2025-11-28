@@ -23,8 +23,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import org.testcontainers.containers.Network;
+import org.testcontainers.containers.output.OutputFrame;
 
 import com.google.common.base.Strings;
 
@@ -109,6 +111,7 @@ public final class Etcd {
         private int nodes = 1;
         private boolean ssl = false;
         private boolean debug = false;
+        private Consumer<OutputFrame> logConsumer;
         private List<String> additionalArgs;
         private Network network;
         private boolean shouldMountDataDirectory = true;
@@ -170,6 +173,17 @@ public final class Etcd {
          */
         public Builder withDebug(boolean debug) {
             this.debug = debug;
+            return this;
+        }
+
+        /**
+         * Configure the log consumer for etcd containers.
+         *
+         * @param  logConsumer the log consumer, or null to disable logging
+         * @return             this builder
+         */
+        public Builder withLogConsumer(Consumer<OutputFrame> logConsumer) {
+            this.logConsumer = logConsumer;
             return this;
         }
 
@@ -265,6 +279,7 @@ public final class Etcd {
                 nodes,
                 ssl,
                 debug,
+                logConsumer,
                 additionalArgs,
                 network,
                 shouldMountDataDirectory,
