@@ -18,7 +18,9 @@ package io.etcd.jetcd.common.vertx;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 
 import dev.failsafe.RetryPolicy;
@@ -141,6 +143,7 @@ public final class Failsafe {
      * Execute an async task with retry policy on Vert.x event loop.
      * Integrates Failsafe retry logic with Vert.x scheduler for efficient async execution.
      *
+     * @param  vertx       the Vert.x instance
      * @param  task        the task to execute
      * @param  retryPolicy the retry policy configuration
      * @return             a CompletableFuture representing the async execution
@@ -149,5 +152,40 @@ public final class Failsafe {
         return dev.failsafe.Failsafe.with(retryPolicy)
             .with(Failsafe.vertxScheduler(vertx))
             .runAsync(task);
+    }
+
+    /**
+     * Execute a pipeline of async steps with retry policy on Vert.x event loop.
+     * Each step is a supplier that returns a Vert.x Future. Steps are composed sequentially
+     * and the entire pipeline is protected by the retry policy.
+     *
+     * <p>Example usage:</p>
+     * <pre>
+     * Failsafe.pipeline(vertx, retryPolicy,
+     *     this::disconnect,
+     *     this::connect
+     * ).whenComplete((r, e) -> { ... });
+     * </pre>
+     *
+     * @param  vertx       the Vert.x instance
+     * @param  retryPolicy the retry policy configuration
+     * @param  steps       the pipeline steps to execute sequentially
+     * @return             a CompletableFuture representing the pipeline execution
+     */
+    @SafeVarargs
+    public static CompletableFuture<Void> pipeline(
+            Vertx vertx,
+            RetryPolicy<Void> retryPolicy,
+            Supplier<Future<Void>>... steps) {
+
+        return dev.failsafe.Failsafe.with(retryPolicy)
+            .with(vertxScheduler(vertx))
+            .getStageAsync(() -> {
+                Future<Void> pipeline = Future.succeededFuture();
+                for (Supplier<Future<Void>> step : steps) {
+                    pipeline = pipeline.compose(v -> step.get());
+                }
+                return pipeline.toCompletionStage();
+            });
     }
 }

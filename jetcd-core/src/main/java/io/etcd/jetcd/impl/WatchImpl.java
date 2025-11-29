@@ -143,7 +143,6 @@ final class WatchImpl extends AbstractService implements Watch {
         private final AtomicBoolean pendingProgressRequest = new AtomicBoolean();
 
         private volatile WatchStream watchStream;
-        private volatile Long pendingTimerId;
         private volatile CompletableFuture<Void> reconnectFuture;
         private long revision;
 
@@ -180,11 +179,6 @@ final class WatchImpl extends AbstractService implements Watch {
 
             synchronized (watcherLock) {
                 if (closed.compareAndSet(false, true)) {
-                    if (pendingTimerId != null) {
-                        Exceptions.quietly(() -> vertx.cancelTimer(pendingTimerId));
-                        pendingTimerId = null;
-                    }
-
                     if (reconnectFuture != null && !reconnectFuture.isDone()) {
                         reconnectFuture.cancel(true);
                         reconnectFuture = null;
@@ -267,7 +261,7 @@ final class WatchImpl extends AbstractService implements Watch {
             if (closed.get()) {
                 return;
             }
-            scheduleReconnect();
+            reconnect();
         }
 
         @Override
@@ -276,7 +270,7 @@ final class WatchImpl extends AbstractService implements Watch {
                 return;
             }
             notifyError(toEtcdException(error));
-            scheduleReconnect();
+            reconnect();
         }
 
         @Override
@@ -311,12 +305,16 @@ final class WatchImpl extends AbstractService implements Watch {
                     }
                 } else if (ar.failed() && !closed.get()) {
                     notifyError(toEtcdException(ar.cause()));
-                    scheduleReconnect();
+                    reconnect();
                 }
             });
         }
 
         private void disconnect() {
+            if (closed.get()) {
+                return;
+            }
+
             pendingProgressRequest.set(false);
 
             WatchStream ws = watchStream;
@@ -328,59 +326,44 @@ final class WatchImpl extends AbstractService implements Watch {
         }
 
         private void reconnect() {
-            if (closed.get()) {
-                return;
-            }
+            synchronized (watcherLock) {
+                if (closed.get() || (reconnectFuture != null && !reconnectFuture.isDone())) {
+                    return;
+                }
 
-            disconnect();
-            connect();
+                reconnectFuture = Failsafe.runAsync(vertx, () -> {
+                    disconnect();
+                    connect();
+                }, buildRetryPolicy()).whenComplete((result, error) -> {
+                    synchronized (watcherLock) {
+                        reconnectFuture = null;
+                    }
+                });
+            }
         }
 
-        private void scheduleReconnect() {
-            synchronized (watcherLock) {
-                if (closed.get()) {
-                    return;
-                }
-
-                if (reconnectFuture != null && !reconnectFuture.isDone()) {
-                    return;
-                }
-
-                RetryPolicy<Void> retryPolicy = RetryPolicy.<Void> builder()
-                    .withMaxRetries(MAX_RECONNECT_ATTEMPTS)
-                    .withBackoff(INITIAL_RECONNECT_DELAY, MAX_RECONNECT_DELAY)
-                    .onRetry(e -> {
-                        if (closed.get()) {
-                            return;
-                        }
-
+        private RetryPolicy<Void> buildRetryPolicy() {
+            return RetryPolicy.<Void>builder()
+                .withMaxRetries(MAX_RECONNECT_ATTEMPTS)
+                .withBackoff(INITIAL_RECONNECT_DELAY, MAX_RECONNECT_DELAY)
+                .onRetry(e -> {
+                    if (!closed.get()) {
                         RetryContext ctx = new RetryContext(
                             RetryContext.RetryType.RESUME,
                             e.getAttemptCount(),
                             MAX_RECONNECT_ATTEMPTS,
                             null,
                             e.getLastException());
-
                         Exceptions.quietly(() -> listener.onRetry(ctx));
-                    })
-                    .onRetriesExceeded(e -> {
-                        if (closed.get()) {
-                            return;
-                        }
-                        EtcdException error = newEtcdException(
-                            ErrorCode.UNAVAILABLE,
-                            "Watch stream failed after " + MAX_RECONNECT_ATTEMPTS + " attempts");
-                        notifyError(error);
-                    })
-                    .build();
-
-                reconnectFuture = Failsafe.runAsync(vertx, this::reconnect, retryPolicy)
-                    .whenComplete((result, error) -> {
-                        synchronized (watcherLock) {
-                            reconnectFuture = null;
-                        }
-                    });
-            }
+                    }
+                })
+                .onRetriesExceeded(e -> {
+                    if (!closed.get()) {
+                        notifyError(newEtcdException(ErrorCode.UNAVAILABLE,
+                            "Watch stream failed after " + MAX_RECONNECT_ATTEMPTS + " attempts"));
+                    }
+                })
+                .build();
         }
 
         private WatchCreateRequest buildCreateRequest() {
@@ -537,38 +520,17 @@ final class WatchImpl extends AbstractService implements Watch {
             return true;
         }
 
-        private void handleError(EtcdException etcdException, boolean shouldReschedule) {
+        private void handleError(EtcdException etcdException, boolean shouldReconnect) {
             notifyError(etcdException);
 
-            if (shouldReschedule) {
+            if (shouldReconnect) {
                 if (Errors.isPermissionDenied(etcdException.getMessage())) {
                     grpcService.auth().refreshToken();
                 }
 
-                reschedule();
+                reconnect();
             } else {
                 close();
-            }
-        }
-
-        private void reschedule() {
-            if (closed.get()) {
-                return;
-            }
-
-            long timerId = vertx.setTimer(INITIAL_RECONNECT_DELAY.toMillis(), id -> {
-                if (pendingTimerId != null && pendingTimerId.equals(id)) {
-                    pendingTimerId = null;
-                    if (!closed.get()) {
-                        Exceptions.quietly(this::reconnect);
-                    }
-                }
-            });
-
-            if (!closed.get()) {
-                pendingTimerId = timerId;
-            } else {
-                Exceptions.quietly(() -> vertx.cancelTimer(timerId));
             }
         }
     }
