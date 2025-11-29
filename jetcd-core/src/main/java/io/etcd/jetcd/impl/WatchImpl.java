@@ -139,7 +139,9 @@ final class WatchImpl extends AbstractService implements Watch {
 
         // Event loop only fields (no synchronization needed)
         private boolean pendingProgressRequest;
-        private WatchStream watchStream;
+
+        // Volatile: set from constructor thread, read from event loop
+        private volatile WatchStream watchStream;
         private CompletableFuture<Void> reconnectFuture;
         private long revision;
 
@@ -163,8 +165,8 @@ final class WatchImpl extends AbstractService implements Watch {
                 option.isCreatedNotify(),
                 option.isProgressNotify());
 
-            // Dispatch connection to event loop
-            vertx.runOnContext(v -> connect());
+            // Start connection immediately (connect() is async anyway)
+            connect();
         }
 
         @Override
