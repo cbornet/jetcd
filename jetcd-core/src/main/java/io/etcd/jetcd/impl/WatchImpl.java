@@ -16,7 +16,6 @@
 
 package io.etcd.jetcd.impl;
 
-import com.google.common.base.Strings;
 import dev.failsafe.RetryPolicy;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Watch;
@@ -44,11 +43,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static io.etcd.jetcd.common.exception.ErrorCode.FAILED_PRECONDITION;
-import static io.etcd.jetcd.common.exception.ErrorCode.INTERNAL;
-import static io.etcd.jetcd.common.exception.ErrorCode.OUT_OF_RANGE;
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.newClosedWatchClientException;
-import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.newCompactedException;
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.newEtcdException;
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdException;
 
@@ -137,6 +132,7 @@ final class WatchImpl extends AbstractService implements Watch {
         private final GrpcService grpcService;
         private final Vertx vertx;
         private final java.util.function.Consumer<WatcherImpl> onClose;
+        private final WatchResponseProcessor responseProcessor;
 
         // Thread-safe flags
         private final AtomicBoolean closed = new AtomicBoolean();
@@ -165,6 +161,9 @@ final class WatchImpl extends AbstractService implements Watch {
             this.grpcService = grpcService;
             this.vertx = grpcService.vertx();
             this.onClose = onClose;
+            this.responseProcessor = new WatchResponseProcessor(
+                option.isCreatedNotify(),
+                option.isProgressNotify());
 
             connect();
         }
@@ -230,23 +229,34 @@ final class WatchImpl extends AbstractService implements Watch {
                 return;
             }
 
-            if (handleAuthError(response)) {
-                return;
-            }
+            WatchResponseProcessor.Result result = responseProcessor.process(response);
 
-            if (handleWatchCreated(response)) {
-                return;
+            switch (result) {
+                case WatchResponseProcessor.Result.AuthError() -> {
+                    grpcService.auth().refreshToken();
+                    handleError(toEtcdException(GrpcStatus.CANCELLED), true);
+                }
+                case WatchResponseProcessor.Result.Created(long rev, boolean shouldNotify) -> {
+                    updateRevision(rev);
+                    if (shouldNotify) {
+                        notifyListener(response, false);
+                    }
+                }
+                case WatchResponseProcessor.Result.Canceled(Throwable error) -> {
+                    handleError(toEtcdException(error), false);
+                }
+                case WatchResponseProcessor.Result.Progress(long rev, boolean withNamespace) -> {
+                    notifyListener(response, withNamespace);
+                    updateRevision(rev);
+                }
+                case WatchResponseProcessor.Result.Events(long newRevision) -> {
+                    notifyListener(response, true);
+                    revision = newRevision;
+                }
+                case WatchResponseProcessor.Result.Ignored() -> {
+                    // No action needed
+                }
             }
-
-            if (handleWatchCanceled(response)) {
-                return;
-            }
-
-            if (handleProgressNotify(response)) {
-                return;
-            }
-
-            handleEvents(response);
         }
 
         @Override
@@ -416,99 +426,6 @@ final class WatchImpl extends AbstractService implements Watch {
 
         private void updateRevision(long newRevision) {
             revision = Math.max(revision, newRevision);
-        }
-
-        private void updateRevisionFromEvents(io.etcd.jetcd.api.WatchResponse response) {
-            if (response.getEventsCount() > 0) {
-                revision = response.getEvents(response.getEventsCount() - 1)
-                    .getKv()
-                    .getModRevision() + 1;
-            }
-        }
-
-        private boolean handleAuthError(io.etcd.jetcd.api.WatchResponse response) {
-            if (!response.getCreated() || !response.getCanceled()) {
-                return false;
-            }
-
-            String cancelReason = response.getCancelReason();
-            if (cancelReason.isEmpty()) {
-                return false;
-            }
-
-            if (Errors.isAuthenticationError(cancelReason)) {
-                grpcService.auth().refreshToken();
-                handleError(toEtcdException(GrpcStatus.CANCELLED), true);
-                return true;
-            }
-
-            return false;
-        }
-
-        private boolean handleWatchCreated(io.etcd.jetcd.api.WatchResponse response) {
-            if (!response.getCreated()) {
-                return false;
-            }
-
-            if (response.getWatchId() == -1) {
-                notifyError(newEtcdException(INTERNAL, "etcd server failed to create watch id"));
-                return true;
-            }
-
-            updateRevision(response.getHeader().getRevision());
-
-            if (option.isCreatedNotify()) {
-                notifyListener(response, false);
-            }
-
-            return true;
-        }
-
-        private boolean handleWatchCanceled(io.etcd.jetcd.api.WatchResponse response) {
-            if (!response.getCanceled()) {
-                return false;
-            }
-
-            Throwable error;
-            String reason = response.getCancelReason();
-
-            if (response.getCompactRevision() != 0) {
-                error = newCompactedException(response.getCompactRevision());
-            } else if (Strings.isNullOrEmpty(reason)) {
-                error = newEtcdException(OUT_OF_RANGE,
-                    "etcdserver: mvcc: required revision is a future revision");
-            } else {
-                error = newEtcdException(FAILED_PRECONDITION, reason);
-            }
-
-            handleError(toEtcdException(error), false);
-            return true;
-        }
-
-        private boolean handleProgressNotify(io.etcd.jetcd.api.WatchResponse response) {
-            if (WatchResponse.isProgressNotify(response)) {
-                notifyListener(response, false);
-                updateRevision(response.getHeader().getRevision());
-                return true;
-            }
-
-            if (response.getEventsCount() == 0 && option.isProgressNotify()) {
-                notifyListener(response, true);
-                revision = response.getHeader().getRevision();
-                return true;
-            }
-
-            return false;
-        }
-
-        private boolean handleEvents(io.etcd.jetcd.api.WatchResponse response) {
-            if (response.getEventsCount() == 0) {
-                return false;
-            }
-
-            notifyListener(response, true);
-            updateRevisionFromEvents(response);
-            return true;
         }
 
         private void handleError(EtcdException etcdException, boolean shouldReconnect) {
