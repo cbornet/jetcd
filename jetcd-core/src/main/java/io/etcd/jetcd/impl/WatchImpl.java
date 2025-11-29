@@ -137,13 +137,16 @@ final class WatchImpl extends AbstractService implements Watch {
         private final GrpcService grpcService;
         private final Vertx vertx;
         private final java.util.function.Consumer<WatcherImpl> onClose;
-        private final Object watcherLock;
 
+        // Thread-safe flags
         private final AtomicBoolean closed = new AtomicBoolean();
         private final AtomicBoolean pendingProgressRequest = new AtomicBoolean();
 
+        // Volatile for cross-thread visibility
         private volatile WatchStream watchStream;
-        private volatile CompletableFuture<Void> reconnectFuture;
+
+        // Accessed from event loop only (protected by runOnContext dispatch)
+        private CompletableFuture<Void> reconnectFuture;
         private long revision;
 
         WatcherImpl(
@@ -162,7 +165,6 @@ final class WatchImpl extends AbstractService implements Watch {
             this.grpcService = grpcService;
             this.vertx = grpcService.vertx();
             this.onClose = onClose;
-            this.watcherLock = new Object();
 
             connect();
         }
@@ -174,33 +176,24 @@ final class WatchImpl extends AbstractService implements Watch {
 
         @Override
         public CompletableFuture<Void> closeAsync() {
-            final Watch.Listener callbackListener;
-            final java.util.function.Consumer<WatcherImpl> closeCallback;
-
-            synchronized (watcherLock) {
-                if (closed.compareAndSet(false, true)) {
-                    if (reconnectFuture != null && !reconnectFuture.isDone()) {
-                        reconnectFuture.cancel(true);
-                        reconnectFuture = null;
-                    }
-
-                    callbackListener = listener;
-                    closeCallback = onClose;
-                } else {
-                    return CompletableFuture.completedFuture(null);
-                }
+            if (!closed.compareAndSet(false, true)) {
+                return CompletableFuture.completedFuture(null);
             }
+
+            // Cancel pending reconnect on event loop
+            vertx.runOnContext(v -> {
+                if (reconnectFuture != null && !reconnectFuture.isDone()) {
+                    reconnectFuture.cancel(true);
+                    reconnectFuture = null;
+                }
+            });
 
             sendCancelRequest();
             disconnect();
 
-            if (callbackListener != null) {
-                Exceptions.quietly(callbackListener::onCompleted);
-            }
-
-            if (closeCallback != null) {
-                Exceptions.quietly(() -> closeCallback.accept(this));
-            }
+            // Callbacks called synchronously
+            Exceptions.quietly(listener::onCompleted);
+            Exceptions.quietly(() -> onClose.accept(this));
 
             return CompletableFuture.completedFuture(null);
         }
@@ -326,20 +319,18 @@ final class WatchImpl extends AbstractService implements Watch {
         }
 
         private void reconnect() {
-            synchronized (watcherLock) {
-                if (closed.get() || (reconnectFuture != null && !reconnectFuture.isDone())) {
-                    return;
-                }
-
-                reconnectFuture = Failsafe.runAsync(vertx, () -> {
-                    disconnect();
-                    connect();
-                }, buildRetryPolicy()).whenComplete((result, error) -> {
-                    synchronized (watcherLock) {
-                        reconnectFuture = null;
-                    }
-                });
+            // Called from event loop (onEnd/onError handlers)
+            if (closed.get() || (reconnectFuture != null && !reconnectFuture.isDone())) {
+                return;
             }
+
+            reconnectFuture = Failsafe.runAsync(vertx, () -> {
+                disconnect();
+                connect();
+            }, buildRetryPolicy()).whenComplete((result, error) -> {
+                // Runs on event loop via Failsafe scheduler
+                reconnectFuture = null;
+            });
         }
 
         private RetryPolicy<Void> buildRetryPolicy() {
