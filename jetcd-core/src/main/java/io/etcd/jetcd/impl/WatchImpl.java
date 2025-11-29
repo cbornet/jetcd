@@ -134,14 +134,12 @@ final class WatchImpl extends AbstractService implements Watch {
         private final java.util.function.Consumer<WatcherImpl> onClose;
         private final WatchResponseProcessor responseProcessor;
 
-        // Thread-safe flags
+        // Thread-safe for external isClosed() queries
         private final AtomicBoolean closed = new AtomicBoolean();
-        private final AtomicBoolean pendingProgressRequest = new AtomicBoolean();
 
-        // Volatile for cross-thread visibility
-        private volatile WatchStream watchStream;
-
-        // Accessed from event loop only (protected by runOnContext dispatch)
+        // Event loop only fields (no synchronization needed)
+        private boolean pendingProgressRequest;
+        private WatchStream watchStream;
         private CompletableFuture<Void> reconnectFuture;
         private long revision;
 
@@ -165,7 +163,8 @@ final class WatchImpl extends AbstractService implements Watch {
                 option.isCreatedNotify(),
                 option.isProgressNotify());
 
-            connect();
+            // Dispatch connection to event loop
+            vertx.runOnContext(v -> connect());
         }
 
         @Override
@@ -179,22 +178,26 @@ final class WatchImpl extends AbstractService implements Watch {
                 return CompletableFuture.completedFuture(null);
             }
 
-            // Cancel pending reconnect on event loop
+            CompletableFuture<Void> result = new CompletableFuture<>();
+
             vertx.runOnContext(v -> {
+                // Cancel pending reconnect
                 if (reconnectFuture != null && !reconnectFuture.isDone()) {
                     reconnectFuture.cancel(true);
                     reconnectFuture = null;
                 }
+
+                sendCancelRequest();
+                disconnect();
+
+                // Notify listener
+                Exceptions.quietly(listener::onCompleted);
+                Exceptions.quietly(() -> onClose.accept(this));
+
+                result.complete(null);
             });
 
-            sendCancelRequest();
-            disconnect();
-
-            // Callbacks called synchronously
-            Exceptions.quietly(listener::onCompleted);
-            Exceptions.quietly(() -> onClose.accept(this));
-
-            return CompletableFuture.completedFuture(null);
+            return result;
         }
 
         @Override
@@ -210,13 +213,13 @@ final class WatchImpl extends AbstractService implements Watch {
 
                 WatchStream stream = watchStream;
                 if (stream == null || !stream.isWriteStreamReady()) {
-                    pendingProgressRequest.set(true);
+                    pendingProgressRequest = true;
                     return;
                 }
 
                 WatchProgressRequest progress = WatchProgressRequest.newBuilder().build();
                 stream.send(WatchRequest.newBuilder().setProgressRequest(progress).build());
-                pendingProgressRequest.set(false);
+                pendingProgressRequest = false;
             });
         }
 
@@ -298,7 +301,8 @@ final class WatchImpl extends AbstractService implements Watch {
             watchStream.connect(this).onComplete(ar -> {
                 if (ar.succeeded() && !closed.get()) {
                     // Send pending progress request if one was queued
-                    if (pendingProgressRequest.getAndSet(false)) {
+                    if (pendingProgressRequest) {
+                        pendingProgressRequest = false;
                         WatchStream stream = watchStream;
                         if (stream != null) {
                             WatchProgressRequest progress = WatchProgressRequest.newBuilder().build();
@@ -313,11 +317,8 @@ final class WatchImpl extends AbstractService implements Watch {
         }
 
         private void disconnect() {
-            if (closed.get()) {
-                return;
-            }
-
-            pendingProgressRequest.set(false);
+            // Called from event loop only
+            pendingProgressRequest = false;
 
             WatchStream ws = watchStream;
             watchStream = null;
