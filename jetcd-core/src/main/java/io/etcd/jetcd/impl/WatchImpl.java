@@ -22,7 +22,6 @@ import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Watch;
 import io.etcd.jetcd.api.WatchCancelRequest;
 import io.etcd.jetcd.api.WatchCreateRequest;
-import io.etcd.jetcd.api.WatchGrpcClient;
 import io.etcd.jetcd.api.WatchProgressRequest;
 import io.etcd.jetcd.api.WatchRequest;
 import io.etcd.jetcd.common.exception.ErrorCode;
@@ -31,14 +30,11 @@ import io.etcd.jetcd.common.exception.Exceptions;
 import io.etcd.jetcd.common.vertx.Failsafe;
 import io.etcd.jetcd.options.OptionsUtil;
 import io.etcd.jetcd.options.WatchOption;
-import io.etcd.jetcd.resolver.ServiceResolver;
 import io.etcd.jetcd.support.Errors;
 import io.etcd.jetcd.support.Util;
 import io.etcd.jetcd.watch.RetryContext;
 import io.etcd.jetcd.watch.WatchResponse;
 import io.vertx.core.Vertx;
-import io.vertx.core.streams.ReadStream;
-import io.vertx.core.streams.WriteStream;
 import io.vertx.grpc.common.GrpcStatus;
 
 import java.time.Duration;
@@ -127,8 +123,9 @@ final class WatchImpl extends AbstractService implements Watch {
 
     /**
      * Individual watcher that owns its dedicated gRPC stream.
+     * Uses WatchStream for stream lifecycle management.
      */
-    private static final class WatcherImpl implements Watch.Watcher {
+    private static final class WatcherImpl implements Watch.Watcher, WatchStream.Handler {
         private static final int MAX_RECONNECT_ATTEMPTS = 10;
         private static final Duration INITIAL_RECONNECT_DELAY = Duration.ofMillis(500);
         private static final Duration MAX_RECONNECT_DELAY = Duration.ofSeconds(30);
@@ -143,12 +140,9 @@ final class WatchImpl extends AbstractService implements Watch {
         private final Object watcherLock;
 
         private final AtomicBoolean closed = new AtomicBoolean();
-        private final AtomicBoolean connected = new AtomicBoolean();
         private final AtomicBoolean pendingProgressRequest = new AtomicBoolean();
 
-        private volatile WriteStream<WatchRequest> writeStream;
-        private volatile ReadStream<io.etcd.jetcd.api.WatchResponse> readStream;
-        private volatile WatchGrpcClient grpcClient;
+        private volatile WatchStream watchStream;
         private volatile Long pendingTimerId;
         private volatile CompletableFuture<Void> reconnectFuture;
         private long revision;
@@ -171,10 +165,7 @@ final class WatchImpl extends AbstractService implements Watch {
             this.onClose = onClose;
             this.watcherLock = new Object();
 
-            connect().exceptionally(error -> {
-                notifyError(toEtcdException(error));
-                return null;
-            });
+            connect();
         }
 
         @Override
@@ -226,115 +217,114 @@ final class WatchImpl extends AbstractService implements Watch {
                 return;
             }
 
-            if (!connected.get()) {
+            WatchStream ws = watchStream;
+            if (ws == null || !ws.isWriteStreamReady()) {
                 pendingProgressRequest.set(true);
                 return;
             }
 
-            // Delegate to event loop instead of synchronizing
             vertx.runOnContext(v -> {
-                // Now on event loop, safe to access writeStream
-                if (!closed.get() && connected.get()) {
-                    WriteStream<WatchRequest> ws = writeStream;
-                    if (ws != null) {
-                        Exceptions.quietly(() -> {
-                            WatchProgressRequest progress = WatchProgressRequest.newBuilder().build();
-                            ws.write(WatchRequest.newBuilder().setProgressRequest(progress).build());
-                            pendingProgressRequest.set(false);
-                        });
+                if (!closed.get()) {
+                    WatchStream stream = watchStream;
+                    if (stream != null && stream.isWriteStreamReady()) {
+                        WatchProgressRequest progress = WatchProgressRequest.newBuilder().build();
+                        stream.send(WatchRequest.newBuilder().setProgressRequest(progress).build());
+                        pendingProgressRequest.set(false);
                     }
                 }
             });
         }
 
-        private CompletableFuture<Void> connect() {
-            CompletableFuture<Void> connectionFuture = new CompletableFuture<>();
+        // WatchStream.Handler implementation
 
-            // Early exit check - safe as connect() is only called from event loop or constructor
-            if (connected.get() || closed.get()) {
-                connectionFuture.complete(null);
-                return connectionFuture;
+        @Override
+        public void onMessage(io.etcd.jetcd.api.WatchResponse response) {
+            if (closed.get()) {
+                return;
             }
 
-            vertx.runOnContext(v -> {
-                try {
-                    grpcClient = createWatchClient();
+            if (handleAuthError(response)) {
+                return;
+            }
 
-                    io.vertx.core.Future<ReadStream<io.etcd.jetcd.api.WatchResponse>> watchFuture = grpcClient
-                        .watch((ws, err) -> {
-                            if (err != null) {
-                                handleConnectError(err, connectionFuture);
-                            } else {
-                                // Called from vertx.runOnContext() - always on event loop
-                                if (!closed.get()) {
-                                    writeStream = ws;
-                                    Exceptions.quietly(() -> ws.write(WatchRequest.newBuilder()
-                                        .setCreateRequest(buildCreateRequest())
-                                        .build()));
-                                }
-                            }
-                        });
+            if (handleWatchCreated(response)) {
+                return;
+            }
 
-                    watchFuture.onComplete(ar -> {
-                        if (ar.succeeded()) {
-                            // Called from gRPC future completion - on event loop
-                            if (!closed.get()) {
-                                readStream = ar.result();
-                                readStream.handler(this::onNext);
-                                readStream.endHandler(v2 -> onStreamEnded());
-                                readStream.exceptionHandler(this::onStreamError);
-                                connected.set(true);
-                                
-                                // Send pending progress request if one was queued
-                                if (pendingProgressRequest.getAndSet(false)) {
-                                    WriteStream<WatchRequest> ws = writeStream;
-                                    if (ws != null) {
-                                        Exceptions.quietly(() -> {
-                                            WatchProgressRequest progress = WatchProgressRequest.newBuilder().build();
-                                            ws.write(WatchRequest.newBuilder().setProgressRequest(progress).build());
-                                        });
-                                    }
-                                }
-                            }
-                            connectionFuture.complete(null);
-                        } else {
-                            handleConnectError(ar.cause(), connectionFuture);
+            if (handleWatchCanceled(response)) {
+                return;
+            }
+
+            if (handleProgressNotify(response)) {
+                return;
+            }
+
+            handleEvents(response);
+        }
+
+        @Override
+        public void onEnd() {
+            if (closed.get()) {
+                return;
+            }
+            scheduleReconnect();
+        }
+
+        @Override
+        public void onError(Throwable error) {
+            if (closed.get()) {
+                return;
+            }
+            notifyError(toEtcdException(error));
+            scheduleReconnect();
+        }
+
+        @Override
+        public void onWriteStreamReady(WatchStream stream) {
+            if (!closed.get()) {
+                stream.send(WatchRequest.newBuilder()
+                    .setCreateRequest(buildCreateRequest())
+                    .build());
+            }
+        }
+
+        private void connect() {
+            if (closed.get()) {
+                return;
+            }
+
+            WatchStream ws = watchStream;
+            if (ws != null && ws.isConnected()) {
+                return;
+            }
+
+            watchStream = new WatchStream(grpcService);
+            watchStream.connect(this).onComplete(ar -> {
+                if (ar.succeeded() && !closed.get()) {
+                    // Send pending progress request if one was queued
+                    if (pendingProgressRequest.getAndSet(false)) {
+                        WatchStream stream = watchStream;
+                        if (stream != null) {
+                            WatchProgressRequest progress = WatchProgressRequest.newBuilder().build();
+                            stream.send(WatchRequest.newBuilder().setProgressRequest(progress).build());
                         }
-                    });
-                } catch (Exception e) {
-                    handleConnectError(e, connectionFuture);
+                    }
+                } else if (ar.failed() && !closed.get()) {
+                    notifyError(toEtcdException(ar.cause()));
+                    scheduleReconnect();
                 }
             });
-
-            return connectionFuture;
         }
 
         private void disconnect() {
-            // Called from event loop (during reconnect) or from close (external thread)
-            // Set state
-            connected.set(false);
             pendingProgressRequest.set(false);
 
-            // Capture references
-            WriteStream<WatchRequest> ws = writeStream;
-            ReadStream<io.etcd.jetcd.api.WatchResponse> rs = readStream;
+            WatchStream ws = watchStream;
+            watchStream = null;
 
-            writeStream = null;
-            readStream = null;
-            grpcClient = null;
-
-            // Clean up streams
-            Exceptions.quietly(() -> {
-                if (ws != null)
-                    ws.end();
-            });
-            Exceptions.quietly(() -> {
-                if (rs != null) {
-                    rs.handler(null);
-                    rs.endHandler(null);
-                    rs.exceptionHandler(null);
-                }
-            });
+            if (ws != null) {
+                ws.disconnect();
+            }
         }
 
         private void reconnect() {
@@ -343,10 +333,7 @@ final class WatchImpl extends AbstractService implements Watch {
             }
 
             disconnect();
-            connect().exceptionally(error -> {
-                notifyError(toEtcdException(error));
-                return null;
-            });
+            connect();
         }
 
         private void scheduleReconnect() {
@@ -363,7 +350,6 @@ final class WatchImpl extends AbstractService implements Watch {
                     .withMaxRetries(MAX_RECONNECT_ATTEMPTS)
                     .withBackoff(INITIAL_RECONNECT_DELAY, MAX_RECONNECT_DELAY)
                     .onRetry(e -> {
-                        // Executed via Failsafe on Vertx scheduler - runs on event loop
                         if (closed.get()) {
                             return;
                         }
@@ -425,72 +411,16 @@ final class WatchImpl extends AbstractService implements Watch {
         }
 
         private void sendCancelRequest() {
-            if (!connected.get()) {
+            WatchStream ws = watchStream;
+            if (ws == null || !ws.isWriteStreamReady()) {
                 return;
             }
 
-            // Safe to access writeStream - called from closeAsync (external) but streams are volatile
-            WriteStream<WatchRequest> ws = writeStream;
-            if (ws != null && connected.get()) {
-                Exceptions.quietly(() -> {
-                    WatchCancelRequest cancel = WatchCancelRequest.newBuilder().build();
-                    ws.write(WatchRequest.newBuilder().setCancelRequest(cancel).build());
-                });
-            }
-        }
-
-        private void onNext(io.etcd.jetcd.api.WatchResponse response) {
-            if (closed.get()) {
-                return;
-            }
-
-            if (handleAuthError(response)) {
-                return;
-            }
-
-            if (handleWatchCreated(response)) {
-                return;
-            }
-
-            if (handleWatchCanceled(response)) {
-                return;
-            }
-
-            if (handleProgressNotify(response)) {
-                return;
-            }
-
-            handleEvents(response);
-        }
-
-        private void onStreamEnded() {
-            if (closed.get()) {
-                return;
-            }
-
-            scheduleReconnect();
-        }
-
-        private void onStreamError(Throwable error) {
-            if (closed.get()) {
-                return;
-            }
-
-            notifyError(toEtcdException(error));
-            scheduleReconnect();
-        }
-
-        private void handleConnectError(Throwable error, CompletableFuture<Void> future) {
-            future.completeExceptionally(error);
-
-            if (!closed.get()) {
-                notifyError(toEtcdException(error));
-                scheduleReconnect();
-            }
+            WatchCancelRequest cancel = WatchCancelRequest.newBuilder().build();
+            ws.send(WatchRequest.newBuilder().setCancelRequest(cancel).build());
         }
 
         private void notifyError(EtcdException error) {
-            // Called from event loop handlers only
             if (closed.get()) {
                 return;
             }
@@ -499,7 +429,6 @@ final class WatchImpl extends AbstractService implements Watch {
         }
 
         private void notifyListener(io.etcd.jetcd.api.WatchResponse response, boolean withNamespace) {
-            // Called from event loop handlers only
             if (closed.get()) {
                 return;
             }
@@ -623,13 +552,11 @@ final class WatchImpl extends AbstractService implements Watch {
         }
 
         private void reschedule() {
-            // Called from event loop handlers only
             if (closed.get()) {
                 return;
             }
 
             long timerId = vertx.setTimer(INITIAL_RECONNECT_DELAY.toMillis(), id -> {
-                // Timer callback runs on event loop
                 if (pendingTimerId != null && pendingTimerId.equals(id)) {
                     pendingTimerId = null;
                     if (!closed.get()) {
@@ -638,20 +565,11 @@ final class WatchImpl extends AbstractService implements Watch {
                 }
             });
 
-            // Set timer ID - runs on event loop from reschedule()
             if (!closed.get()) {
                 pendingTimerId = timerId;
             } else {
                 Exceptions.quietly(() -> vertx.cancelTimer(timerId));
             }
-        }
-
-        private WatchGrpcClient createWatchClient() {
-            ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();
-
-            return WatchGrpcClient.create(
-                grpcService.getAuthenticatedGrpcClient(),
-                serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class));
         }
     }
 }
