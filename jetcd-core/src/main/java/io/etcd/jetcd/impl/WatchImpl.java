@@ -203,21 +203,20 @@ final class WatchImpl extends AbstractService implements Watch {
                 return;
             }
 
-            WatchStream ws = watchStream;
-            if (ws == null || !ws.isWriteStreamReady()) {
-                pendingProgressRequest.set(true);
-                return;
-            }
-
             vertx.runOnContext(v -> {
-                if (!closed.get()) {
-                    WatchStream stream = watchStream;
-                    if (stream != null && stream.isWriteStreamReady()) {
-                        WatchProgressRequest progress = WatchProgressRequest.newBuilder().build();
-                        stream.send(WatchRequest.newBuilder().setProgressRequest(progress).build());
-                        pendingProgressRequest.set(false);
-                    }
+                if (closed.get()) {
+                    return;
                 }
+
+                WatchStream stream = watchStream;
+                if (stream == null || !stream.isWriteStreamReady()) {
+                    pendingProgressRequest.set(true);
+                    return;
+                }
+
+                WatchProgressRequest progress = WatchProgressRequest.newBuilder().build();
+                stream.send(WatchRequest.newBuilder().setProgressRequest(progress).build());
+                pendingProgressRequest.set(false);
             });
         }
 
