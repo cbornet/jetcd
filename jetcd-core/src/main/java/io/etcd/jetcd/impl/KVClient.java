@@ -26,7 +26,6 @@ import io.etcd.jetcd.kv.CompactResponse;
 import io.etcd.jetcd.kv.DeleteResponse;
 import io.etcd.jetcd.kv.GetResponse;
 import io.etcd.jetcd.kv.PutResponse;
-import io.etcd.jetcd.kv.TxnResponse;
 import io.etcd.jetcd.op.TxnImpl;
 import io.etcd.jetcd.options.CompactOption;
 import io.etcd.jetcd.options.DeleteOption;
@@ -35,6 +34,7 @@ import io.etcd.jetcd.options.PutOption;
 import io.etcd.jetcd.options.TxnOption;
 import io.etcd.jetcd.support.Errors;
 import io.etcd.jetcd.support.Requests;
+import io.etcd.jetcd.support.Responses;
 
 import static java.util.Objects.requireNonNull;
 
@@ -67,7 +67,7 @@ final class KVClient extends AbstractClient implements KV {
         requireNonNull(option, "option should not be null");
         return execute(
             () -> client.put(Requests.mapPutRequest(key, value, option, namespace)),
-            response -> new PutResponse(response, namespace),
+            responseFactory::newPutResponse,
             option.isAutoRetry() ? Errors::isRetryableForSafeRedoOp : Errors::isRetryableForNoSafeRedoOp);
     }
 
@@ -83,7 +83,7 @@ final class KVClient extends AbstractClient implements KV {
 
         return execute(
             () -> client.range(Requests.mapRangeRequest(key, option, namespace)),
-            response -> new GetResponse(response, namespace),
+            responseFactory::newGetResponse,
             Errors::isRetryableForSafeRedoOp);
     }
 
@@ -99,7 +99,7 @@ final class KVClient extends AbstractClient implements KV {
 
         return execute(
             () -> client.deleteRange(Requests.mapDeleteRequest(key, option, namespace)),
-            response -> new DeleteResponse(response, namespace),
+            responseFactory::newDeleteResponse,
             option.isAutoRetry() ? Errors::isRetryableForSafeRedoOp : Errors::isRetryableForNoSafeRedoOp);
     }
 
@@ -118,7 +118,7 @@ final class KVClient extends AbstractClient implements KV {
 
         return execute(
             () -> client.compact(request),
-            CompactResponse::new,
+            Responses::newCompactResponse,
             Errors::isRetryableForSafeRedoOp);
     }
 
@@ -132,7 +132,7 @@ final class KVClient extends AbstractClient implements KV {
         return TxnImpl.newTxn(
             request -> execute(
                 () -> client.txn(request),
-                response -> new TxnResponse(response, namespace),
+                responseFactory::newTxnResponse,
                 option.isAutoRetry() ? Errors::isRetryableForSafeRedoOp : Errors::isRetryableForNoSafeRedoOp),
             namespace);
     }

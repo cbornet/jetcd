@@ -26,6 +26,7 @@ import io.etcd.jetcd.common.exception.Exceptions;
 import io.etcd.jetcd.common.vertx.Failsafe;
 import io.etcd.jetcd.grpc.GrpcService;
 import io.etcd.jetcd.options.WatchOption;
+import io.etcd.jetcd.support.Responses;
 import io.etcd.jetcd.watch.RetryContext;
 import io.etcd.jetcd.watch.WatchResponse;
 import io.etcd.jetcd.watch.WatchState;
@@ -341,8 +342,8 @@ final class WatchConnection implements Watch.Watcher, WatchStream.Handler {
         }
 
         WatchResponse watchResponse = withNamespace
-            ? new WatchResponse(response, namespace)
-            : new WatchResponse(response);
+            ? Responses.newWatchResponse(response, namespace)
+            : Responses.newWatchResponse(response, ByteSequence.EMPTY);
 
         Exceptions.quietly(() -> listener.onNext(watchResponse));
     }

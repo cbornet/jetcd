@@ -29,6 +29,7 @@ import io.etcd.jetcd.election.ProclaimResponse;
 import io.etcd.jetcd.election.ResignResponse;
 import io.etcd.jetcd.grpc.GrpcService;
 import io.etcd.jetcd.support.Errors;
+import io.etcd.jetcd.support.Responses;
 import io.etcd.jetcd.support.Util;
 import io.vertx.grpc.client.InvalidStatusException;
 
@@ -65,7 +66,7 @@ final class ElectionClient extends AbstractClient implements Election {
         return wrapConvertException(
             execute(
                 () -> client.campaign(request),
-                CampaignResponse::new,
+                Responses::newCampaignResponse,
                 Errors::isRetryableForNoSafeRedoOp),
             false);
     }
@@ -89,7 +90,7 @@ final class ElectionClient extends AbstractClient implements Election {
         return wrapConvertException(
             execute(
                 () -> client.proclaim(request),
-                ProclaimResponse::new,
+                Responses::newProclaimResponse,
                 Errors::isRetryableForNoSafeRedoOp),
             false);
     }
@@ -105,7 +106,7 @@ final class ElectionClient extends AbstractClient implements Election {
         return wrapConvertException(
             execute(
                 () -> client.leader(request),
-                response -> new LeaderResponse(response, namespace),
+                responseFactory::newLeaderResponse,
                 Errors::isRetryableForNoSafeRedoOp),
             true);
     }
@@ -123,7 +124,7 @@ final class ElectionClient extends AbstractClient implements Election {
             if (ar.failed()) {
                 listener.onError(toEtcdException(ar.cause()));
             } else {
-                ar.result().handler(value -> listener.onNext(new LeaderResponse(value, namespace)));
+                ar.result().handler(value -> listener.onNext(responseFactory.newLeaderResponse(value)));
                 ar.result().endHandler(ignored -> listener.onCompleted());
                 ar.result().exceptionHandler(error -> listener.onError(toEtcdException(error)));
             }
@@ -147,7 +148,7 @@ final class ElectionClient extends AbstractClient implements Election {
         return wrapConvertException(
             execute(
                 () -> client.resign(request),
-                ResignResponse::new,
+                Responses::newResignResponse,
                 Errors::isRetryableForNoSafeRedoOp),
             false);
     }

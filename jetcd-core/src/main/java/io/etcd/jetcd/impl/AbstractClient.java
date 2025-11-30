@@ -25,6 +25,7 @@ import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
 import io.etcd.jetcd.common.vertx.Failsafe;
 import io.etcd.jetcd.grpc.GrpcService;
 import io.etcd.jetcd.support.Errors;
+import io.etcd.jetcd.support.Responses;
 import io.vertx.core.Future;
 import io.vertx.grpc.client.InvalidStatusException;
 import io.vertx.grpc.common.GrpcStatus;
@@ -41,9 +42,11 @@ import static io.etcd.jetcd.support.Errors.isInvalidTokenError;
  */
 abstract class AbstractClient {
     private final GrpcService grpcService;
+    protected final Responses.Namespaced responseFactory;
 
     protected AbstractClient(GrpcService grpcService) {
         this.grpcService = grpcService;
+        this.responseFactory = Responses.namespaced(grpcService.getNamespace());
     }
 
     protected GrpcService grpc() {
