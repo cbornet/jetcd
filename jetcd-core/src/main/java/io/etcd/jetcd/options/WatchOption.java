@@ -16,6 +16,7 @@
 
 package io.etcd.jetcd.options;
 
+import java.time.Duration;
 import java.util.Optional;
 
 import io.etcd.jetcd.ByteSequence;
@@ -28,6 +29,10 @@ import static java.util.Objects.requireNonNull;
 public final class WatchOption {
     public static final WatchOption DEFAULT = builder().build();
 
+    public static final int DEFAULT_MAX_RECONNECT_ATTEMPTS = 10;
+    public static final Duration DEFAULT_INITIAL_RECONNECT_DELAY = Duration.ofMillis(500);
+    public static final Duration DEFAULT_MAX_RECONNECT_DELAY = Duration.ofSeconds(30);
+
     private final ByteSequence endKey;
     private final long revision;
     private final boolean prevKV;
@@ -37,9 +42,23 @@ public final class WatchOption {
     private final boolean noDelete;
     private final boolean requireLeader;
     private final boolean prefix;
+    private final int maxReconnectAttempts;
+    private final Duration initialReconnectDelay;
+    private final Duration maxReconnectDelay;
 
-    private WatchOption(ByteSequence endKey, long revision, boolean prevKV, boolean progressNotify, boolean createdNotify,
-        boolean noPut, boolean noDelete, boolean requireLeader, boolean prefix) {
+    private WatchOption(
+            ByteSequence endKey,
+            long revision,
+            boolean prevKV,
+            boolean progressNotify,
+            boolean createdNotify,
+            boolean noPut,
+            boolean noDelete,
+            boolean requireLeader,
+            boolean prefix,
+            int maxReconnectAttempts,
+            Duration initialReconnectDelay,
+            Duration maxReconnectDelay) {
         this.endKey = endKey;
         this.revision = revision;
         this.prevKV = prevKV;
@@ -49,6 +68,9 @@ public final class WatchOption {
         this.noDelete = noDelete;
         this.requireLeader = requireLeader;
         this.prefix = prefix;
+        this.maxReconnectAttempts = maxReconnectAttempts;
+        this.initialReconnectDelay = initialReconnectDelay;
+        this.maxReconnectDelay = maxReconnectDelay;
     }
 
     public Optional<ByteSequence> getEndKey() {
@@ -128,6 +150,33 @@ public final class WatchOption {
     }
 
     /**
+     * Returns the maximum number of reconnection attempts.
+     *
+     * @return the maximum number of reconnection attempts
+     */
+    public int getMaxReconnectAttempts() {
+        return maxReconnectAttempts;
+    }
+
+    /**
+     * Returns the initial delay before the first reconnection attempt.
+     *
+     * @return the initial reconnection delay
+     */
+    public Duration getInitialReconnectDelay() {
+        return initialReconnectDelay;
+    }
+
+    /**
+     * Returns the maximum delay between reconnection attempts.
+     *
+     * @return the maximum reconnection delay
+     */
+    public Duration getMaxReconnectDelay() {
+        return maxReconnectDelay;
+    }
+
+    /**
      * Returns the builder.
      *
      * @deprecated use {@link #builder()}
@@ -153,6 +202,9 @@ public final class WatchOption {
         private boolean noDelete = false;
         private boolean requireLeader = false;
         private boolean prefix = false;
+        private int maxReconnectAttempts = DEFAULT_MAX_RECONNECT_ATTEMPTS;
+        private Duration initialReconnectDelay = DEFAULT_INITIAL_RECONNECT_DELAY;
+        private Duration maxReconnectDelay = DEFAULT_MAX_RECONNECT_DELAY;
 
         private Builder() {
         }
@@ -294,9 +346,54 @@ public final class WatchOption {
             return this;
         }
 
+        /**
+         * Sets the maximum number of reconnection attempts before giving up.
+         *
+         * @param  maxReconnectAttempts the maximum number of attempts (default: 10)
+         * @return                      builder
+         */
+        public Builder withMaxReconnectAttempts(int maxReconnectAttempts) {
+            this.maxReconnectAttempts = maxReconnectAttempts;
+            return this;
+        }
+
+        /**
+         * Sets the initial delay before the first reconnection attempt.
+         * Subsequent attempts use exponential backoff up to maxReconnectDelay.
+         *
+         * @param  initialReconnectDelay the initial delay (default: 500ms)
+         * @return                       builder
+         */
+        public Builder withInitialReconnectDelay(Duration initialReconnectDelay) {
+            this.initialReconnectDelay = requireNonNull(initialReconnectDelay);
+            return this;
+        }
+
+        /**
+         * Sets the maximum delay between reconnection attempts.
+         *
+         * @param  maxReconnectDelay the maximum delay (default: 30s)
+         * @return                   builder
+         */
+        public Builder withMaxReconnectDelay(Duration maxReconnectDelay) {
+            this.maxReconnectDelay = requireNonNull(maxReconnectDelay);
+            return this;
+        }
+
         public WatchOption build() {
-            return new WatchOption(endKey, revision, prevKV, progressNotify, createNotify, noPut, noDelete, requireLeader,
-                prefix);
+            return new WatchOption(
+                endKey,
+                revision,
+                prevKV,
+                progressNotify,
+                createNotify,
+                noPut,
+                noDelete,
+                requireLeader,
+                prefix,
+                maxReconnectAttempts,
+                initialReconnectDelay,
+                maxReconnectDelay);
         }
 
     }

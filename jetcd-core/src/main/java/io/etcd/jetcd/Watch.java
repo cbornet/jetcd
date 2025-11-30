@@ -25,6 +25,7 @@ import io.etcd.jetcd.options.WatchOption;
 import io.etcd.jetcd.support.CloseableClient;
 import io.etcd.jetcd.watch.RetryContext;
 import io.etcd.jetcd.watch.WatchResponse;
+import io.etcd.jetcd.watch.WatchState;
 
 /**
  * Interface of the watch client.
@@ -265,6 +266,17 @@ public interface Watch extends CloseableClient {
          * @param context information about the retry attempt
          */
         default void onRetry(RetryContext context) {
+            // Default no-op implementation for backward compatibility
+        }
+
+        /**
+         * Invoked when the watcher's connection state changes.
+         * This allows applications to monitor the watcher lifecycle.
+         *
+         * @param oldState the previous state
+         * @param newState the new state
+         */
+        default void onStateChange(WatchState oldState, WatchState newState) {
             // Default no-op implementation for backward compatibility
         }
     }

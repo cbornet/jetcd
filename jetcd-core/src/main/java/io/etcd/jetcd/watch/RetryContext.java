@@ -27,20 +27,71 @@ public record RetryContext(
     int maxAttempts,
     Duration nextDelay,
     Throwable cause) {
+
     /**
-     * The type of operation being retried
+     * The type of operation being retried.
      */
     public enum RetryType {
-        // Stream resume retry (connection/stream failure)
+        /**
+         * Stream resume retry (connection/stream failure).
+         */
         RESUME,
-        /// Progress request retry (write stream not ready)
+        /**
+         * Progress request retry (write stream not ready).
+         */
         PROGRESS_REQUEST
     }
 
     /**
-     * True if this is the last retry attempt
+     * True if this is the last retry attempt.
      */
     public boolean isLastAttempt() {
         return attemptCount >= maxAttempts;
+    }
+
+    /**
+     * Creates a builder for the specified retry type.
+     */
+    public static Builder of(RetryType type) {
+        return new Builder(type);
+    }
+
+    /**
+     * Builder for RetryContext.
+     */
+    public static final class Builder {
+        private final RetryType type;
+        private int attemptCount;
+        private int maxAttempts;
+        private Duration nextDelay;
+        private Throwable cause;
+
+        private Builder(RetryType type) {
+            this.type = type;
+        }
+
+        public Builder attemptCount(int attemptCount) {
+            this.attemptCount = attemptCount;
+            return this;
+        }
+
+        public Builder maxAttempts(int maxAttempts) {
+            this.maxAttempts = maxAttempts;
+            return this;
+        }
+
+        public Builder nextDelay(Duration nextDelay) {
+            this.nextDelay = nextDelay;
+            return this;
+        }
+
+        public Builder cause(Throwable cause) {
+            this.cause = cause;
+            return this;
+        }
+
+        public RetryContext build() {
+            return new RetryContext(type, attemptCount, maxAttempts, nextDelay, cause);
+        }
     }
 }

@@ -18,6 +18,7 @@ package io.etcd.jetcd.impl;
 
 import com.google.common.base.Strings;
 import io.etcd.jetcd.api.WatchResponse;
+import io.etcd.jetcd.options.WatchOption;
 import io.etcd.jetcd.support.Errors;
 
 import static io.etcd.jetcd.common.exception.ErrorCode.FAILED_PRECONDITION;
@@ -72,9 +73,9 @@ final class WatchResponseProcessor {
     private final boolean createdNotify;
     private final boolean progressNotify;
 
-    WatchResponseProcessor(boolean createdNotify, boolean progressNotify) {
-        this.createdNotify = createdNotify;
-        this.progressNotify = progressNotify;
+    WatchResponseProcessor(WatchOption option) {
+        this.createdNotify = option.isCreatedNotify();
+        this.progressNotify = option.isProgressNotify();
     }
 
     /**

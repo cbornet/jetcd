@@ -34,15 +34,25 @@ import io.vertx.core.Vertx;
 final class WatchStateMachine {
 
     enum State {
-        /** Initial state - connecting to gRPC stream */
+        /**
+         * Initial state - connecting to gRPC stream.
+         */
         CONNECTING,
-        /** Stream connected - subscribe request sent, awaiting confirmation */
+        /**
+         * Stream connected - subscribe request sent, awaiting confirmation.
+         */
         SUBSCRIBING,
-        /** Watch active - receiving events */
+        /**
+         * Watch active - receiving events.
+         */
         WATCHING,
-        /** Connection lost - attempting to reconnect */
+        /**
+         * Connection lost - attempting to reconnect.
+         */
         RECONNECTING,
-        /** Terminal state - watcher closed */
+        /**
+         * Terminal state - watcher closed.
+         */
         CLOSED
     }
 
@@ -51,28 +61,45 @@ final class WatchStateMachine {
      * All callbacks are invoked on the Vert.x event loop.
      */
     interface Handler {
-        /** Called when connection should be initiated */
+        /**
+         * Called when connection should be initiated.
+         */
         void onConnect();
 
-        /** Called when stream is ready and watch should be subscribed */
+        /**
+         * Called when stream is ready and watch should be subscribed.
+         */
         void onSubscribe();
 
-        /** Called when watch is confirmed and ready to receive events */
+        /**
+         * Called when watch is confirmed and ready to receive events.
+         */
         void onReady();
 
-        /** Called when reconnection should be attempted */
+        /**
+         * Called when reconnection should be attempted.
+         */
         void onReconnect();
 
-        /** Called when watcher should be cleaned up */
+        /**
+         * Called when watcher should be cleaned up.
+         */
         void onClose();
 
-        /** Called when an error should be reported to the listener */
-        void onStateError(Throwable error);
+        /**
+         * Called when an error should be reported to the listener.
+         */
+        void onError(Throwable error);
+
+        /**
+         * Called when the state changes.
+         */
+        void onStateChange(State oldState, State newState);
     }
 
     private final Vertx vertx;
     private final Handler handler;
-    private State state = State.CONNECTING;
+    private volatile State state = State.CONNECTING;
 
     WatchStateMachine(Vertx vertx, Handler handler) {
         this.vertx = vertx;
@@ -86,6 +113,8 @@ final class WatchStateMachine {
         runOnEventLoop(() -> {
             if (state == State.CONNECTING) {
                 handler.onConnect();
+            } else {
+                handler.onError(new IllegalStateException("start() called in state: " + state));
             }
         });
     }
@@ -96,8 +125,12 @@ final class WatchStateMachine {
     void streamReady() {
         runOnEventLoop(() -> {
             if (state == State.CONNECTING) {
+                State oldState = state;
                 state = State.SUBSCRIBING;
+                handler.onStateChange(oldState, state);
                 handler.onSubscribe();
+            } else if (state != State.CLOSED) {
+                handler.onError(new IllegalStateException("streamReady() called in state: " + state));
             }
         });
     }
@@ -108,8 +141,12 @@ final class WatchStateMachine {
     void watchCreated() {
         runOnEventLoop(() -> {
             if (state == State.SUBSCRIBING) {
+                State oldState = state;
                 state = State.WATCHING;
+                handler.onStateChange(oldState, state);
                 handler.onReady();
+            } else if (state != State.CLOSED) {
+                handler.onError(new IllegalStateException("watchCreated() called in state: " + state));
             }
         });
     }
@@ -120,8 +157,10 @@ final class WatchStateMachine {
     void watchCanceled(Throwable error) {
         runOnEventLoop(() -> {
             if (state != State.CLOSED) {
+                State oldState = state;
                 state = State.CLOSED;
-                handler.onStateError(error);
+                handler.onStateChange(oldState, state);
+                handler.onError(error);
                 handler.onClose();
             }
         });
@@ -132,9 +171,13 @@ final class WatchStateMachine {
      */
     void streamEnded() {
         runOnEventLoop(() -> {
-            if (state == State.WATCHING || state == State.SUBSCRIBING) {
+            if (state == State.WATCHING || state == State.SUBSCRIBING || state == State.CONNECTING) {
+                State oldState = state;
                 state = State.RECONNECTING;
+                handler.onStateChange(oldState, state);
                 handler.onReconnect();
+            } else if (state != State.CLOSED && state != State.RECONNECTING) {
+                handler.onError(new IllegalStateException("streamEnded() called in state: " + state));
             }
         });
     }
@@ -145,9 +188,13 @@ final class WatchStateMachine {
     void streamError(Throwable error) {
         runOnEventLoop(() -> {
             if (state == State.WATCHING || state == State.SUBSCRIBING || state == State.CONNECTING) {
-                handler.onStateError(error);
+                State oldState = state;
+                handler.onError(error);
                 state = State.RECONNECTING;
+                handler.onStateChange(oldState, state);
                 handler.onReconnect();
+            } else if (state != State.CLOSED && state != State.RECONNECTING) {
+                handler.onError(new IllegalStateException("streamError() called in state: " + state));
             }
         });
     }
@@ -158,8 +205,12 @@ final class WatchStateMachine {
     void reconnectSucceeded() {
         runOnEventLoop(() -> {
             if (state == State.RECONNECTING) {
+                State oldState = state;
                 state = State.CONNECTING;
+                handler.onStateChange(oldState, state);
                 handler.onConnect();
+            } else if (state != State.CLOSED) {
+                handler.onError(new IllegalStateException("reconnectSucceeded() called in state: " + state));
             }
         });
     }
@@ -170,9 +221,13 @@ final class WatchStateMachine {
     void reconnectFailed(Throwable error) {
         runOnEventLoop(() -> {
             if (state == State.RECONNECTING) {
+                State oldState = state;
                 state = State.CLOSED;
-                handler.onStateError(error);
+                handler.onStateChange(oldState, state);
+                handler.onError(error);
                 handler.onClose();
+            } else if (state != State.CLOSED) {
+                handler.onError(new IllegalStateException("reconnectFailed() called in state: " + state));
             }
         });
     }
@@ -183,7 +238,9 @@ final class WatchStateMachine {
     void close() {
         runOnEventLoop(() -> {
             if (state != State.CLOSED) {
+                State oldState = state;
                 state = State.CLOSED;
+                handler.onStateChange(oldState, state);
                 handler.onClose();
             }
         });
