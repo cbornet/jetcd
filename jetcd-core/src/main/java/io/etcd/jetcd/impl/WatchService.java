@@ -33,7 +33,7 @@ import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.newClosedWatch
 /**
  * Watch implementation where each watcher manages its own dedicated gRPC stream.
  */
-final class WatchImpl extends AbstractService implements Watch {
+final class WatchService extends AbstractService implements Watch {
     private static final Duration CLOSE_TIMEOUT = Duration.ofSeconds(15);
 
     private final AtomicBoolean closed;
