@@ -17,17 +17,22 @@
 package io.etcd.jetcd.lease;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.function.Supplier;
 
 import io.etcd.jetcd.ByteSequence;
+import io.etcd.jetcd.common.suppliers.Suppliers;
 import io.etcd.jetcd.impl.AbstractResponse;
 
 public class LeaseTimeToLiveResponse extends AbstractResponse<io.etcd.jetcd.api.LeaseTimeToLiveResponse> {
 
-    private List<ByteSequence> keys;
+    private final Supplier<List<ByteSequence>> keys;
 
     public LeaseTimeToLiveResponse(io.etcd.jetcd.api.LeaseTimeToLiveResponse response) {
         super(response, response.getHeader());
+
+        this.keys = Suppliers.memoizing(
+            () -> getResponse().getKeysList().stream().map(ByteSequence::from).toList()
+        );
     }
 
     /**
@@ -62,11 +67,7 @@ public class LeaseTimeToLiveResponse extends AbstractResponse<io.etcd.jetcd.api.
      *
      * @return the keys.
      */
-    public synchronized List<ByteSequence> getKeys() {
-        if (keys == null) {
-            keys = getResponse().getKeysList().stream().map(ByteSequence::from).collect(Collectors.toList());
-        }
-
-        return keys;
+    public List<ByteSequence> getKeys() {
+        return keys.get();
     }
 }
