@@ -30,7 +30,7 @@ import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.newEtcdExcepti
 /**
  * Processes etcd WatchResponse messages and classifies them into result types.
  * This class contains pure logic for response classification, separate from
- * the stateful WatcherImpl that handles the actual actions.
+ * the stateful WatchConnection that handles the actual actions.
  */
 final class WatchResponseProcessor {
 

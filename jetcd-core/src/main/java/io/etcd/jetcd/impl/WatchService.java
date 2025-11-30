@@ -53,7 +53,7 @@ final class WatchService extends AbstractService implements Watch {
             throw newClosedWatchClientException();
         }
 
-        WatcherImpl watcher = new WatcherImpl(
+        WatchConnection watcher = new WatchConnection(
             key,
             namespace,
             option,
@@ -71,7 +71,7 @@ final class WatchService extends AbstractService implements Watch {
             throw newClosedWatchClientException();
         }
 
-        WatcherImpl watcher = new WatcherImpl(
+        WatchConnection watcher = new WatchConnection(
             key,
             namespace,
             option,

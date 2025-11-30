@@ -38,14 +38,14 @@ import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdExceptio
  * Individual watcher that owns its dedicated gRPC stream.
  * Uses WatchStateMachine for lifecycle management and WatchStream for gRPC stream handling.
  */
-final class WatcherImpl implements Watch.Watcher, WatchStream.Handler {
+final class WatchConnection implements Watch.Watcher, WatchStream.Handler {
     private final ByteSequence key;
     private final ByteSequence namespace;
     private final WatchOption option;
     private final Watch.Listener listener;
     private final GrpcService grpcService;
     private final Vertx vertx;
-    private final Consumer<WatcherImpl> onClose;
+    private final Consumer<WatchConnection> onClose;
     private final WatchResponseProcessor responseProcessor;
     private final WatchStateMachine stateMachine;
     private final CompletableFuture<Void> readyFuture = new CompletableFuture<>();
@@ -57,13 +57,13 @@ final class WatcherImpl implements Watch.Watcher, WatchStream.Handler {
     private boolean pendingProgressRequest;
     private long revision;
 
-    WatcherImpl(
+    WatchConnection(
             ByteSequence key,
             ByteSequence namespace,
             WatchOption option,
             Watch.Listener listener,
             GrpcService grpcService,
-            Consumer<WatcherImpl> onClose) {
+            Consumer<WatchConnection> onClose) {
 
         this.key = key;
         this.namespace = namespace;
