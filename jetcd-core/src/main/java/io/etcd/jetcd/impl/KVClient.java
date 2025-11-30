@@ -40,11 +40,11 @@ import static java.util.Objects.requireNonNull;
 /**
  * Implementation of etcd kv client.
  */
-final class KVService extends AbstractService implements KV {
+final class KVClient extends AbstractClient implements KV {
     private final io.etcd.jetcd.api.KVGrpcClient client;
     private final ByteSequence namespace;
 
-    KVService(GrpcService grpcService) {
+    KVClient(GrpcService grpcService) {
         super(grpcService);
 
         io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();

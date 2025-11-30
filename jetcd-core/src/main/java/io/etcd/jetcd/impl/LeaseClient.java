@@ -46,7 +46,7 @@ import static java.util.Objects.requireNonNull;
 /**
  * Implementation of lease client.
  */
-final class LeaseService extends AbstractService implements Lease {
+final class LeaseClient extends AbstractClient implements Lease {
 
     private static final int DEFAULT_FIRST_KEEPALIVE_TIMEOUT_MS = 5000;
 
@@ -56,7 +56,7 @@ final class LeaseService extends AbstractService implements Lease {
     private final DeadLine deadLine;
     private volatile boolean closed;
 
-    LeaseService(GrpcService grpcService) {
+    LeaseClient(GrpcService grpcService) {
         super(grpcService);
 
         io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();

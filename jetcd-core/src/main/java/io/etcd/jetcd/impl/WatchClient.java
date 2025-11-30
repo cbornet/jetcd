@@ -16,11 +16,6 @@
 
 package io.etcd.jetcd.impl;
 
-import io.etcd.jetcd.ByteSequence;
-import io.etcd.jetcd.Watch;
-import io.etcd.jetcd.common.exception.Exceptions;
-import io.etcd.jetcd.options.WatchOption;
-
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -28,19 +23,24 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import io.etcd.jetcd.ByteSequence;
+import io.etcd.jetcd.Watch;
+import io.etcd.jetcd.common.exception.Exceptions;
+import io.etcd.jetcd.options.WatchOption;
+
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.newClosedWatchClientException;
 
 /**
  * Watch implementation where each watcher manages its own dedicated gRPC stream.
  */
-final class WatchService extends AbstractService implements Watch {
+final class WatchClient extends AbstractClient implements Watch {
     private static final Duration CLOSE_TIMEOUT = Duration.ofSeconds(15);
 
     private final AtomicBoolean closed;
     private final List<Watcher> watchers;
     private final ByteSequence namespace;
 
-    WatchImpl(GrpcService grpcService) {
+    WatchClient(GrpcService grpcService) {
         super(grpcService);
         this.closed = new AtomicBoolean();
         this.watchers = new CopyOnWriteArrayList<>();

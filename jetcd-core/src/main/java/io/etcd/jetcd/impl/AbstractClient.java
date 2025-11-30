@@ -16,6 +16,11 @@
 
 package io.etcd.jetcd.impl;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+
 import dev.failsafe.RetryPolicy;
 import dev.failsafe.RetryPolicyBuilder;
 import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
@@ -25,11 +30,6 @@ import io.vertx.core.Future;
 import io.vertx.grpc.client.InvalidStatusException;
 import io.vertx.grpc.common.GrpcStatus;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
-
 import static io.etcd.jetcd.support.Errors.isAuthStoreExpired;
 import static io.etcd.jetcd.support.Errors.isInvalidTokenError;
 
@@ -37,10 +37,10 @@ import static io.etcd.jetcd.support.Errors.isInvalidTokenError;
  * Base class for service implementations providing common utilities.
  * Handles Future to CompletableFuture conversion and retry execution with Failsafe.
  */
-abstract class AbstractService {
+abstract class AbstractClient {
     private final GrpcService grpcService;
 
-    protected AbstractService(GrpcService grpcService) {
+    protected AbstractClient(GrpcService grpcService) {
         this.grpcService = grpcService;
     }
 

@@ -36,11 +36,11 @@ import com.google.protobuf.ByteString;
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdException;
 import static java.util.Objects.requireNonNull;
 
-final class ElectionService extends AbstractService implements Election {
+final class ElectionClient extends AbstractClient implements Election {
     private final io.etcd.jetcd.api.ElectionGrpcClient client;
     private final ByteSequence namespace;
 
-    ElectionService(GrpcService grpcService) {
+    ElectionClient(GrpcService grpcService) {
         super(grpcService);
 
         io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();

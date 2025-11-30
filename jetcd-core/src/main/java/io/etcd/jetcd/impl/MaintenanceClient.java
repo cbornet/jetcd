@@ -34,10 +34,10 @@ import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdExceptio
 /**
  * Implementation of maintenance client.
  */
-final class MaintenanceService extends AbstractService implements Maintenance {
+final class MaintenanceClient extends AbstractClient implements Maintenance {
     private final io.etcd.jetcd.api.MaintenanceGrpcClient client;
 
-    MaintenanceService(GrpcService grpcService) {
+    MaintenanceClient(GrpcService grpcService) {
         super(grpcService);
 
         io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();

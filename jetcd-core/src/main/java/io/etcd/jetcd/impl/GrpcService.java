@@ -37,7 +37,7 @@ import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdExceptio
 final class GrpcService {
     private final Object lock;
     private final ClientBuilder builder;
-    private final AuthTokenManager auth;
+    private final AuthService auth;
     private final Vertx vertx;
     private final boolean closeVertx;
     private volatile GrpcClient grpcClient;
@@ -51,7 +51,7 @@ final class GrpcService {
         this.lock = new Object();
         this.builder = builder;
         this.grpcClient = grpcClient;
-        this.auth = new AuthTokenManager(this);
+        this.auth = new AuthService(this);
         this.closeVertx = builder.vertx() == null;
         this.vertx = builder.vertx() != null
             ? builder.vertx()
@@ -103,7 +103,7 @@ final class GrpcService {
         return builder;
     }
 
-    AuthTokenManager auth() {
+    AuthService auth() {
         return this.auth;
     }
 

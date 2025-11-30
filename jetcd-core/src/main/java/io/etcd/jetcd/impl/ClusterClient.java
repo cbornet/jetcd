@@ -31,11 +31,11 @@ import io.etcd.jetcd.cluster.MemberUpdateResponse;
 /**
  * Implementation of cluster client.
  */
-final class ClusterService extends AbstractService implements Cluster {
+final class ClusterClient extends AbstractClient implements Cluster {
 
     private final io.etcd.jetcd.api.ClusterGrpcClient client;
 
-    ClusterService(GrpcService grpcService) {
+    ClusterClient(GrpcService grpcService) {
         super(grpcService);
 
         io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();

@@ -16,8 +16,13 @@
 
 package io.etcd.jetcd.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 import io.etcd.jetcd.Auth;
-import io.etcd.jetcd.Client;
 import io.etcd.jetcd.ClientBuilder;
 import io.etcd.jetcd.Cluster;
 import io.etcd.jetcd.Election;
@@ -31,17 +36,11 @@ import io.etcd.jetcd.common.suppliers.Suppliers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
 /**
  * Etcd Client implementation.
  */
-public final class EtcdClient implements Client {
-    private static final Logger LOG = LoggerFactory.getLogger(EtcdClient.class);
+public final class Client implements io.etcd.jetcd.Client {
+    private static final Logger LOG = LoggerFactory.getLogger(Client.class);
 
     private final GrpcService grpcService;
     private final CloseableSupplier<KV> kvClient;
@@ -53,16 +52,16 @@ public final class EtcdClient implements Client {
     private final CloseableSupplier<Lock> lockClient;
     private final CloseableSupplier<Election> electionClient;
 
-    public EtcdClient(ClientBuilder clientBuilder) {
+    public Client(ClientBuilder clientBuilder) {
         this.grpcService = new GrpcService(clientBuilder.copy());
-        this.kvClient = Suppliers.memoizingCloseable(() -> new KVService(this.grpcService));
-        this.authClient = Suppliers.memoizingCloseable(() -> new AuthService(this.grpcService));
-        this.maintenanceClient = Suppliers.memoizingCloseable(() -> new MaintenanceService(this.grpcService));
-        this.clusterClient = Suppliers.memoizingCloseable(() -> new ClusterService(this.grpcService));
-        this.leaseClient = Suppliers.memoizingCloseable(() -> new LeaseService(this.grpcService));
-        this.watchClient = Suppliers.memoizingCloseable(() -> new WatchService(this.grpcService));
-        this.lockClient = Suppliers.memoizingCloseable(() -> new LockService(this.grpcService));
-        this.electionClient = Suppliers.memoizingCloseable(() -> new ElectionService(this.grpcService));
+        this.kvClient = Suppliers.memoizingCloseable(() -> new KVClient(this.grpcService));
+        this.authClient = Suppliers.memoizingCloseable(() -> new AuthClient(this.grpcService));
+        this.maintenanceClient = Suppliers.memoizingCloseable(() -> new MaintenanceClient(this.grpcService));
+        this.clusterClient = Suppliers.memoizingCloseable(() -> new ClusterClient(this.grpcService));
+        this.leaseClient = Suppliers.memoizingCloseable(() -> new LeaseClient(this.grpcService));
+        this.watchClient = Suppliers.memoizingCloseable(() -> new WatchClient(this.grpcService));
+        this.lockClient = Suppliers.memoizingCloseable(() -> new LockClient(this.grpcService));
+        this.electionClient = Suppliers.memoizingCloseable(() -> new ElectionClient(this.grpcService));
     }
 
     @Override

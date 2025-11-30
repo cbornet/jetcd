@@ -27,11 +27,11 @@ import io.etcd.jetcd.support.Util;
 
 import static java.util.Objects.requireNonNull;
 
-final class LockService extends AbstractService implements Lock {
+final class LockClient extends AbstractClient implements Lock {
     private final io.etcd.jetcd.api.lock.LockGrpcClient client;
     private final ByteSequence namespace;
 
-    LockService(GrpcService grpcService) {
+    LockClient(GrpcService grpcService) {
         super(grpcService);
 
         io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();

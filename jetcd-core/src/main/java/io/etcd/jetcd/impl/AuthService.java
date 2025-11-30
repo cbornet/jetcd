@@ -18,250 +18,155 @@ package io.etcd.jetcd.impl;
 
 import java.util.concurrent.CompletableFuture;
 
-import io.etcd.jetcd.Auth;
-import io.etcd.jetcd.ByteSequence;
-import io.etcd.jetcd.auth.AuthDisableResponse;
-import io.etcd.jetcd.auth.AuthEnableResponse;
-import io.etcd.jetcd.auth.AuthRoleAddResponse;
-import io.etcd.jetcd.auth.AuthRoleDeleteResponse;
-import io.etcd.jetcd.auth.AuthRoleGetResponse;
-import io.etcd.jetcd.auth.AuthRoleGrantPermissionResponse;
-import io.etcd.jetcd.auth.AuthRoleListResponse;
-import io.etcd.jetcd.auth.AuthRoleRevokePermissionResponse;
-import io.etcd.jetcd.auth.AuthUserAddResponse;
-import io.etcd.jetcd.auth.AuthUserChangePasswordResponse;
-import io.etcd.jetcd.auth.AuthUserDeleteResponse;
-import io.etcd.jetcd.auth.AuthUserGetResponse;
-import io.etcd.jetcd.auth.AuthUserGrantRoleResponse;
-import io.etcd.jetcd.auth.AuthUserListResponse;
-import io.etcd.jetcd.auth.AuthUserRevokeRoleResponse;
-import io.etcd.jetcd.auth.Permission;
-
 import com.google.protobuf.ByteString;
+import io.etcd.jetcd.resolver.ServiceResolver;
+import io.etcd.jetcd.support.Util;
+import io.vertx.core.Future;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.net.Address;
+import io.vertx.core.net.SocketAddress;
+import io.vertx.grpc.client.GrpcClient;
+import io.vertx.grpc.client.GrpcClientRequest;
+import io.vertx.grpc.common.ServiceMethod;
 
-import static java.util.Objects.requireNonNull;
+import static io.etcd.jetcd.common.Preconditions.checkArgument;
 
 /**
- * Implementation of etcd auth client.
+ * Manages authentication tokens for etcd requests.
+ * Consolidates token management and GrpcClient wrapping with auth headers.
  */
-final class AuthService extends AbstractService implements Auth {
+final class AuthService {
+    public static final String TOKEN_HEADER = "token";
 
-    private final io.etcd.jetcd.api.AuthGrpcClient client;
+    private final GrpcService grpcService;
+    private volatile String token;
 
     AuthService(GrpcService grpcService) {
-        super(grpcService);
-
-        io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();
-        this.client = io.etcd.jetcd.api.AuthGrpcClient.create(
-            grpcService.getAuthenticatedGrpcClient(),
-            serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class));
+        this.grpcService = grpcService;
     }
 
-    @Override
-    public CompletableFuture<AuthEnableResponse> authEnable() {
-        io.etcd.jetcd.api.AuthEnableRequest enableRequest = io.etcd.jetcd.api.AuthEnableRequest.getDefaultInstance();
-        return completable(
-            client.authEnable(enableRequest),
-            AuthEnableResponse::new);
+    /**
+     * Get the current authentication token, authenticating if necessary.
+     *
+     * @return CompletableFuture with the token
+     */
+    CompletableFuture<String> getToken() {
+        final String currentToken = this.token;
+
+        if (currentToken != null) {
+            return CompletableFuture.completedFuture(currentToken);
+        }
+
+        return authenticate();
     }
 
-    @Override
-    public CompletableFuture<AuthDisableResponse> authDisable() {
-        io.etcd.jetcd.api.AuthDisableRequest disableRequest = io.etcd.jetcd.api.AuthDisableRequest.getDefaultInstance();
-        return completable(
-            client.authDisable(disableRequest),
-            AuthDisableResponse::new);
+    /**
+     * Clear the cached token to force re-authentication on next request.
+     */
+    void refreshToken() {
+        token = null;
     }
 
-    @Override
-    public CompletableFuture<AuthUserAddResponse> userAdd(ByteSequence user, ByteSequence password) {
-        requireNonNull(user, "user can't be null");
-        requireNonNull(password, "password can't be null");
+    /**
+     * Check if authentication is configured.
+     *
+     * @return true if user credentials are configured
+     */
+    boolean requiresAuth() {
+        return !Util.isNullOrEmpty(grpcService.builder().user());
+    }
 
-        io.etcd.jetcd.api.AuthUserAddRequest addRequest = io.etcd.jetcd.api.AuthUserAddRequest.newBuilder()
-            .setNameBytes(ByteString.copyFrom(user.getBytes()))
-            .setPasswordBytes(ByteString.copyFrom(password.getBytes()))
+    /**
+     * Wrap a GrpcClient to add authentication headers to all requests.
+     *
+     * @param  delegate the base GrpcClient to wrap
+     * @return          a GrpcClient that adds auth headers
+     */
+    GrpcClient wrapWithAuth(GrpcClient delegate) {
+        return new AuthenticatingClient(delegate);
+    }
+
+    private CompletableFuture<String> authenticate() {
+        checkArgument(!grpcService.builder().user().isEmpty(), "username can not be empty.");
+        checkArgument(!grpcService.builder().password().isEmpty(), "password can not be empty.");
+
+        ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();
+
+        io.etcd.jetcd.api.AuthGrpcClient authClient = io.etcd.jetcd.api.AuthGrpcClient.create(
+            grpcService.getGrpcClient(),
+            serviceResolver.getTarget(SocketAddress.class)
+        );
+
+        final ByteString user = ByteString.copyFrom(this.grpcService.builder().user().getBytes());
+        final ByteString pass = ByteString.copyFrom(this.grpcService.builder().password().getBytes());
+
+        io.etcd.jetcd.api.AuthenticateRequest request = io.etcd.jetcd.api.AuthenticateRequest.newBuilder()
+            .setNameBytes(user)
+            .setPasswordBytes(pass)
             .build();
 
-        return completable(
-            client.userAdd(addRequest),
-            AuthUserAddResponse::new);
+        return authClient.authenticate(request)
+            .toCompletionStage()
+            .toCompletableFuture()
+            .thenApply(response -> {
+                this.token = response.getToken();
+                return this.token;
+            }
+        );
     }
 
-    @Override
-    public CompletableFuture<AuthUserDeleteResponse> userDelete(ByteSequence user) {
-        requireNonNull(user, "user can't be null");
+    /**
+     * Inner class that wraps a GrpcClient to add authentication headers.
+     */
+    private final class AuthenticatingClient implements GrpcClient {
 
-        io.etcd.jetcd.api.AuthUserDeleteRequest deleteRequest = io.etcd.jetcd.api.AuthUserDeleteRequest.newBuilder()
-            .setNameBytes(ByteString.copyFrom(user.getBytes()))
-            .build();
+        private final GrpcClient delegate;
 
-        return completable(
-            client.userDelete(deleteRequest),
-            AuthUserDeleteResponse::new);
-    }
+        AuthenticatingClient(GrpcClient delegate) {
+            this.delegate = delegate;
+        }
 
-    @Override
-    public CompletableFuture<AuthUserChangePasswordResponse> userChangePassword(ByteSequence user, ByteSequence password) {
-        requireNonNull(user, "user can't be null");
-        requireNonNull(password, "password can't be null");
+        @Override
+        public <Req, Resp> Future<GrpcClientRequest<Req, Resp>> request(Address address, ServiceMethod<Resp, Req> method) {
+            return delegate.request(address, method).compose(this::addHeaders);
+        }
 
-        io.etcd.jetcd.api.AuthUserChangePasswordRequest changePasswordRequest = io.etcd.jetcd.api.AuthUserChangePasswordRequest.newBuilder()
-            .setNameBytes(ByteString.copyFrom(user.getBytes()))
-            .setPasswordBytes(ByteString.copyFrom(password.getBytes()))
-            .build();
+        @Override
+        public <Req, Resp> Future<GrpcClientRequest<Req, Resp>> request(ServiceMethod<Resp, Req> method) {
+            return delegate.request(method).compose(this::addHeaders);
+        }
 
-        return completable(
-            client.userChangePassword(changePasswordRequest),
-            AuthUserChangePasswordResponse::new);
-    }
+        @Override
+        public Future<GrpcClientRequest<Buffer, Buffer>> request(Address address) {
+            return delegate.request(address);
+        }
 
-    @Override
-    public CompletableFuture<AuthUserGetResponse> userGet(ByteSequence user) {
-        requireNonNull(user, "user can't be null");
+        @Override
+        public Future<GrpcClientRequest<Buffer, Buffer>> request() {
+            return delegate.request();
+        }
 
-        io.etcd.jetcd.api.AuthUserGetRequest userGetRequest = io.etcd.jetcd.api.AuthUserGetRequest.newBuilder()
-            .setNameBytes(ByteString.copyFrom(user.getBytes()))
-            .build();
+        @Override
+        public Future<Void> close() {
+            return delegate.close();
+        }
 
-        return completable(
-            client.userGet(userGetRequest),
-            AuthUserGetResponse::new);
-    }
+        private <Req, Resp> Future<GrpcClientRequest<Req, Resp>> addHeaders(GrpcClientRequest<Req, Resp> req) {
+            var builder = grpcService.builder();
+            var headers = req.headers();
 
-    @Override
-    public CompletableFuture<AuthUserListResponse> userList() {
-        io.etcd.jetcd.api.AuthUserListRequest userListRequest = io.etcd.jetcd.api.AuthUserListRequest.getDefaultInstance();
+            builder.headers().forEach(headers::set);
 
-        return completable(
-            client.userList(userListRequest),
-            AuthUserListResponse::new);
-    }
+            if (!requiresAuth()) {
+                return Future.succeededFuture(req);
+            }
 
-    @Override
-    public CompletableFuture<AuthUserGrantRoleResponse> userGrantRole(ByteSequence user, ByteSequence role) {
-        requireNonNull(user, "user can't be null");
-        requireNonNull(role, "key can't be null");
-
-        io.etcd.jetcd.api.AuthUserGrantRoleRequest userGrantRoleRequest = io.etcd.jetcd.api.AuthUserGrantRoleRequest.newBuilder()
-            .setUserBytes(ByteString.copyFrom(user.getBytes()))
-            .setRoleBytes(ByteString.copyFrom(role.getBytes()))
-            .build();
-
-        return completable(
-            client.userGrantRole(userGrantRoleRequest),
-            AuthUserGrantRoleResponse::new);
-    }
-
-    @Override
-    public CompletableFuture<AuthUserRevokeRoleResponse> userRevokeRole(ByteSequence user, ByteSequence role) {
-        requireNonNull(user, "user can't be null");
-        requireNonNull(role, "key can't be null");
-
-        io.etcd.jetcd.api.AuthUserRevokeRoleRequest userRevokeRoleRequest = io.etcd.jetcd.api.AuthUserRevokeRoleRequest.newBuilder()
-            .setNameBytes(ByteString.copyFrom(user.getBytes()))
-            .setRoleBytes(ByteString.copyFrom(role.getBytes()))
-            .build();
-
-        return completable(
-            client.userRevokeRole(userRevokeRoleRequest),
-            AuthUserRevokeRoleResponse::new);
-    }
-
-    @Override
-    public CompletableFuture<AuthRoleAddResponse> roleAdd(ByteSequence user) {
-        requireNonNull(user, "user can't be null");
-
-        io.etcd.jetcd.api.AuthRoleAddRequest roleAddRequest = io.etcd.jetcd.api.AuthRoleAddRequest.newBuilder()
-            .setNameBytes(ByteString.copyFrom(user.getBytes()))
-            .build();
-
-        return completable(
-            client.roleAdd(roleAddRequest),
-            AuthRoleAddResponse::new);
-    }
-
-    @Override
-    public CompletableFuture<AuthRoleGrantPermissionResponse> roleGrantPermission(ByteSequence role, ByteSequence key,
-        ByteSequence rangeEnd, Permission.Type permType) {
-        requireNonNull(role, "role can't be null");
-        requireNonNull(key, "key can't be null");
-        requireNonNull(rangeEnd, "rangeEnd can't be null");
-        requireNonNull(permType, "permType can't be null");
-
-        io.etcd.jetcd.api.Permission.Type type = switch (permType) {
-            case WRITE -> io.etcd.jetcd.api.Permission.Type.WRITE;
-            case READWRITE -> io.etcd.jetcd.api.Permission.Type.READWRITE;
-            case READ -> io.etcd.jetcd.api.Permission.Type.READ;
-            default -> io.etcd.jetcd.api.Permission.Type.UNRECOGNIZED;
-        };
-
-        io.etcd.jetcd.api.Permission perm = io.etcd.jetcd.api.Permission.newBuilder()
-            .setKey(ByteString.copyFrom(key.getBytes()))
-            .setRangeEnd(ByteString.copyFrom(rangeEnd.getBytes()))
-            .setPermType(type)
-            .build();
-
-        io.etcd.jetcd.api.AuthRoleGrantPermissionRequest roleGrantPermissionRequest = io.etcd.jetcd.api.AuthRoleGrantPermissionRequest.newBuilder()
-            .setNameBytes(ByteString.copyFrom(role.getBytes()))
-            .setPerm(perm)
-            .build();
-
-        return completable(
-            client.roleGrantPermission(roleGrantPermissionRequest),
-            AuthRoleGrantPermissionResponse::new);
-    }
-
-    @Override
-    public CompletableFuture<AuthRoleGetResponse> roleGet(ByteSequence role) {
-        requireNonNull(role, "role can't be null");
-
-        io.etcd.jetcd.api.AuthRoleGetRequest roleGetRequest = io.etcd.jetcd.api.AuthRoleGetRequest.newBuilder()
-            .setRoleBytes(ByteString.copyFrom(role.getBytes()))
-            .build();
-
-        return completable(
-            client.roleGet(roleGetRequest),
-            AuthRoleGetResponse::new);
-    }
-
-    @Override
-    public CompletableFuture<AuthRoleListResponse> roleList() {
-        io.etcd.jetcd.api.AuthRoleListRequest roleListRequest = io.etcd.jetcd.api.AuthRoleListRequest.getDefaultInstance();
-
-        return completable(
-            client.roleList(roleListRequest),
-            AuthRoleListResponse::new);
-    }
-
-    @Override
-    public CompletableFuture<AuthRoleRevokePermissionResponse> roleRevokePermission(ByteSequence role, ByteSequence key,
-        ByteSequence rangeEnd) {
-        requireNonNull(role, "role can't be null");
-        requireNonNull(key, "key can't be null");
-        requireNonNull(rangeEnd, "rangeEnd can't be null");
-
-        io.etcd.jetcd.api.AuthRoleRevokePermissionRequest roleRevokePermissionRequest = io.etcd.jetcd.api.AuthRoleRevokePermissionRequest.newBuilder()
-            .setRoleBytes(ByteString.copyFrom(role.getBytes()))
-            .setKey(ByteString.copyFrom(key.getBytes()))
-            .setRangeEnd(ByteString.copyFrom(rangeEnd.getBytes()))
-            .build();
-
-        return completable(
-            client.roleRevokePermission(roleRevokePermissionRequest),
-            AuthRoleRevokePermissionResponse::new);
-    }
-
-    @Override
-    public CompletableFuture<AuthRoleDeleteResponse> roleDelete(ByteSequence role) {
-        requireNonNull(role, "role can't be null");
-        io.etcd.jetcd.api.AuthRoleDeleteRequest roleDeleteRequest = io.etcd.jetcd.api.AuthRoleDeleteRequest.newBuilder()
-            .setRoleBytes(ByteString.copyFrom(role.getBytes()))
-            .build();
-
-        return completable(
-            client.roleDelete(roleDeleteRequest),
-            AuthRoleDeleteResponse::new);
+            return Future.fromCompletionStage(getToken())
+                .map(t -> {
+                    headers.set(TOKEN_HEADER, t);
+                    return req;
+                });
+        }
     }
 }
 

@@ -28,7 +28,7 @@ import io.etcd.jetcd.common.Preconditions;
 import io.etcd.jetcd.common.exception.EtcdException;
 import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
 import io.etcd.jetcd.common.vertx.Ssl;
-import io.etcd.jetcd.impl.EtcdClient;
+import io.etcd.jetcd.impl.Client;
 import io.etcd.jetcd.resolver.ServiceResolver;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClientOptions;
@@ -570,8 +570,8 @@ public final class ClientBuilder implements Cloneable {
      * @return               Client instance.
      * @throws EtcdException if client experiences build error.
      */
-    public Client build() {
-        return new EtcdClient(this);
+    public io.etcd.jetcd.Client build() {
+        return new Client(this);
     }
 
     /**
