@@ -63,8 +63,8 @@ public class WatchResumeTest {
                 await().atMost(30, TimeUnit.SECONDS).untilAsserted(() -> assertThat(ref.get()).isNotNull());
 
                 assertThat(ref.get().getEvents().size()).isEqualTo(1);
-                assertThat(ref.get().getEvents().get(0).getEventType()).isEqualTo(EventType.PUT);
-                assertThat(ref.get().getEvents().get(0).getKeyValue().getKey()).isEqualTo(key);
+                assertThat(ref.get().getEvents().get(0).eventType()).isEqualTo(EventType.PUT);
+                assertThat(ref.get().getEvents().get(0).keyValue().getKey()).isEqualTo(key);
             }
         }
     }

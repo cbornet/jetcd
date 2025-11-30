@@ -71,22 +71,22 @@ public class ElectionTest {
         CampaignResponse campaignResponse = electionClient.campaign(electionName, leaseId, firstProposal)
             .get(OPERATION_TIMEOUT, TimeUnit.SECONDS);
         assertThat(campaignResponse.getLeader()).isNotNull();
-        assertThat(campaignResponse.getLeader().getLease()).isEqualTo(leaseId);
-        assertThat(campaignResponse.getLeader().getName()).isEqualTo(electionName);
+        assertThat(campaignResponse.getLeader().lease()).isEqualTo(leaseId);
+        assertThat(campaignResponse.getLeader().name()).isEqualTo(electionName);
         // election is backed by standard key in etcd. let us examine it
         GetOption getOption = GetOption.builder().isPrefix(true).build();
         List<KeyValue> keys = kvClient.get(electionName, getOption).get().getKvs();
         assertThat(keys.size()).isEqualTo(1);
-        assertThat(keys.get(0).getKey().toString()).isEqualTo(campaignResponse.getLeader().getKey().toString());
+        assertThat(keys.get(0).getKey().toString()).isEqualTo(campaignResponse.getLeader().key().toString());
         assertThat(keys.get(0).getValue()).isEqualTo(firstProposal);
 
         // check that we really are the leader (just to test API)
         LeaderResponse leaderResponse = electionClient.leader(electionName)
             .get(OPERATION_TIMEOUT, TimeUnit.SECONDS);
-        assertThat(leaderResponse.getKv().getKey()).isEqualTo(campaignResponse.getLeader().getKey());
+        assertThat(leaderResponse.getKv().getKey()).isEqualTo(campaignResponse.getLeader().key());
         assertThat(leaderResponse.getKv().getValue()).isEqualTo(firstProposal);
         assertThat(leaderResponse.getKv().getLease()).isEqualTo(leaseId);
-        assertThat(leaderResponse.getKv().getCreateRevision()).isEqualTo(campaignResponse.getLeader().getRevision());
+        assertThat(leaderResponse.getKv().getCreateRevision()).isEqualTo(campaignResponse.getLeader().revision());
 
         // as a leader change your proposal
         ByteSequence secondProposal = ByteSequence.from("proposal2", StandardCharsets.UTF_8);
@@ -129,9 +129,9 @@ public class ElectionTest {
 
         // check that for sure we are the leader
         LeaderResponse leaderResponse = electionClient.leader(electionName).get(OPERATION_TIMEOUT, TimeUnit.SECONDS);
-        assertThat(leaderResponse.getKv().getKey()).isEqualTo(campaignResponse1.getLeader().getKey());
-        assertThat(campaignResponse1.getLeader().getKey()).isEqualTo(campaignResponse2.getLeader().getKey());
-        assertThat(campaignResponse1.getLeader().getRevision()).isEqualTo(campaignResponse2.getLeader().getRevision());
+        assertThat(leaderResponse.getKv().getKey()).isEqualTo(campaignResponse1.getLeader().key());
+        assertThat(campaignResponse1.getLeader().key()).isEqualTo(campaignResponse2.getLeader().key());
+        assertThat(campaignResponse1.getLeader().revision()).isEqualTo(campaignResponse2.getLeader().revision());
 
         // latest proposal should be persisted
         GetOption getOption = GetOption.builder().isPrefix(true).build();

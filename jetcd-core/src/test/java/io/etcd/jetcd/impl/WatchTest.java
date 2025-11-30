@@ -96,8 +96,8 @@ public class WatchTest {
 
                 assertThat(ref.get()).isNotNull();
                 assertThat(ref.get().getEvents().size()).isEqualTo(1);
-                assertThat(ref.get().getEvents().get(0).getEventType()).isEqualTo(EventType.PUT);
-                assertThat(ref.get().getEvents().get(0).getKeyValue().getKey()).isEqualTo(key);
+                assertThat(ref.get().getEvents().get(0).eventType()).isEqualTo(EventType.PUT);
+                assertThat(ref.get().getEvents().get(0).keyValue().getKey()).isEqualTo(key);
             }
         }
     }
@@ -118,8 +118,8 @@ public class WatchTest {
 
                 assertThat(ref.get()).isNotNull();
                 assertThat(ref.get().getEvents().size()).isEqualTo(1);
-                assertThat(ref.get().getEvents().get(0).getEventType()).isEqualTo(EventType.PUT);
-                assertThat(ref.get().getEvents().get(0).getKeyValue().getKey()).isEqualTo(key);
+                assertThat(ref.get().getEvents().get(0).eventType()).isEqualTo(EventType.PUT);
+                assertThat(ref.get().getEvents().get(0).keyValue().getKey()).isEqualTo(key);
             }
         }
     }
@@ -145,8 +145,8 @@ public class WatchTest {
                 assertThat(res.get(0).getHeader().getClusterId()).isEqualTo(res.get(1).getHeader().getClusterId());
                 assertThat(res.get(0).getHeader().getRevision()).isEqualTo(res.get(1).getHeader().getRevision());
                 assertThat(res.get(0).getEvents().size()).isEqualTo(1);
-                assertThat(res.get(0).getEvents().get(0).getEventType()).isEqualTo(EventType.PUT);
-                assertThat(res.get(0).getEvents().get(0).getKeyValue().getKey()).isEqualTo(key);
+                assertThat(res.get(0).getEvents().get(0).eventType()).isEqualTo(EventType.PUT);
+                assertThat(res.get(0).getEvents().get(0).keyValue().getKey()).isEqualTo(key);
             }
         }
     }
@@ -170,8 +170,8 @@ public class WatchTest {
                 assertThat(ref.get().getEvents().size()).isEqualTo(1);
 
                 WatchEvent event = ref.get().getEvents().get(0);
-                assertThat(event.getEventType()).isEqualTo(EventType.DELETE);
-                assertThat(Arrays.equals(event.getKeyValue().getKey().getBytes(), key.getBytes())).isTrue();
+                assertThat(event.eventType()).isEqualTo(EventType.DELETE);
+                assertThat(Arrays.equals(event.keyValue().getKey().getBytes(), key.getBytes())).isTrue();
             }
         }
     }
@@ -211,9 +211,9 @@ public class WatchTest {
 
             await().atMost(TIME_OUT_SECONDS, TimeUnit.SECONDS).untilAsserted(() -> assertThat(events).hasSize(1));
             assertThat(events.get(0).getEvents()).hasSize(1);
-            assertThat(events.get(0).getEvents().get(0).getEventType()).isEqualTo(EventType.PUT);
-            assertThat(events.get(0).getEvents().get(0).getKeyValue().getKey()).isEqualTo(key);
-            assertThat(events.get(0).getEvents().get(0).getKeyValue().getValue()).isEqualTo(value);
+            assertThat(events.get(0).getEvents().get(0).eventType()).isEqualTo(EventType.PUT);
+            assertThat(events.get(0).getEvents().get(0).keyValue().getKey()).isEqualTo(key);
+            assertThat(events.get(0).getEvents().get(0).keyValue().getValue()).isEqualTo(value);
         }
     }
 
@@ -305,8 +305,8 @@ public class WatchTest {
 
             final Consumer<WatchResponse> consumer = response -> {
                 for (WatchEvent event : response.getEvents()) {
-                    if (event.getEventType() == EventType.PUT) {
-                        ByteSequence key1 = event.getKeyValue().getKey();
+                    if (event.eventType() == EventType.PUT) {
+                        ByteSequence key1 = event.keyValue().getKey();
 
                         Future<?> unused = client.getKVClient().get(key1).whenComplete((r, t) -> {
                             if (!r.getKvs().isEmpty()) {
