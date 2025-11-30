@@ -22,12 +22,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import io.etcd.jetcd.Cluster;
-import io.etcd.jetcd.api.ClusterGrpcClient;
-import io.etcd.jetcd.api.MemberAddRequest;
-import io.etcd.jetcd.api.MemberListRequest;
-import io.etcd.jetcd.api.MemberPromoteRequest;
-import io.etcd.jetcd.api.MemberRemoveRequest;
-import io.etcd.jetcd.api.MemberUpdateRequest;
 import io.etcd.jetcd.cluster.MemberAddResponse;
 import io.etcd.jetcd.cluster.MemberListResponse;
 import io.etcd.jetcd.cluster.MemberPromoteResponse;
@@ -37,48 +31,34 @@ import io.etcd.jetcd.cluster.MemberUpdateResponse;
 /**
  * Implementation of cluster client.
  */
-final class ClusterImpl extends AbstractService implements Cluster {
+final class ClusterService extends AbstractService implements Cluster {
 
-    private final ClusterGrpcClient client;
+    private final io.etcd.jetcd.api.ClusterGrpcClient client;
 
-    ClusterImpl(GrpcService grpcService) {
+    ClusterService(GrpcService grpcService) {
         super(grpcService);
 
         io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();
-        this.client = ClusterGrpcClient.create(
+        this.client = io.etcd.jetcd.api.ClusterGrpcClient.create(
             grpcService.getAuthenticatedGrpcClient(),
             serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class));
     }
 
-    /**
-     * lists the current cluster membership.
-     */
     @Override
     public CompletableFuture<MemberListResponse> listMember() {
         return completable(
-            client.memberList(MemberListRequest.getDefaultInstance()),
+            client.memberList(io.etcd.jetcd.api.MemberListRequest.getDefaultInstance()),
             MemberListResponse::new);
     }
 
-    /**
-     * add a non-learner new member into the cluster.
-     *
-     * @param peerAddrs the peer addresses of the new member
-     */
     @Override
     public CompletableFuture<MemberAddResponse> addMember(List<URI> peerAddrs) {
         return addMember(peerAddrs, false);
     }
 
-    /**
-     * add a new member into the cluster.
-     *
-     * @param peerAddrs the peer addresses of the new member
-     * @param isLearner whether the member is raft learner
-     */
     @Override
     public CompletableFuture<MemberAddResponse> addMember(List<URI> peerAddrs, boolean isLearner) {
-        MemberAddRequest memberAddRequest = MemberAddRequest.newBuilder()
+        io.etcd.jetcd.api.MemberAddRequest memberAddRequest = io.etcd.jetcd.api.MemberAddRequest.newBuilder()
             .addAllPeerURLs(peerAddrs.stream().map(URI::toString).collect(Collectors.toList()))
             .setIsLearner(isLearner)
             .build();
@@ -88,14 +68,9 @@ final class ClusterImpl extends AbstractService implements Cluster {
             MemberAddResponse::new);
     }
 
-    /**
-     * removes an existing member from the cluster.
-     *
-     * @param memberID the id of the member
-     */
     @Override
     public CompletableFuture<MemberRemoveResponse> removeMember(long memberID) {
-        MemberRemoveRequest memberRemoveRequest = MemberRemoveRequest.newBuilder()
+        io.etcd.jetcd.api.MemberRemoveRequest memberRemoveRequest = io.etcd.jetcd.api.MemberRemoveRequest.newBuilder()
             .setID(memberID)
             .build();
 
@@ -104,15 +79,9 @@ final class ClusterImpl extends AbstractService implements Cluster {
             MemberRemoveResponse::new);
     }
 
-    /**
-     * update peer addresses of the member.
-     *
-     * @param memberID  the id of member to update
-     * @param peerAddrs the new endpoints for the member
-     */
     @Override
     public CompletableFuture<MemberUpdateResponse> updateMember(long memberID, List<URI> peerAddrs) {
-        MemberUpdateRequest memberUpdateRequest = MemberUpdateRequest.newBuilder()
+        io.etcd.jetcd.api.MemberUpdateRequest memberUpdateRequest = io.etcd.jetcd.api.MemberUpdateRequest.newBuilder()
             .addAllPeerURLs(peerAddrs.stream().map(URI::toString).collect(Collectors.toList()))
             .setID(memberID)
             .build();
@@ -122,15 +91,9 @@ final class ClusterImpl extends AbstractService implements Cluster {
             MemberUpdateResponse::new);
     }
 
-    /**
-     * Promotes a member from raft learner (non-voting) to raft voting member.
-     *
-     * @param  memberID the raft learner to be promoted to a raft voting member
-     * @return          the response
-     */
     @Override
     public CompletableFuture<MemberPromoteResponse> promoteMember(long memberID) {
-        MemberPromoteRequest memberPromoteRequest = MemberPromoteRequest.newBuilder()
+        io.etcd.jetcd.api.MemberPromoteRequest memberPromoteRequest = io.etcd.jetcd.api.MemberPromoteRequest.newBuilder()
             .setID(memberID)
             .build();
 
@@ -140,3 +103,4 @@ final class ClusterImpl extends AbstractService implements Cluster {
     }
 
 }
+
