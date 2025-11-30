@@ -16,10 +16,13 @@
 
 package io.etcd.jetcd.impl;
 
+import dev.failsafe.RetryPolicy;
+import dev.failsafe.RetryPolicyBuilder;
 import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
 import io.etcd.jetcd.common.vertx.Failsafe;
 import io.etcd.jetcd.support.Errors;
 import io.vertx.core.Future;
+import io.vertx.grpc.client.InvalidStatusException;
 import io.vertx.grpc.common.GrpcStatus;
 
 import java.util.concurrent.CompletableFuture;
@@ -27,21 +30,57 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import static io.etcd.jetcd.support.Errors.isAuthStoreExpired;
+import static io.etcd.jetcd.support.Errors.isInvalidTokenError;
+
 /**
  * Base class for service implementations providing common utilities.
  * Handles Future to CompletableFuture conversion and retry execution with Failsafe.
  */
 abstract class AbstractService {
     private final GrpcService grpcService;
-    private final RetryPolicyFactory retryPolicyFactory;
 
     protected AbstractService(GrpcService grpcService) {
         this.grpcService = grpcService;
-        this.retryPolicyFactory = new RetryPolicyFactory(grpcService);
     }
 
     protected GrpcService grpc() {
         return this.grpcService;
+    }
+
+    /**
+     * Creates a retry policy with authentication token refresh support.
+     *
+     * @param  doRetry predicate to determine if a gRPC status should trigger a retry
+     * @return         configured retry policy
+     */
+    protected <S> RetryPolicy<S> createRetryPolicy(Predicate<GrpcStatus> doRetry) {
+        RetryPolicyBuilder<S> policy = RetryPolicy.<S>builder()
+            .handleIf(throwable -> {
+                GrpcStatus status = getGrpcStatus(throwable);
+                if (isInvalidTokenError(status) || isAuthStoreExpired(status)) {
+                    grpcService.auth().refreshToken();
+                }
+                return doRetry.test(status);
+            })
+            .withMaxRetries(grpcService.builder().retryMaxAttempts())
+            .withBackoff(
+                grpcService.builder().retryDelay(),
+                grpcService.builder().retryMaxDelay(),
+                grpcService.builder().retryChronoUnit());
+
+        if (grpcService.builder().retryMaxDuration() != null) {
+            policy = policy.withMaxDuration(grpcService.builder().retryMaxDuration());
+        }
+
+        return policy.build();
+    }
+
+    private static GrpcStatus getGrpcStatus(Throwable throwable) {
+        if (throwable instanceof InvalidStatusException invalidStatusException) {
+            return invalidStatusException.actualStatus();
+        }
+        return GrpcStatus.UNKNOWN;
     }
 
     /**
@@ -121,7 +160,7 @@ abstract class AbstractService {
         Predicate<GrpcStatus> doRetry) {
 
         return dev.failsafe.Failsafe
-            .with(retryPolicyFactory.createPolicy(doRetry))
+            .with(createRetryPolicy(doRetry))
             .with(Failsafe.vertxScheduler(grpcService.vertx()))
             .getStageAsync(() -> supplier.get().toCompletionStage())
             .thenApply(resultConvert);
