@@ -17,21 +17,26 @@
 package io.etcd.jetcd.watch;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.function.Supplier;
 
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.KeyValue;
 import io.etcd.jetcd.api.Event;
+import io.etcd.jetcd.common.suppliers.Suppliers;
 import io.etcd.jetcd.impl.AbstractResponse;
 
 public class WatchResponse extends AbstractResponse<io.etcd.jetcd.api.WatchResponse> {
 
-    private List<WatchEvent> events;
-    private final ByteSequence namespace;
+    private final Supplier<List<WatchEvent>> events;
 
     public WatchResponse(io.etcd.jetcd.api.WatchResponse response, ByteSequence namespace) {
         super(response, response.getHeader());
-        this.namespace = namespace;
+
+        this.events = Suppliers.memoizing(
+            () -> getResponse().getEventsList().stream()
+                .map(event -> toEvent(event, namespace))
+                .toList()
+        );
     }
 
     public WatchResponse(io.etcd.jetcd.api.WatchResponse response) {
@@ -51,14 +56,8 @@ public class WatchResponse extends AbstractResponse<io.etcd.jetcd.api.WatchRespo
         return new WatchEvent(new KeyValue(event.getKv(), namespace), new KeyValue(event.getPrevKv(), namespace), eventType);
     }
 
-    public synchronized List<WatchEvent> getEvents() {
-        if (events == null) {
-            events = getResponse().getEventsList().stream()
-                .map(event -> toEvent(event, namespace))
-                .collect(Collectors.toList());
-        }
-
-        return events;
+    public List<WatchEvent> getEvents() {
+        return events.get();
     }
 
     /**
