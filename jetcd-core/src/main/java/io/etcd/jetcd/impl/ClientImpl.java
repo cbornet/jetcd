@@ -56,7 +56,7 @@ public final class ClientImpl implements Client {
     public ClientImpl(ClientBuilder clientBuilder) {
         this.grpcService = new GrpcService(clientBuilder.copy());
         this.kvClient = Suppliers.memoizingCloseable(() -> new KVImpl(this.grpcService));
-        this.authClient = Suppliers.memoizingCloseable(() -> new AuthImpl(this.grpcService));
+        this.authClient = Suppliers.memoizingCloseable(() -> new AuthService(this.grpcService));
         this.maintenanceClient = Suppliers.memoizingCloseable(() -> new MaintenanceImpl(this.grpcService));
         this.clusterClient = Suppliers.memoizingCloseable(() -> new ClusterImpl(this.grpcService));
         this.leaseClient = Suppliers.memoizingCloseable(() -> new LeaseImpl(this.grpcService));
