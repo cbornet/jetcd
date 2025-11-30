@@ -27,11 +27,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.etcd.jetcd.Lease;
-import io.etcd.jetcd.api.LeaseGrantRequest;
-import io.etcd.jetcd.api.LeaseGrpcClient;
-import io.etcd.jetcd.api.LeaseKeepAliveRequest;
-import io.etcd.jetcd.api.LeaseRevokeRequest;
-import io.etcd.jetcd.api.LeaseTimeToLiveRequest;
 import io.etcd.jetcd.common.Service;
 import io.etcd.jetcd.common.exception.ErrorCode;
 import io.etcd.jetcd.lease.LeaseGrantResponse;
@@ -51,25 +46,21 @@ import static java.util.Objects.requireNonNull;
 /**
  * Implementation of lease client.
  */
-final class LeaseImpl extends AbstractService implements Lease {
+final class LeaseService extends AbstractService implements Lease {
 
-    /**
-     * if there is no user-provided keep-alive timeout from ClientBuilder, then DEFAULT_FIRST_KEEPALIVE_TIMEOUT_MS
-     * is the timeout for the first keepalive request before the actual TTL is known to the lease client.
-     */
     private static final int DEFAULT_FIRST_KEEPALIVE_TIMEOUT_MS = 5000;
 
-    private final LeaseGrpcClient client;
+    private final io.etcd.jetcd.api.LeaseGrpcClient client;
     private final Map<Long, KeepAliveObserver> keepAlives;
     private final KeepAlive keepAlive;
     private final DeadLine deadLine;
     private volatile boolean closed;
 
-    LeaseImpl(GrpcService grpcService) {
+    LeaseService(GrpcService grpcService) {
         super(grpcService);
 
         io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();
-        this.client = LeaseGrpcClient.create(
+        this.client = io.etcd.jetcd.api.LeaseGrpcClient.create(
             grpcService.getAuthenticatedGrpcClient(),
             serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class));
         this.keepAlives = new ConcurrentHashMap<>();
@@ -81,7 +72,7 @@ final class LeaseImpl extends AbstractService implements Lease {
     public CompletableFuture<LeaseGrantResponse> grant(long ttl) {
         return execute(
             () -> client.leaseGrant(
-                LeaseGrantRequest.newBuilder()
+                io.etcd.jetcd.api.LeaseGrantRequest.newBuilder()
                     .setTTL(ttl)
                     .build()),
             LeaseGrantResponse::new,
@@ -90,7 +81,6 @@ final class LeaseImpl extends AbstractService implements Lease {
 
     @Override
     public CompletableFuture<LeaseGrantResponse> grant(long ttl, long timeout, TimeUnit unit) {
-        // TODO: Add timeout support for Vert.x client
         return grant(ttl);
     }
 
@@ -98,7 +88,7 @@ final class LeaseImpl extends AbstractService implements Lease {
     public CompletableFuture<LeaseRevokeResponse> revoke(long leaseId) {
         return execute(
             () -> client.leaseRevoke(
-                LeaseRevokeRequest.newBuilder()
+                io.etcd.jetcd.api.LeaseRevokeRequest.newBuilder()
                     .setID(leaseId)
                     .build()),
             LeaseRevokeResponse::new,
@@ -109,7 +99,7 @@ final class LeaseImpl extends AbstractService implements Lease {
     public CompletableFuture<LeaseTimeToLiveResponse> timeToLive(long leaseId, LeaseOption option) {
         requireNonNull(option, "LeaseOption should not be null");
 
-        LeaseTimeToLiveRequest leaseTimeToLiveRequest = LeaseTimeToLiveRequest.newBuilder()
+        io.etcd.jetcd.api.LeaseTimeToLiveRequest leaseTimeToLiveRequest = io.etcd.jetcd.api.LeaseTimeToLiveRequest.newBuilder()
             .setID(leaseId)
             .setKeys(option.isAttachedKeys())
             .build();
@@ -142,10 +132,10 @@ final class LeaseImpl extends AbstractService implements Lease {
 
     @Override
     public CompletableFuture<LeaseKeepAliveResponse> keepAliveOnce(long leaseId) {
-        final AtomicReference<WriteStream<LeaseKeepAliveRequest>> writeStreamRef = new AtomicReference<>();
+        final AtomicReference<WriteStream<io.etcd.jetcd.api.LeaseKeepAliveRequest>> writeStreamRef = new AtomicReference<>();
         final AtomicReference<ReadStream<io.etcd.jetcd.api.LeaseKeepAliveResponse>> readStreamRef = new AtomicReference<>();
         final CompletableFuture<LeaseKeepAliveResponse> future = new CompletableFuture<>();
-        final LeaseKeepAliveRequest req = LeaseKeepAliveRequest.newBuilder().setID(leaseId).build();
+        final io.etcd.jetcd.api.LeaseKeepAliveRequest req = io.etcd.jetcd.api.LeaseKeepAliveRequest.newBuilder().setID(leaseId).build();
 
         client.leaseKeepAlive((writeStream, err) -> {
             if (err != null) {
@@ -189,7 +179,7 @@ final class LeaseImpl extends AbstractService implements Lease {
 
     private void cleanupKeepAliveOnce(
         ReadStream<io.etcd.jetcd.api.LeaseKeepAliveResponse> readStream,
-        WriteStream<LeaseKeepAliveRequest> writeStream) {
+        WriteStream<io.etcd.jetcd.api.LeaseKeepAliveRequest> writeStream) {
 
         if (readStream != null) {
             readStream.handler(null);
@@ -218,13 +208,10 @@ final class LeaseImpl extends AbstractService implements Lease {
         this.keepAlives.clear();
     }
 
-    /**
-     * The KeepAliver hold a background task and stream for keep aliaves.
-     */
     private final class KeepAlive extends Service {
         private volatile Long task;
         private volatile Long restart;
-        private volatile WriteStream<LeaseKeepAliveRequest> requestStream;
+        private volatile WriteStream<io.etcd.jetcd.api.LeaseKeepAliveRequest> requestStream;
 
         KeepAlive() {
         }
@@ -269,7 +256,7 @@ final class LeaseImpl extends AbstractService implements Lease {
             this.restart = null;
         }
 
-        private void writeHandler(WriteStream<LeaseKeepAliveRequest> stream) {
+        private void writeHandler(WriteStream<io.etcd.jetcd.api.LeaseKeepAliveRequest> stream) {
             requestStream = stream;
 
             task = grpc().vertx().setPeriodic(
@@ -280,10 +267,10 @@ final class LeaseImpl extends AbstractService implements Lease {
                 });
         }
 
-        private void sendKeepAlive(KeepAliveObserver observer, WriteStream<LeaseKeepAliveRequest> stream) {
+        private void sendKeepAlive(KeepAliveObserver observer, WriteStream<io.etcd.jetcd.api.LeaseKeepAliveRequest> stream) {
             if (observer.getNextKeepAlive() < System.currentTimeMillis()) {
                 stream.write(
-                    LeaseKeepAliveRequest.newBuilder().setID(observer.getLeaseId()).build());
+                    io.etcd.jetcd.api.LeaseKeepAliveRequest.newBuilder().setID(observer.getLeaseId()).build());
             }
         }
 
@@ -328,9 +315,6 @@ final class LeaseImpl extends AbstractService implements Lease {
         }
     }
 
-    /**
-     * The DeadLiner hold a background task to check deadlines.
-     */
     private class DeadLine extends Service {
         private volatile Long task;
 
@@ -363,9 +347,6 @@ final class LeaseImpl extends AbstractService implements Lease {
         }
     }
 
-    /**
-     * The KeepAlive hold the keepAlive information for lease.
-     */
     private final class KeepAliveObserver {
         private final List<Lease.Listener> listeners;
         private final long leaseId;
@@ -380,7 +361,6 @@ final class LeaseImpl extends AbstractService implements Lease {
         KeepAliveObserver(long leaseId, Collection<Lease.Listener> listeners) {
             this.nextKeepAlive = System.currentTimeMillis();
 
-            // Use user-provided timeout if present to avoid removing KeepAlive before first response from server
             int initialKeepAliveTimeoutMs = grpc().builder().keepaliveTimeout() != null
                 ? Math.toIntExact(grpc().builder().keepaliveTimeout().toMillis())
                 : DEFAULT_FIRST_KEEPALIVE_TIMEOUT_MS;
@@ -440,3 +420,4 @@ final class LeaseImpl extends AbstractService implements Lease {
         }
     }
 }
+
