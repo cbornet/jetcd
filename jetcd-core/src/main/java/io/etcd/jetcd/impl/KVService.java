@@ -21,8 +21,6 @@ import java.util.concurrent.CompletableFuture;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.KV;
 import io.etcd.jetcd.Txn;
-import io.etcd.jetcd.api.CompactionRequest;
-import io.etcd.jetcd.api.KVGrpcClient;
 import io.etcd.jetcd.kv.CompactResponse;
 import io.etcd.jetcd.kv.DeleteResponse;
 import io.etcd.jetcd.kv.GetResponse;
@@ -42,15 +40,15 @@ import static java.util.Objects.requireNonNull;
 /**
  * Implementation of etcd kv client.
  */
-final class KVImpl extends AbstractService implements KV {
-    private final KVGrpcClient client;
+final class KVService extends AbstractService implements KV {
+    private final io.etcd.jetcd.api.KVGrpcClient client;
     private final ByteSequence namespace;
 
-    KVImpl(GrpcService grpcService) {
+    KVService(GrpcService grpcService) {
         super(grpcService);
 
         io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();
-        this.client = KVGrpcClient.create(
+        this.client = io.etcd.jetcd.api.KVGrpcClient.create(
             grpcService.getAuthenticatedGrpcClient(),
             serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class));
         this.namespace = grpcService.getNamespace();
@@ -113,7 +111,7 @@ final class KVImpl extends AbstractService implements KV {
     public CompletableFuture<CompactResponse> compact(long rev, CompactOption option) {
         requireNonNull(option, "option should not be null");
 
-        CompactionRequest request = CompactionRequest.newBuilder()
+        io.etcd.jetcd.api.CompactionRequest request = io.etcd.jetcd.api.CompactionRequest.newBuilder()
             .setRevision(rev).setPhysical(option.isPhysical())
             .build();
 
@@ -138,3 +136,4 @@ final class KVImpl extends AbstractService implements KV {
             namespace);
     }
 }
+

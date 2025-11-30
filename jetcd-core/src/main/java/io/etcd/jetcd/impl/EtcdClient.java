@@ -55,7 +55,7 @@ public final class EtcdClient implements Client {
 
     public EtcdClient(ClientBuilder clientBuilder) {
         this.grpcService = new GrpcService(clientBuilder.copy());
-        this.kvClient = Suppliers.memoizingCloseable(() -> new KVImpl(this.grpcService));
+        this.kvClient = Suppliers.memoizingCloseable(() -> new KVService(this.grpcService));
         this.authClient = Suppliers.memoizingCloseable(() -> new AuthService(this.grpcService));
         this.maintenanceClient = Suppliers.memoizingCloseable(() -> new MaintenanceImpl(this.grpcService));
         this.clusterClient = Suppliers.memoizingCloseable(() -> new ClusterService(this.grpcService));
