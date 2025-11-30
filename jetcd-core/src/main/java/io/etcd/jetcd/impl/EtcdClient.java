@@ -62,7 +62,7 @@ public final class EtcdClient implements Client {
         this.leaseClient = Suppliers.memoizingCloseable(() -> new LeaseImpl(this.grpcService));
         this.watchClient = Suppliers.memoizingCloseable(() -> new WatchImpl(this.grpcService));
         this.lockClient = Suppliers.memoizingCloseable(() -> new LockImpl(this.grpcService));
-        this.electionClient = Suppliers.memoizingCloseable(() -> new ElectionImpl(this.grpcService));
+        this.electionClient = Suppliers.memoizingCloseable(() -> new ElectionService(this.grpcService));
     }
 
     @Override

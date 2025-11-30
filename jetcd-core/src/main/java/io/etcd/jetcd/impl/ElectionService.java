@@ -20,11 +20,6 @@ import java.util.concurrent.CompletableFuture;
 
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Election;
-import io.etcd.jetcd.api.CampaignRequest;
-import io.etcd.jetcd.api.ElectionGrpcClient;
-import io.etcd.jetcd.api.LeaderRequest;
-import io.etcd.jetcd.api.ProclaimRequest;
-import io.etcd.jetcd.api.ResignRequest;
 import io.etcd.jetcd.election.CampaignResponse;
 import io.etcd.jetcd.election.LeaderKey;
 import io.etcd.jetcd.election.LeaderResponse;
@@ -41,45 +36,26 @@ import com.google.protobuf.ByteString;
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdException;
 import static java.util.Objects.requireNonNull;
 
-final class ElectionImpl extends AbstractService implements Election {
-    private final ElectionGrpcClient client;
+final class ElectionService extends AbstractService implements Election {
+    private final io.etcd.jetcd.api.ElectionGrpcClient client;
     private final ByteSequence namespace;
 
-    ElectionImpl(GrpcService grpcService) {
+    ElectionService(GrpcService grpcService) {
         super(grpcService);
 
         io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();
-        this.client = ElectionGrpcClient.create(
+        this.client = io.etcd.jetcd.api.ElectionGrpcClient.create(
             grpcService.getAuthenticatedGrpcClient(),
             serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class));
         this.namespace = grpcService.getNamespace();
     }
-
-    // TODO: Add require leader support for Vert.x client
-    // Election operations are done in a context where a client is trying to implement
-    // some fault tolerance related use case; in that type of context, it makes sense to always
-    // apply require leader, since we don't want a client connected to a non-raft-leader server
-    // have an election method just go silent if the server the client happens to be connected to
-    // becomes partitioned from the actual raft-leader server in the etcd servers cluster:
-    // in that scenario and without required leader, an attempt to campaign could block forever
-    // not because some other client is already an election leader, but because the server the client
-    // is connected to is partitioned and can't tell.
-    // With require leader, in that case the call will fail and we give
-    // the client the ability to (a) know (b) retry on a different server.
-    // The retry on a different server should happen automatically if the connection manager is using
-    // a round robin strategy.
-    //
-    // Beware in the context of this election API, the word "leader" is overloaded.
-    // In the paragraph above when we say "raft-leader" we are talking about the etcd server that is a leader
-    // of the etcd servers cluster according to raft, we are not talking about the client that
-    // happens to be the leader of an election using the election API in this file.
 
     @Override
     public CompletableFuture<CampaignResponse> campaign(ByteSequence electionName, long leaseId, ByteSequence proposal) {
         requireNonNull(electionName, "election name should not be null");
         requireNonNull(proposal, "proposal should not be null");
 
-        CampaignRequest request = CampaignRequest.newBuilder()
+        io.etcd.jetcd.api.CampaignRequest request = io.etcd.jetcd.api.CampaignRequest.newBuilder()
             .setName(Util.prefixNamespace(electionName, namespace))
             .setValue(ByteString.copyFrom(proposal.getBytes()))
             .setLease(leaseId)
@@ -98,7 +74,7 @@ final class ElectionImpl extends AbstractService implements Election {
         requireNonNull(leaderKey, "leader key should not be null");
         requireNonNull(proposal, "proposal should not be null");
 
-        ProclaimRequest request = ProclaimRequest.newBuilder()
+        io.etcd.jetcd.api.ProclaimRequest request = io.etcd.jetcd.api.ProclaimRequest.newBuilder()
             .setLeader(
                 io.etcd.jetcd.api.LeaderKey.newBuilder()
                     .setKey(ByteString.copyFrom(leaderKey.getKey().getBytes()))
@@ -121,7 +97,7 @@ final class ElectionImpl extends AbstractService implements Election {
     public CompletableFuture<LeaderResponse> leader(ByteSequence electionName) {
         requireNonNull(electionName, "election name should not be null");
 
-        LeaderRequest request = LeaderRequest.newBuilder()
+        io.etcd.jetcd.api.LeaderRequest request = io.etcd.jetcd.api.LeaderRequest.newBuilder()
             .setName(Util.prefixNamespace(electionName, namespace))
             .build();
 
@@ -138,7 +114,7 @@ final class ElectionImpl extends AbstractService implements Election {
         requireNonNull(electionName, "election name should not be null");
         requireNonNull(listener, "listener should not be null");
 
-        LeaderRequest request = LeaderRequest.newBuilder()
+        io.etcd.jetcd.api.LeaderRequest request = io.etcd.jetcd.api.LeaderRequest.newBuilder()
             .setName(Util.prefixNamespace(electionName, namespace))
             .build();
 
@@ -157,7 +133,7 @@ final class ElectionImpl extends AbstractService implements Election {
     public CompletableFuture<ResignResponse> resign(LeaderKey leaderKey) {
         requireNonNull(leaderKey, "leader key should not be null");
 
-        ResignRequest request = ResignRequest.newBuilder()
+        io.etcd.jetcd.api.ResignRequest request = io.etcd.jetcd.api.ResignRequest.newBuilder()
             .setLeader(
                 io.etcd.jetcd.api.LeaderKey.newBuilder()
                     .setKey(ByteString.copyFrom(leaderKey.getKey().getBytes()))
@@ -185,11 +161,6 @@ final class ElectionImpl extends AbstractService implements Election {
         Throwable cause = e;
         while (cause != null) {
             if (cause instanceof InvalidStatusException invalidStatusException) {
-                // With Vert.x gRPC client, we cannot access the detailed error message from gRPC status.
-                // For election operations, UNKNOWN status typically indicates leadership issues.
-                // We distinguish based on the operation context:
-                // - leader() queries that fail with UNKNOWN mean "no leader exists" (NoLeaderException)
-                // - proclaim()/campaign() that fail with UNKNOWN mean "not the leader" (NotLeaderException)
                 if (invalidStatusException.actualStatus() == io.vertx.grpc.common.GrpcStatus.UNKNOWN && isLeaderQuery) {
                     return new NoLeaderException();
                 } else if (invalidStatusException.actualStatus() == io.vertx.grpc.common.GrpcStatus.UNKNOWN) {
@@ -201,3 +172,4 @@ final class ElectionImpl extends AbstractService implements Election {
         return toEtcdException(e);
     }
 }
+
