@@ -18,7 +18,6 @@ package io.etcd.jetcd.kv;
 
 import java.util.List;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.common.suppliers.Suppliers;
@@ -47,28 +46,28 @@ public class TxnResponse extends AbstractResponse<io.etcd.jetcd.api.TxnResponse>
             () -> getResponse().getResponsesList().stream()
                 .filter((responseOp) -> responseOp.getResponseCase() == RESPONSE_DELETE_RANGE)
                 .map(responseOp -> new DeleteResponse(responseOp.getResponseDeleteRange(), namespace))
-                .collect(Collectors.toList())
+                .toList()
         );
 
         this.getResponses = Suppliers.memoizing(
             () -> getResponse().getResponsesList().stream()
                 .filter((responseOp) -> responseOp.getResponseCase() == RESPONSE_RANGE)
                 .map(responseOp -> new GetResponse(responseOp.getResponseRange(), namespace))
-                .collect(Collectors.toList())
+                .toList()
         );
 
         this.putResponses = Suppliers.memoizing(
             () -> getResponse().getResponsesList().stream()
                 .filter((responseOp) -> responseOp.getResponseCase() == RESPONSE_PUT)
                 .map(responseOp -> new PutResponse(responseOp.getResponsePut(), namespace))
-                .collect(Collectors.toList())
+                .toList()
         );
 
         this.txnResponses = Suppliers.memoizing(
             () -> getResponse().getResponsesList().stream()
                 .filter((responseOp) -> responseOp.getResponseCase() == RESPONSE_TXN)
                 .map(responseOp -> new TxnResponse(responseOp.getResponseTxn(), namespace))
-                .collect(Collectors.toList())
+                .toList()
         );
     }
 

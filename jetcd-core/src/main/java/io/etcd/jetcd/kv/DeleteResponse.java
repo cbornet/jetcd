@@ -18,7 +18,6 @@ package io.etcd.jetcd.kv;
 
 import java.util.List;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.KeyValue;
@@ -33,7 +32,7 @@ public class DeleteResponse extends AbstractResponse<DeleteRangeResponse> {
         super(deleteRangeResponse, deleteRangeResponse.getHeader());
 
         this.prevKvs = Suppliers.memoizing(
-            () -> getResponse().getPrevKvsList().stream().map(kv -> new KeyValue(kv, namespace)).collect(Collectors.toList())
+            () -> getResponse().getPrevKvsList().stream().map(kv -> new KeyValue(kv, namespace)).toList()
         );
     }
 
