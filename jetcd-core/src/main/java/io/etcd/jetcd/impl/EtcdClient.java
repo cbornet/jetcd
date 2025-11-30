@@ -38,10 +38,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Etcd Client.
+ * Etcd Client implementation.
  */
-public final class ClientImpl implements Client {
-    private static final Logger LOG = LoggerFactory.getLogger(ClientImpl.class);
+public final class EtcdClient implements Client {
+    private static final Logger LOG = LoggerFactory.getLogger(EtcdClient.class);
 
     private final GrpcService grpcService;
     private final CloseableSupplier<KV> kvClient;
@@ -53,7 +53,7 @@ public final class ClientImpl implements Client {
     private final CloseableSupplier<Lock> lockClient;
     private final CloseableSupplier<Election> electionClient;
 
-    public ClientImpl(ClientBuilder clientBuilder) {
+    public EtcdClient(ClientBuilder clientBuilder) {
         this.grpcService = new GrpcService(clientBuilder.copy());
         this.kvClient = Suppliers.memoizingCloseable(() -> new KVImpl(this.grpcService));
         this.authClient = Suppliers.memoizingCloseable(() -> new AuthService(this.grpcService));
@@ -126,7 +126,6 @@ public final class ClientImpl implements Client {
 
     @Override
     public synchronized CompletableFuture<Void> closeAsync() {
-        // Close all clients in parallel
         List<CompletableFuture<Void>> closeFutures = new ArrayList<>();
 
         closeFutures.add(closeClientSupplier(authClient, "authClient"));
@@ -138,7 +137,6 @@ public final class ClientImpl implements Client {
         closeFutures.add(closeClientSupplier(lockClient, "lockClient"));
         closeFutures.add(closeClientSupplier(electionClient, "electionClient"));
 
-        // After all clients close, close GrpcService
         return CompletableFuture.allOf(closeFutures.toArray(new CompletableFuture[0]))
             .whenComplete((v, error) -> {
                 try {
@@ -159,3 +157,4 @@ public final class ClientImpl implements Client {
         });
     }
 }
+
