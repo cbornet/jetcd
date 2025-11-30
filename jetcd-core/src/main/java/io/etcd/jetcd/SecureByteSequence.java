@@ -85,7 +85,10 @@ public final class SecureByteSequence implements AutoCloseable {
      * @return       a new SecureByteSequence
      */
     public static SecureByteSequence from(char[] chars) {
-        return new SecureByteSequence(StandardCharsets.UTF_8.encode(CharBuffer.wrap(chars)).array());
+        java.nio.ByteBuffer buffer = StandardCharsets.UTF_8.encode(CharBuffer.wrap(chars));
+        byte[] bytes = new byte[buffer.remaining()];
+        buffer.get(bytes);
+        return new SecureByteSequence(bytes);
     }
 
     /**
