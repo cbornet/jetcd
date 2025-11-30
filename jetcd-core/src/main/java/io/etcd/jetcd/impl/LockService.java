@@ -20,9 +20,6 @@ import java.util.concurrent.CompletableFuture;
 
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Lock;
-import io.etcd.jetcd.api.lock.LockGrpcClient;
-import io.etcd.jetcd.api.lock.LockRequest;
-import io.etcd.jetcd.api.lock.UnlockRequest;
 import io.etcd.jetcd.lock.LockResponse;
 import io.etcd.jetcd.lock.UnlockResponse;
 import io.etcd.jetcd.support.Errors;
@@ -30,29 +27,15 @@ import io.etcd.jetcd.support.Util;
 
 import static java.util.Objects.requireNonNull;
 
-final class LockImpl extends AbstractService implements Lock {
-    private final LockGrpcClient client;
+final class LockService extends AbstractService implements Lock {
+    private final io.etcd.jetcd.api.lock.LockGrpcClient client;
     private final ByteSequence namespace;
 
-    // TODO: Add require leader support for Vert.x client
-    // Lock operations are done in a context where a client is trying to implement
-    // some strict mutual exclusion use case; in that type of context, it makes sense to always
-    // apply require leader, since we don't want a client connected to a non-raft-leader server
-    // to have a lock method just go silent if the server the client happens to be connected to
-    // becomes partitioned from the actual raft-leader server in the etcd servers cluster:
-    // in that scenario and without required leader, an attempt to lock could block forever
-    // not because some other client is already holding a lock, but because the server the client
-    // is connected to is partitioned and can't tell.
-    // With require leader, in that case the call will fail and the client has the ability to
-    // (a) know (b) retry on a different server.
-    // The retry on a different server should happen automatically if the connection manager is using
-    // a round robin strategy.
-
-    LockImpl(GrpcService grpcService) {
+    LockService(GrpcService grpcService) {
         super(grpcService);
 
         io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();
-        this.client = LockGrpcClient.create(grpcService.getAuthenticatedGrpcClient(),
+        this.client = io.etcd.jetcd.api.lock.LockGrpcClient.create(grpcService.getAuthenticatedGrpcClient(),
             serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class));
         this.namespace = grpcService.getNamespace();
     }
@@ -61,7 +44,7 @@ final class LockImpl extends AbstractService implements Lock {
     public CompletableFuture<LockResponse> lock(ByteSequence name, long leaseId) {
         requireNonNull(name);
 
-        LockRequest request = LockRequest.newBuilder()
+        io.etcd.jetcd.api.lock.LockRequest request = io.etcd.jetcd.api.lock.LockRequest.newBuilder()
             .setName(Util.prefixNamespace(name, namespace))
             .setLease(leaseId)
             .build();
@@ -76,7 +59,7 @@ final class LockImpl extends AbstractService implements Lock {
     public CompletableFuture<UnlockResponse> unlock(ByteSequence lockKey) {
         requireNonNull(lockKey);
 
-        UnlockRequest request = UnlockRequest.newBuilder()
+        io.etcd.jetcd.api.lock.UnlockRequest request = io.etcd.jetcd.api.lock.UnlockRequest.newBuilder()
             .setKey(Util.prefixNamespace(lockKey, namespace))
             .build();
 
@@ -86,3 +69,4 @@ final class LockImpl extends AbstractService implements Lock {
             Errors::isRetryableForSafeRedoOp);
     }
 }
+
