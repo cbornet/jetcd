@@ -17,22 +17,24 @@
 package io.etcd.jetcd.kv;
 
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.KeyValue;
 import io.etcd.jetcd.api.DeleteRangeResponse;
+import io.etcd.jetcd.common.suppliers.Suppliers;
 import io.etcd.jetcd.impl.AbstractResponse;
 
 public class DeleteResponse extends AbstractResponse<DeleteRangeResponse> {
-
-    private final ByteSequence namespace;
-
-    private List<KeyValue> prevKvs;
+    private final Supplier<List<KeyValue>> prevKvs;
 
     public DeleteResponse(DeleteRangeResponse deleteRangeResponse, ByteSequence namespace) {
         super(deleteRangeResponse, deleteRangeResponse.getHeader());
-        this.namespace = namespace;
+
+        this.prevKvs = Suppliers.memoizing(
+            () -> getResponse().getPrevKvsList().stream().map(kv -> new KeyValue(kv, namespace)).collect(Collectors.toList())
+        );
     }
 
     /**
@@ -49,12 +51,7 @@ public class DeleteResponse extends AbstractResponse<DeleteRangeResponse> {
      *
      * @return previous kv,
      */
-    public synchronized List<KeyValue> getPrevKvs() {
-        if (prevKvs == null) {
-            prevKvs = getResponse().getPrevKvsList().stream().map(kv -> new KeyValue(kv, namespace))
-                .collect(Collectors.toList());
-        }
-
-        return prevKvs;
+    public List<KeyValue> getPrevKvs() {
+        return prevKvs.get();
     }
 }

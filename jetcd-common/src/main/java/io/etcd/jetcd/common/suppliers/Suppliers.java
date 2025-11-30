@@ -29,6 +29,19 @@ public final class Suppliers {
 
     /**
      * Returns a supplier that caches the instance retrieved during the first call to {@code get()}
+     * and returns that value on subsequent calls. The returned supplier is thread-safe.
+     *
+     * @param  delegate the underlying supplier
+     * @param  <T>      the type of results supplied by this supplier
+     * @return          a memoizing supplier
+     */
+    public static <T> Supplier<T> memoizing(Supplier<T> delegate) {
+        return new MemorizingSupplier<>(delegate);
+    }
+
+
+    /**
+     * Returns a supplier that caches the instance retrieved during the first call to {@code get()}
      * and returns that value on subsequent calls. The returned supplier is thread-safe and
      * implements {@link AutoCloseable} to properly clean up the cached resource.
      *
@@ -89,6 +102,42 @@ public final class Suppliers {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * A supplier that memoizes the result of another supplier.
+     */
+    public static class MemorizingSupplier<T> implements Supplier<T>{
+        final Supplier<T> delegate;
+        volatile boolean initialized;
+        T value;
+
+        MemorizingSupplier(Supplier<T> delegate) {
+            this.delegate = Objects.requireNonNull(delegate);
+        }
+
+        @Override
+        public T get() {
+            // A 2-field variant of Double Checked Locking.
+            if (!initialized) {
+                synchronized (this) {
+                    if (!initialized) {
+                        T t = delegate.get();
+                        value = t;
+                        initialized = true;
+                        return t;
+                    }
+                }
+            }
+            return value;
+        }
+
+        @Override
+        public String toString() {
+            return "Suppliers.memoizing("
+                + (initialized ? "<supplier that returned " + value + ">" : delegate)
+                + ")";
         }
     }
 }
