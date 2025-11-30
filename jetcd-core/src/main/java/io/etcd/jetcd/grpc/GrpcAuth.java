@@ -36,11 +36,12 @@ import static io.etcd.jetcd.common.Preconditions.checkArgument;
  * Manages authentication tokens for etcd requests.
  * Consolidates token management and GrpcClient wrapping with auth headers.
  */
-public final class GrpcAuth {
+public final class GrpcAuth implements AutoCloseable {
     public static final String TOKEN_HEADER = "token";
 
     private final GrpcService grpcService;
-    private volatile String token;
+    private volatile io.etcd.jetcd.SecureByteSequence token;
+    private final Object tokenLock = new Object();
 
     GrpcAuth(GrpcService grpcService) {
         this.grpcService = grpcService;
@@ -52,10 +53,10 @@ public final class GrpcAuth {
      * @return CompletableFuture with the token
      */
     public CompletableFuture<String> getToken() {
-        final String currentToken = this.token;
+        final io.etcd.jetcd.SecureByteSequence currentToken = this.token;
 
-        if (currentToken != null) {
-            return CompletableFuture.completedFuture(currentToken);
+        if (currentToken != null && !currentToken.isClosed()) {
+            return CompletableFuture.completedFuture(currentToken.toString(java.nio.charset.StandardCharsets.UTF_8));
         }
 
         return authenticate();
@@ -65,7 +66,13 @@ public final class GrpcAuth {
      * Clear the cached token to force re-authentication on next request.
      */
     public void refreshToken() {
-        token = null;
+        synchronized (tokenLock) {
+            io.etcd.jetcd.SecureByteSequence oldToken = this.token;
+            this.token = null;
+            if (oldToken != null) {
+                oldToken.close();
+            }
+        }
     }
 
     /**
@@ -75,6 +82,19 @@ public final class GrpcAuth {
      */
     public boolean requiresAuth() {
         return !Util.isNullOrEmpty(grpcService.builder().user());
+    }
+
+    /**
+     * Close and zero any cached authentication token.
+     */
+    @Override
+    public void close() {
+        synchronized (tokenLock) {
+            if (this.token != null) {
+                this.token.close();
+                this.token = null;
+            }
+        }
     }
 
     /**
@@ -109,8 +129,18 @@ public final class GrpcAuth {
             .toCompletionStage()
             .toCompletableFuture()
             .thenApply(response -> {
-                this.token = response.getToken();
-                return this.token;
+                String tokenString = response.getToken();
+                io.etcd.jetcd.SecureByteSequence newToken = io.etcd.jetcd.SecureByteSequence.from(tokenString);
+                
+                synchronized (tokenLock) {
+                    io.etcd.jetcd.SecureByteSequence oldToken = this.token;
+                    this.token = newToken;
+                    if (oldToken != null) {
+                        oldToken.close();
+                    }
+                }
+                
+                return tokenString;
             });
     }
 

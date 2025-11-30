@@ -40,8 +40,8 @@ import io.vertx.core.net.endpoint.LoadBalancer;
 public final class ClientBuilder implements Cloneable {
 
     private final ServiceResolver<?> serviceResolver;
-    private ByteSequence user;
-    private ByteSequence password;
+    private SecureByteSequence user;
+    private SecureByteSequence password;
     private LoadBalancer loadBalancer;
     private Map<String, String> headers;
     private HttpClientOptions httpClientOptions;
@@ -78,7 +78,7 @@ public final class ClientBuilder implements Cloneable {
      * @return the user.
      */
     public ByteSequence user() {
-        return user;
+        return user != null ? user.toByteSequence() : null;
     }
 
     /**
@@ -87,8 +87,23 @@ public final class ClientBuilder implements Cloneable {
      * @param  user                 etcd auth user
      * @return                      this builder
      * @throws NullPointerException if user is <code>null</code>
+     * @deprecated                  Use {@link #user(SecureByteSequence)} for better security
      */
+    @Deprecated
     public ClientBuilder user(ByteSequence user) {
+        Objects.requireNonNull(user, "user can't be null");
+        this.user = SecureByteSequence.from(user.getBytes());
+        return this;
+    }
+
+    /**
+     * config etcd auth user with secure credential handling.
+     *
+     * @param  user                 etcd auth user as SecureByteSequence
+     * @return                      this builder
+     * @throws NullPointerException if user is <code>null</code>
+     */
+    public ClientBuilder user(SecureByteSequence user) {
         Objects.requireNonNull(user, "user can't be null");
         this.user = user;
         return this;
@@ -100,7 +115,7 @@ public final class ClientBuilder implements Cloneable {
      * @return the password.
      */
     public ByteSequence password() {
-        return password;
+        return password != null ? password.toByteSequence() : null;
     }
 
     /**
@@ -109,8 +124,23 @@ public final class ClientBuilder implements Cloneable {
      * @param  password             etcd auth password
      * @return                      this builder
      * @throws NullPointerException if password is <code>null</code>
+     * @deprecated                  Use {@link #password(SecureByteSequence)} for better security
      */
+    @Deprecated
     public ClientBuilder password(ByteSequence password) {
+        Objects.requireNonNull(password, "password can't be null");
+        this.password = SecureByteSequence.from(password.getBytes());
+        return this;
+    }
+
+    /**
+     * config etcd auth password with secure credential handling.
+     *
+     * @param  password             etcd auth password as SecureByteSequence
+     * @return                      this builder
+     * @throws NullPointerException if password is <code>null</code>
+     */
+    public ClientBuilder password(SecureByteSequence password) {
         Objects.requireNonNull(password, "password can't be null");
         this.password = password;
         return this;

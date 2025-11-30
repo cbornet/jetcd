@@ -120,6 +120,9 @@ public final class GrpcService {
                 if (grpcClient != null) {
                     grpcClient.close();
                 }
+                if (auth != null) {
+                    auth.close();
+                }
             }
         }).thenCompose(v -> {
             if (vertx != null && closeVertx) {
