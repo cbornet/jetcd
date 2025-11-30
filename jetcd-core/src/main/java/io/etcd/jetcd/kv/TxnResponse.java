@@ -17,9 +17,11 @@
 package io.etcd.jetcd.kv;
 
 import java.util.List;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import io.etcd.jetcd.ByteSequence;
+import io.etcd.jetcd.common.suppliers.Suppliers;
 import io.etcd.jetcd.impl.AbstractResponse;
 
 import static io.etcd.jetcd.api.ResponseOp.ResponseCase.RESPONSE_DELETE_RANGE;
@@ -33,16 +35,41 @@ import static io.etcd.jetcd.api.ResponseOp.ResponseCase.RESPONSE_TXN;
  */
 public class TxnResponse extends AbstractResponse<io.etcd.jetcd.api.TxnResponse> {
 
-    private final ByteSequence namespace;
-
-    private List<PutResponse> putResponses;
-    private List<GetResponse> getResponses;
-    private List<DeleteResponse> deleteResponses;
-    private List<TxnResponse> txnResponses;
+    private final Supplier<List<PutResponse>> putResponses;
+    private final Supplier<List<GetResponse>> getResponses;
+    private final Supplier<List<DeleteResponse>> deleteResponses;
+    private final Supplier<List<TxnResponse>> txnResponses;
 
     public TxnResponse(io.etcd.jetcd.api.TxnResponse txnResponse, ByteSequence namespace) {
         super(txnResponse, txnResponse.getHeader());
-        this.namespace = namespace;
+
+        this.deleteResponses = Suppliers.memoizing(
+            () -> getResponse().getResponsesList().stream()
+                .filter((responseOp) -> responseOp.getResponseCase() == RESPONSE_DELETE_RANGE)
+                .map(responseOp -> new DeleteResponse(responseOp.getResponseDeleteRange(), namespace))
+                .collect(Collectors.toList())
+        );
+
+        this.getResponses = Suppliers.memoizing(
+            () -> getResponse().getResponsesList().stream()
+                .filter((responseOp) -> responseOp.getResponseCase() == RESPONSE_RANGE)
+                .map(responseOp -> new GetResponse(responseOp.getResponseRange(), namespace))
+                .collect(Collectors.toList())
+        );
+
+        this.putResponses = Suppliers.memoizing(
+            () -> getResponse().getResponsesList().stream()
+                .filter((responseOp) -> responseOp.getResponseCase() == RESPONSE_PUT)
+                .map(responseOp -> new PutResponse(responseOp.getResponsePut(), namespace))
+                .collect(Collectors.toList())
+        );
+
+        this.txnResponses = Suppliers.memoizing(
+            () -> getResponse().getResponsesList().stream()
+                .filter((responseOp) -> responseOp.getResponseCase() == RESPONSE_TXN)
+                .map(responseOp -> new TxnResponse(responseOp.getResponseTxn(), namespace))
+                .collect(Collectors.toList())
+        );
     }
 
     /**
@@ -59,15 +86,8 @@ public class TxnResponse extends AbstractResponse<io.etcd.jetcd.api.TxnResponse>
      *
      * @return delete responses.
      */
-    public synchronized List<DeleteResponse> getDeleteResponses() {
-        if (deleteResponses == null) {
-            deleteResponses = getResponse().getResponsesList().stream()
-                .filter((responseOp) -> responseOp.getResponseCase() == RESPONSE_DELETE_RANGE)
-                .map(responseOp -> new DeleteResponse(responseOp.getResponseDeleteRange(), namespace))
-                .collect(Collectors.toList());
-        }
-
-        return deleteResponses;
+    public List<DeleteResponse> getDeleteResponses() {
+        return deleteResponses.get();
     }
 
     /**
@@ -75,14 +95,8 @@ public class TxnResponse extends AbstractResponse<io.etcd.jetcd.api.TxnResponse>
      *
      * @return get responses.
      */
-    public synchronized List<GetResponse> getGetResponses() {
-        if (getResponses == null) {
-            getResponses = getResponse().getResponsesList().stream()
-                .filter((responseOp) -> responseOp.getResponseCase() == RESPONSE_RANGE)
-                .map(responseOp -> new GetResponse(responseOp.getResponseRange(), namespace)).collect(Collectors.toList());
-        }
-
-        return getResponses;
+    public List<GetResponse> getGetResponses() {
+        return getResponses.get();
     }
 
     /**
@@ -90,14 +104,8 @@ public class TxnResponse extends AbstractResponse<io.etcd.jetcd.api.TxnResponse>
      *
      * @return put responses.
      */
-    public synchronized List<PutResponse> getPutResponses() {
-        if (putResponses == null) {
-            putResponses = getResponse().getResponsesList().stream()
-                .filter((responseOp) -> responseOp.getResponseCase() == RESPONSE_PUT)
-                .map(responseOp -> new PutResponse(responseOp.getResponsePut(), namespace)).collect(Collectors.toList());
-        }
-
-        return putResponses;
+    public List<PutResponse> getPutResponses() {
+        return putResponses.get();
     }
 
     /**
@@ -105,13 +113,7 @@ public class TxnResponse extends AbstractResponse<io.etcd.jetcd.api.TxnResponse>
      *
      * @return txn responses.
      */
-    public synchronized List<TxnResponse> getTxnResponses() {
-        if (txnResponses == null) {
-            txnResponses = getResponse().getResponsesList().stream()
-                .filter((responseOp) -> responseOp.getResponseCase() == RESPONSE_TXN)
-                .map(responseOp -> new TxnResponse(responseOp.getResponseTxn(), namespace)).collect(Collectors.toList());
-        }
-
-        return txnResponses;
+    public List<TxnResponse> getTxnResponses() {
+        return txnResponses.get();
     }
 }
