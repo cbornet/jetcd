@@ -78,10 +78,10 @@ final class ElectionClient extends AbstractClient implements Election {
         io.etcd.jetcd.api.ProclaimRequest request = io.etcd.jetcd.api.ProclaimRequest.newBuilder()
             .setLeader(
                 io.etcd.jetcd.api.LeaderKey.newBuilder()
-                    .setKey(ByteString.copyFrom(leaderKey.getKey().getBytes()))
-                    .setName(ByteString.copyFrom(leaderKey.getName().getBytes()))
-                    .setLease(leaderKey.getLease())
-                    .setRev(leaderKey.getRevision())
+                    .setKey(ByteString.copyFrom(leaderKey.key().getBytes()))
+                    .setName(ByteString.copyFrom(leaderKey.name().getBytes()))
+                    .setLease(leaderKey.lease())
+                    .setRev(leaderKey.revision())
                     .build())
             .setValue(ByteString.copyFrom(proposal.getBytes()))
             .build();
@@ -137,10 +137,10 @@ final class ElectionClient extends AbstractClient implements Election {
         io.etcd.jetcd.api.ResignRequest request = io.etcd.jetcd.api.ResignRequest.newBuilder()
             .setLeader(
                 io.etcd.jetcd.api.LeaderKey.newBuilder()
-                    .setKey(ByteString.copyFrom(leaderKey.getKey().getBytes()))
-                    .setName(ByteString.copyFrom(leaderKey.getName().getBytes()))
-                    .setLease(leaderKey.getLease())
-                    .setRev(leaderKey.getRevision())
+                    .setKey(ByteString.copyFrom(leaderKey.key().getBytes()))
+                    .setName(ByteString.copyFrom(leaderKey.name().getBytes()))
+                    .setLease(leaderKey.lease())
+                    .setRev(leaderKey.revision())
                     .build())
             .build();
 
