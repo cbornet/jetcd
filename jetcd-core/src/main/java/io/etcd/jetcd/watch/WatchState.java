@@ -18,30 +18,46 @@ package io.etcd.jetcd.watch;
 
 /**
  * Represents the state of a watcher's connection lifecycle.
+ * 
+ * <p>This sealed interface ensures exhaustive handling of all watch states
+ * and allows for state-specific data to be attached in the future.
  */
-public enum WatchState {
+public sealed interface WatchState {
+
     /**
      * Initial state - connecting to gRPC stream.
      */
-    CONNECTING,
+    record Connecting() implements WatchState {
+    }
 
     /**
      * Stream connected - subscribe request sent, awaiting confirmation.
      */
-    SUBSCRIBING,
+    record Subscribing() implements WatchState {
+    }
 
     /**
      * Watch active - receiving events.
      */
-    WATCHING,
+    record Watching() implements WatchState {
+    }
 
     /**
      * Connection lost - attempting to reconnect.
      */
-    RECONNECTING,
+    record Reconnecting() implements WatchState {
+    }
 
     /**
      * Terminal state - watcher closed.
      */
-    CLOSED
+    record Closed() implements WatchState {
+    }
+
+    // Singleton instances for convenience
+    WatchState CONNECTING = new Connecting();
+    WatchState SUBSCRIBING = new Subscribing();
+    WatchState WATCHING = new Watching();
+    WatchState RECONNECTING = new Reconnecting();
+    WatchState CLOSED = new Closed();
 }
