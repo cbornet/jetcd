@@ -33,6 +33,7 @@ import io.etcd.jetcd.Maintenance;
 import io.etcd.jetcd.Watch;
 import io.etcd.jetcd.common.suppliers.CloseableSupplier;
 import io.etcd.jetcd.common.suppliers.Suppliers;
+import io.etcd.jetcd.grpc.GrpcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -27,6 +27,7 @@ import io.etcd.jetcd.cluster.MemberListResponse;
 import io.etcd.jetcd.cluster.MemberPromoteResponse;
 import io.etcd.jetcd.cluster.MemberRemoveResponse;
 import io.etcd.jetcd.cluster.MemberUpdateResponse;
+import io.etcd.jetcd.grpc.GrpcService;
 
 /**
  * Implementation of cluster client.

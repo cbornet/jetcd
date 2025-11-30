@@ -25,6 +25,7 @@ import io.etcd.jetcd.Maintenance;
 import io.etcd.jetcd.maintenance.AlarmResponse;
 import io.etcd.jetcd.maintenance.DefragmentResponse;
 import io.etcd.jetcd.maintenance.HashKVResponse;
+import io.etcd.jetcd.grpc.GrpcService;
 import io.etcd.jetcd.maintenance.MoveLeaderResponse;
 import io.etcd.jetcd.maintenance.StatusResponse;
 

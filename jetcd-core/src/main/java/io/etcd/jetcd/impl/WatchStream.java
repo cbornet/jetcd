@@ -20,6 +20,7 @@ import io.etcd.jetcd.api.WatchGrpcClient;
 import io.etcd.jetcd.api.WatchRequest;
 import io.etcd.jetcd.api.WatchResponse;
 import io.etcd.jetcd.common.exception.Exceptions;
+import io.etcd.jetcd.grpc.GrpcService;
 import io.etcd.jetcd.resolver.ServiceResolver;
 import io.vertx.core.Future;
 import io.vertx.core.streams.ReadStream;

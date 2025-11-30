@@ -22,6 +22,7 @@ import io.etcd.jetcd.Watch;
 import io.etcd.jetcd.common.exception.EtcdException;
 import io.etcd.jetcd.common.exception.Exceptions;
 import io.etcd.jetcd.common.vertx.Failsafe;
+import io.etcd.jetcd.grpc.GrpcService;
 import io.etcd.jetcd.options.WatchOption;
 import io.etcd.jetcd.watch.RetryContext;
 import io.etcd.jetcd.watch.WatchResponse;

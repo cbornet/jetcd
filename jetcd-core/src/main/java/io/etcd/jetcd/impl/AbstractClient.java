@@ -25,6 +25,7 @@ import dev.failsafe.RetryPolicy;
 import dev.failsafe.RetryPolicyBuilder;
 import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
 import io.etcd.jetcd.common.vertx.Failsafe;
+import io.etcd.jetcd.grpc.GrpcService;
 import io.etcd.jetcd.support.Errors;
 import io.vertx.core.Future;
 import io.vertx.grpc.client.InvalidStatusException;

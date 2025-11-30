@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Watch;
 import io.etcd.jetcd.common.exception.Exceptions;
+import io.etcd.jetcd.grpc.GrpcService;
 import io.etcd.jetcd.options.WatchOption;
 
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.newClosedWatchClientException;

@@ -20,6 +20,7 @@ import java.util.concurrent.CompletableFuture;
 
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Lock;
+import io.etcd.jetcd.grpc.GrpcService;
 import io.etcd.jetcd.lock.LockResponse;
 import io.etcd.jetcd.lock.UnlockResponse;
 import io.etcd.jetcd.support.Errors;

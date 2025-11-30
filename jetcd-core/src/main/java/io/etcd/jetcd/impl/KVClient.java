@@ -31,6 +31,7 @@ import io.etcd.jetcd.options.CompactOption;
 import io.etcd.jetcd.options.DeleteOption;
 import io.etcd.jetcd.options.GetOption;
 import io.etcd.jetcd.options.PutOption;
+import io.etcd.jetcd.grpc.GrpcService;
 import io.etcd.jetcd.options.TxnOption;
 import io.etcd.jetcd.support.Errors;
 import io.etcd.jetcd.support.Requests;

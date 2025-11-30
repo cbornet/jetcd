@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.etcd.jetcd.impl;
+package io.etcd.jetcd.grpc;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -35,13 +35,13 @@ import static io.etcd.jetcd.common.Preconditions.checkArgument;
  * Manages authentication tokens for etcd requests.
  * Consolidates token management and GrpcClient wrapping with auth headers.
  */
-final class AuthService {
+public final class GrpcAuth {
     public static final String TOKEN_HEADER = "token";
 
     private final GrpcService grpcService;
     private volatile String token;
 
-    AuthService(GrpcService grpcService) {
+    GrpcAuth(GrpcService grpcService) {
         this.grpcService = grpcService;
     }
 
@@ -50,7 +50,7 @@ final class AuthService {
      *
      * @return CompletableFuture with the token
      */
-    CompletableFuture<String> getToken() {
+    public CompletableFuture<String> getToken() {
         final String currentToken = this.token;
 
         if (currentToken != null) {
@@ -63,7 +63,7 @@ final class AuthService {
     /**
      * Clear the cached token to force re-authentication on next request.
      */
-    void refreshToken() {
+    public void refreshToken() {
         token = null;
     }
 
@@ -72,7 +72,7 @@ final class AuthService {
      *
      * @return true if user credentials are configured
      */
-    boolean requiresAuth() {
+    public boolean requiresAuth() {
         return !Util.isNullOrEmpty(grpcService.builder().user());
     }
 
@@ -82,7 +82,7 @@ final class AuthService {
      * @param  delegate the base GrpcClient to wrap
      * @return          a GrpcClient that adds auth headers
      */
-    GrpcClient wrapWithAuth(GrpcClient delegate) {
+    public GrpcClient wrapWithAuth(GrpcClient delegate) {
         return new AuthenticatingClient(delegate);
     }
 

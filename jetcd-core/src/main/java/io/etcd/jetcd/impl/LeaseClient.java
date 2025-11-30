@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import io.etcd.jetcd.Lease;
 import io.etcd.jetcd.common.Service;
 import io.etcd.jetcd.common.exception.ErrorCode;
+import io.etcd.jetcd.grpc.GrpcService;
 import io.etcd.jetcd.lease.LeaseGrantResponse;
 import io.etcd.jetcd.lease.LeaseKeepAliveResponse;
 import io.etcd.jetcd.lease.LeaseRevokeResponse;

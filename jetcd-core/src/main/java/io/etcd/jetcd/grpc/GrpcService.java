@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.etcd.jetcd.impl;
+package io.etcd.jetcd.grpc;
 
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.ClientBuilder;
@@ -34,31 +34,31 @@ import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdExceptio
  * Manages gRPC client services and lifecycle for etcd operations.
  * Provides access to base and authenticated gRPC clients with lazy initialization.
  */
-final class GrpcService {
+public final class GrpcService {
     private final Object lock;
     private final ClientBuilder builder;
-    private final AuthService auth;
+    private final GrpcAuth auth;
     private final Vertx vertx;
     private final boolean closeVertx;
     private volatile GrpcClient grpcClient;
     private volatile GrpcClient authenticatedGrpcClient;
 
-    GrpcService(ClientBuilder builder) {
+    public GrpcService(ClientBuilder builder) {
         this(builder, null);
     }
 
-    GrpcService(ClientBuilder builder, GrpcClient grpcClient) {
+    public GrpcService(ClientBuilder builder, GrpcClient grpcClient) {
         this.lock = new Object();
         this.builder = builder;
         this.grpcClient = grpcClient;
-        this.auth = new AuthService(this);
+        this.auth = new GrpcAuth(this);
         this.closeVertx = builder.vertx() == null;
         this.vertx = builder.vertx() != null
             ? builder.vertx()
             : Vertx.vertx(new VertxOptions().setUseDaemonThread(true));
     }
 
-    GrpcClient getGrpcClient() {
+    public GrpcClient getGrpcClient() {
         if (grpcClient == null) {
             synchronized (lock) {
                 if (grpcClient == null) {
@@ -76,7 +76,7 @@ final class GrpcService {
      *
      * @return the authenticated GrpcClient
      */
-    GrpcClient getAuthenticatedGrpcClient() {
+    public GrpcClient getAuthenticatedGrpcClient() {
         if (authenticatedGrpcClient == null) {
             synchronized (lock) {
                 if (authenticatedGrpcClient == null) {
@@ -88,30 +88,30 @@ final class GrpcService {
         return authenticatedGrpcClient;
     }
 
-    ServiceResolver<?> getServiceResolver() {
+    public ServiceResolver<?> getServiceResolver() {
         if (builder.serviceResolver() == null) {
             throw new IllegalArgumentException("EndpointResolver must be configured");
         }
         return builder.serviceResolver();
     }
 
-    ByteSequence getNamespace() {
+    public ByteSequence getNamespace() {
         return builder.namespace();
     }
 
-    ClientBuilder builder() {
+    public ClientBuilder builder() {
         return builder;
     }
 
-    AuthService auth() {
+    public GrpcAuth auth() {
         return this.auth;
     }
 
-    Vertx vertx() {
+    public Vertx vertx() {
         return this.vertx;
     }
 
-    CompletableFuture<Void> close() {
+    public CompletableFuture<Void> close() {
         return CompletableFuture.runAsync(() -> {
             synchronized (lock) {
                 if (authenticatedGrpcClient != null) {
@@ -123,7 +123,6 @@ final class GrpcService {
             }
         }).thenCompose(v -> {
             if (vertx != null && closeVertx) {
-                // Return async Vertx close - no blocking!
                 return vertx.close().toCompletionStage().toCompletableFuture();
             } else {
                 return CompletableFuture.completedFuture(null);
@@ -131,7 +130,7 @@ final class GrpcService {
         });
     }
 
-    <R> CompletableFuture<R> withNewClient(
+    public <R> CompletableFuture<R> withNewClient(
         String target,
         Function<GrpcClient, CompletableFuture<R>> clientConsumer) {
 
@@ -151,14 +150,12 @@ final class GrpcService {
         ServiceResolver<?> serviceResolver = getServiceResolver();
         grpcBuilder.withAddressResolver(serviceResolver.getResolver());
 
-        // Configure load balancer (default to ROUND_ROBIN if not specified)
         LoadBalancer loadBalancer = builder.loadBalancer();
         if (loadBalancer == null) {
             loadBalancer = LoadBalancer.ROUND_ROBIN;
         }
         grpcBuilder.withLoadBalancer(loadBalancer);
 
-        // Configure HTTP client options if provided (e.g., for SSL/TLS)
         HttpClientOptions httpClientOptions = builder.httpClientOptions();
         if (httpClientOptions != null) {
             grpcBuilder.with(httpClientOptions);
@@ -167,3 +164,4 @@ final class GrpcService {
         return (GrpcClient) grpcBuilder.build();
     }
 }
+

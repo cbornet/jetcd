@@ -27,6 +27,7 @@ import io.etcd.jetcd.election.NoLeaderException;
 import io.etcd.jetcd.election.NotLeaderException;
 import io.etcd.jetcd.election.ProclaimResponse;
 import io.etcd.jetcd.election.ResignResponse;
+import io.etcd.jetcd.grpc.GrpcService;
 import io.etcd.jetcd.support.Errors;
 import io.etcd.jetcd.support.Util;
 import io.vertx.grpc.client.InvalidStatusException;
