@@ -17,10 +17,11 @@
 package io.etcd.jetcd.auth;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.function.Supplier;
 
 import io.etcd.jetcd.Auth;
 import io.etcd.jetcd.ByteSequence;
+import io.etcd.jetcd.common.suppliers.Suppliers;
 import io.etcd.jetcd.impl.AbstractResponse;
 
 /**
@@ -29,10 +30,14 @@ import io.etcd.jetcd.impl.AbstractResponse;
  */
 public class AuthRoleGetResponse extends AbstractResponse<io.etcd.jetcd.api.AuthRoleGetResponse> {
 
-    private List<Permission> permissions;
+    private final Supplier<List<Permission>> permissions;
 
     public AuthRoleGetResponse(io.etcd.jetcd.api.AuthRoleGetResponse response) {
         super(response, response.getHeader());
+
+        this.permissions = Suppliers.memoizing(
+            () -> getResponse().getPermList().stream().map(AuthRoleGetResponse::toPermission).toList()
+        );
     }
 
     private static Permission toPermission(io.etcd.jetcd.api.Permission perm) {
@@ -49,12 +54,7 @@ public class AuthRoleGetResponse extends AbstractResponse<io.etcd.jetcd.api.Auth
         return new Permission(type, key, rangeEnd);
     }
 
-    public synchronized List<Permission> getPermissions() {
-        if (permissions == null) {
-            permissions = getResponse().getPermList().stream().map(AuthRoleGetResponse::toPermission)
-                .collect(Collectors.toList());
-        }
-
-        return permissions;
+    public List<Permission> getPermissions() {
+        return permissions.get();
     }
 }
