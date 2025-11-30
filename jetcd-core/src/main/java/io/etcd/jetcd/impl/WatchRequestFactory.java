@@ -37,10 +37,10 @@ final class WatchRequestFactory {
      * Creates a WatchRequest containing a WatchCreateRequest.
      */
     static WatchRequest createRequest(
-            ByteSequence key,
-            ByteSequence namespace,
-            WatchOption option,
-            long revision) {
+        ByteSequence key,
+        ByteSequence namespace,
+        WatchOption option,
+        long revision) {
 
         WatchCreateRequest.Builder builder = WatchCreateRequest.newBuilder()
             .setKey(Util.prefixNamespace(key, namespace))
@@ -88,4 +88,3 @@ final class WatchRequestFactory {
             .build();
     }
 }
-

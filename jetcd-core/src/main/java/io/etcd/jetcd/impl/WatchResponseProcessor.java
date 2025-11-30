@@ -16,10 +16,11 @@
 
 package io.etcd.jetcd.impl;
 
-import com.google.common.base.Strings;
 import io.etcd.jetcd.api.WatchResponse;
 import io.etcd.jetcd.options.WatchOption;
 import io.etcd.jetcd.support.Errors;
+
+import com.google.common.base.Strings;
 
 import static io.etcd.jetcd.common.exception.ErrorCode.FAILED_PRECONDITION;
 import static io.etcd.jetcd.common.exception.ErrorCode.INTERNAL;
@@ -42,32 +43,38 @@ final class WatchResponseProcessor {
         /**
          * Authentication error - requires token refresh and reconnect.
          */
-        record AuthError() implements Result {}
+        record AuthError() implements Result {
+        }
 
         /**
          * Watch was created successfully.
          */
-        record Created(long revision, boolean shouldNotify) implements Result {}
+        record Created(long revision, boolean shouldNotify) implements Result {
+        }
 
         /**
          * Watch was canceled - includes error details.
          */
-        record Canceled(Throwable error) implements Result {}
+        record Canceled(Throwable error) implements Result {
+        }
 
         /**
          * Progress notification.
          */
-        record Progress(long revision, boolean withNamespace) implements Result {}
+        record Progress(long revision, boolean withNamespace) implements Result {
+        }
 
         /**
          * Events received.
          */
-        record Events(long newRevision) implements Result {}
+        record Events(long newRevision) implements Result {
+        }
 
         /**
          * Response was not recognized or should be ignored.
          */
-        record Ignored() implements Result {}
+        record Ignored() implements Result {
+        }
     }
 
     private final boolean createdNotify;
@@ -81,8 +88,8 @@ final class WatchResponseProcessor {
     /**
      * Process a WatchResponse and return the classification result.
      *
-     * @param response the response to process
-     * @return the processing result
+     * @param  response the response to process
+     * @return          the processing result
      */
     Result process(WatchResponse response) {
         Result authResult = checkAuthError(response);
@@ -190,4 +197,3 @@ final class WatchResponseProcessor {
         return new Result.Events(newRevision);
     }
 }
-

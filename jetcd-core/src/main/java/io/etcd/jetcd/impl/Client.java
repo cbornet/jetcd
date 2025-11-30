@@ -22,6 +22,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.etcd.jetcd.Auth;
 import io.etcd.jetcd.ClientBuilder;
 import io.etcd.jetcd.Cluster;
@@ -34,8 +37,6 @@ import io.etcd.jetcd.Watch;
 import io.etcd.jetcd.common.suppliers.CloseableSupplier;
 import io.etcd.jetcd.common.suppliers.Suppliers;
 import io.etcd.jetcd.grpc.GrpcService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Etcd Client implementation.
@@ -157,4 +158,3 @@ public final class Client implements io.etcd.jetcd.Client {
         });
     }
 }
-

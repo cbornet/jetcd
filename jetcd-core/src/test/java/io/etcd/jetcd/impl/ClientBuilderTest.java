@@ -19,17 +19,18 @@ package io.etcd.jetcd.impl;
 import java.net.URISyntaxException;
 import java.util.stream.Stream;
 
+import io.etcd.jetcd.ByteSequence;
+import io.etcd.jetcd.Client;
+import io.etcd.jetcd.ClientBuilder;
+import io.etcd.jetcd.grpc.GrpcService;
+import io.etcd.jetcd.resolver.ServiceResolver;
+import io.etcd.jetcd.resolver.ServiceResolvers;
+import io.vertx.core.net.endpoint.LoadBalancer;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-
-import io.etcd.jetcd.ByteSequence;
-import io.etcd.jetcd.Client;
-import io.etcd.jetcd.ClientBuilder;
-import io.etcd.jetcd.resolver.ServiceResolver;
-import io.etcd.jetcd.resolver.ServiceResolvers;
-import io.vertx.core.net.endpoint.LoadBalancer;
 
 import static io.etcd.jetcd.impl.TestUtil.bytesOf;
 import static org.assertj.core.api.Assertions.assertThat;

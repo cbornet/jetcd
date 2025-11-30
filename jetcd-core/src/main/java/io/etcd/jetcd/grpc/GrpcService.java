@@ -16,6 +16,9 @@
 
 package io.etcd.jetcd.grpc;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
+
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.ClientBuilder;
 import io.etcd.jetcd.resolver.ServiceResolver;
@@ -24,9 +27,6 @@ import io.vertx.core.VertxOptions;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.net.endpoint.LoadBalancer;
 import io.vertx.grpc.client.GrpcClient;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
 
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdException;
 
@@ -164,4 +164,3 @@ public final class GrpcService {
         return (GrpcClient) grpcBuilder.build();
     }
 }
-

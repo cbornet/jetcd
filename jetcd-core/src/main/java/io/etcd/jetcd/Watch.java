@@ -46,9 +46,11 @@ public interface Watch extends CloseableClient {
     /**
      * Watch on a key with option, returning a future that completes when the watch is ready.
      *
-     * <p>The returned future completes when the etcd server confirms the watch is created.
+     * <p>
+     * The returned future completes when the etcd server confirms the watch is created.
      * This is useful when you need to ensure the watch is active before performing operations
-     * that should be observed.</p>
+     * that should be observed.
+     * </p>
      *
      * @param  key                   key to be watched on.
      * @param  option                see {@link io.etcd.jetcd.options.WatchOption}.
@@ -287,7 +289,7 @@ public interface Watch extends CloseableClient {
          *
          * @return CompletableFuture that completes when watcher is fully closed
          */
-        java.util.concurrent.CompletableFuture<Void> closeAsync();
+        CompletableFuture<Void> closeAsync();
 
         /**
          * Synchronously closes this watcher and all its resources.

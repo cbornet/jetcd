@@ -173,4 +173,3 @@ final class ElectionClient extends AbstractClient implements Election {
         return toEtcdException(e);
     }
 }
-

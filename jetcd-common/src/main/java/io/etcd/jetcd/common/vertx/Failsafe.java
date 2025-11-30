@@ -150,7 +150,7 @@ public final class Failsafe {
      */
     public static CompletableFuture<Void> runAsync(Vertx vertx, CheckedRunnable task, RetryPolicy<Void> retryPolicy) {
         return dev.failsafe.Failsafe.with(retryPolicy)
-            .with(Failsafe.vertxScheduler(vertx))
+            .with(vertxScheduler(vertx))
             .runAsync(task);
     }
 
@@ -159,7 +159,10 @@ public final class Failsafe {
      * Each step is a supplier that returns a Vert.x Future. Steps are composed sequentially
      * and the entire pipeline is protected by the retry policy.
      *
-     * <p>Example usage:</p>
+     * <p>
+     * Example usage:
+     * </p>
+     *
      * <pre>
      * Failsafe.pipeline(vertx, retryPolicy,
      *     this::disconnect,
@@ -174,9 +177,9 @@ public final class Failsafe {
      */
     @SafeVarargs
     public static CompletableFuture<Void> pipeline(
-            Vertx vertx,
-            RetryPolicy<Void> retryPolicy,
-            Supplier<Future<Void>>... steps) {
+        Vertx vertx,
+        RetryPolicy<Void> retryPolicy,
+        Supplier<Future<Void>>... steps) {
 
         return dev.failsafe.Failsafe.with(retryPolicy)
             .with(vertxScheduler(vertx))

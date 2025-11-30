@@ -107,7 +107,8 @@ final class AuthClient extends AbstractClient implements Auth {
         requireNonNull(user, "user can't be null");
         requireNonNull(password, "password can't be null");
 
-        io.etcd.jetcd.api.AuthUserChangePasswordRequest changePasswordRequest = io.etcd.jetcd.api.AuthUserChangePasswordRequest.newBuilder()
+        io.etcd.jetcd.api.AuthUserChangePasswordRequest changePasswordRequest = io.etcd.jetcd.api.AuthUserChangePasswordRequest
+            .newBuilder()
             .setNameBytes(ByteString.copyFrom(user.getBytes()))
             .setPasswordBytes(ByteString.copyFrom(password.getBytes()))
             .build();
@@ -144,7 +145,8 @@ final class AuthClient extends AbstractClient implements Auth {
         requireNonNull(user, "user can't be null");
         requireNonNull(role, "key can't be null");
 
-        io.etcd.jetcd.api.AuthUserGrantRoleRequest userGrantRoleRequest = io.etcd.jetcd.api.AuthUserGrantRoleRequest.newBuilder()
+        io.etcd.jetcd.api.AuthUserGrantRoleRequest userGrantRoleRequest = io.etcd.jetcd.api.AuthUserGrantRoleRequest
+            .newBuilder()
             .setUserBytes(ByteString.copyFrom(user.getBytes()))
             .setRoleBytes(ByteString.copyFrom(role.getBytes()))
             .build();
@@ -159,7 +161,8 @@ final class AuthClient extends AbstractClient implements Auth {
         requireNonNull(user, "user can't be null");
         requireNonNull(role, "key can't be null");
 
-        io.etcd.jetcd.api.AuthUserRevokeRoleRequest userRevokeRoleRequest = io.etcd.jetcd.api.AuthUserRevokeRoleRequest.newBuilder()
+        io.etcd.jetcd.api.AuthUserRevokeRoleRequest userRevokeRoleRequest = io.etcd.jetcd.api.AuthUserRevokeRoleRequest
+            .newBuilder()
             .setNameBytes(ByteString.copyFrom(user.getBytes()))
             .setRoleBytes(ByteString.copyFrom(role.getBytes()))
             .build();
@@ -203,7 +206,8 @@ final class AuthClient extends AbstractClient implements Auth {
             .setPermType(type)
             .build();
 
-        io.etcd.jetcd.api.AuthRoleGrantPermissionRequest roleGrantPermissionRequest = io.etcd.jetcd.api.AuthRoleGrantPermissionRequest.newBuilder()
+        io.etcd.jetcd.api.AuthRoleGrantPermissionRequest roleGrantPermissionRequest = io.etcd.jetcd.api.AuthRoleGrantPermissionRequest
+            .newBuilder()
             .setNameBytes(ByteString.copyFrom(role.getBytes()))
             .setPerm(perm)
             .build();
@@ -242,7 +246,8 @@ final class AuthClient extends AbstractClient implements Auth {
         requireNonNull(key, "key can't be null");
         requireNonNull(rangeEnd, "rangeEnd can't be null");
 
-        io.etcd.jetcd.api.AuthRoleRevokePermissionRequest roleRevokePermissionRequest = io.etcd.jetcd.api.AuthRoleRevokePermissionRequest.newBuilder()
+        io.etcd.jetcd.api.AuthRoleRevokePermissionRequest roleRevokePermissionRequest = io.etcd.jetcd.api.AuthRoleRevokePermissionRequest
+            .newBuilder()
             .setRoleBytes(ByteString.copyFrom(role.getBytes()))
             .setKey(ByteString.copyFrom(key.getBytes()))
             .setRangeEnd(ByteString.copyFrom(rangeEnd.getBytes()))
@@ -265,4 +270,3 @@ final class AuthClient extends AbstractClient implements Auth {
             AuthRoleDeleteResponse::new);
     }
 }
-

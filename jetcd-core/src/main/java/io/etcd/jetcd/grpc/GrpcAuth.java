@@ -18,7 +18,6 @@ package io.etcd.jetcd.grpc;
 
 import java.util.concurrent.CompletableFuture;
 
-import com.google.protobuf.ByteString;
 import io.etcd.jetcd.resolver.ServiceResolver;
 import io.etcd.jetcd.support.Util;
 import io.vertx.core.Future;
@@ -28,6 +27,8 @@ import io.vertx.core.net.SocketAddress;
 import io.vertx.grpc.client.GrpcClient;
 import io.vertx.grpc.client.GrpcClientRequest;
 import io.vertx.grpc.common.ServiceMethod;
+
+import com.google.protobuf.ByteString;
 
 import static io.etcd.jetcd.common.Preconditions.checkArgument;
 
@@ -94,8 +95,7 @@ public final class GrpcAuth {
 
         io.etcd.jetcd.api.AuthGrpcClient authClient = io.etcd.jetcd.api.AuthGrpcClient.create(
             grpcService.getGrpcClient(),
-            serviceResolver.getTarget(SocketAddress.class)
-        );
+            serviceResolver.getTarget(SocketAddress.class));
 
         final ByteString user = ByteString.copyFrom(this.grpcService.builder().user().getBytes());
         final ByteString pass = ByteString.copyFrom(this.grpcService.builder().password().getBytes());
@@ -111,8 +111,7 @@ public final class GrpcAuth {
             .thenApply(response -> {
                 this.token = response.getToken();
                 return this.token;
-            }
-        );
+            });
     }
 
     /**
@@ -169,4 +168,3 @@ public final class GrpcAuth {
         }
     }
 }
-

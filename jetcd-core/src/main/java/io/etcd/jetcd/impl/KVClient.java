@@ -21,6 +21,7 @@ import java.util.concurrent.CompletableFuture;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.KV;
 import io.etcd.jetcd.Txn;
+import io.etcd.jetcd.grpc.GrpcService;
 import io.etcd.jetcd.kv.CompactResponse;
 import io.etcd.jetcd.kv.DeleteResponse;
 import io.etcd.jetcd.kv.GetResponse;
@@ -31,7 +32,6 @@ import io.etcd.jetcd.options.CompactOption;
 import io.etcd.jetcd.options.DeleteOption;
 import io.etcd.jetcd.options.GetOption;
 import io.etcd.jetcd.options.PutOption;
-import io.etcd.jetcd.grpc.GrpcService;
 import io.etcd.jetcd.options.TxnOption;
 import io.etcd.jetcd.support.Errors;
 import io.etcd.jetcd.support.Requests;
@@ -137,4 +137,3 @@ final class KVClient extends AbstractClient implements KV {
             namespace);
     }
 }
-

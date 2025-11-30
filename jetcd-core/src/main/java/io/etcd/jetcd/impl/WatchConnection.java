@@ -16,7 +16,9 @@
 
 package io.etcd.jetcd.impl;
 
-import dev.failsafe.RetryPolicy;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
+
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Watch;
 import io.etcd.jetcd.common.exception.EtcdException;
@@ -30,8 +32,7 @@ import io.etcd.jetcd.watch.WatchState;
 import io.vertx.core.Vertx;
 import io.vertx.grpc.common.GrpcStatus;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
+import dev.failsafe.RetryPolicy;
 
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdException;
 
@@ -59,12 +60,12 @@ final class WatchConnection implements Watch.Watcher, WatchStream.Handler {
     private long revision;
 
     WatchConnection(
-            ByteSequence key,
-            ByteSequence namespace,
-            WatchOption option,
-            Watch.Listener listener,
-            GrpcService grpcService,
-            Consumer<WatchConnection> onClose) {
+        ByteSequence key,
+        ByteSequence namespace,
+        WatchOption option,
+        Watch.Listener listener,
+        GrpcService grpcService,
+        Consumer<WatchConnection> onClose) {
 
         this.key = key;
         this.namespace = namespace;
@@ -306,7 +307,7 @@ final class WatchConnection implements Watch.Watcher, WatchStream.Handler {
     }
 
     private RetryPolicy<Void> buildRetryPolicy() {
-        return RetryPolicy.<Void>builder()
+        return RetryPolicy.<Void> builder()
             .withMaxRetries(option.getMaxReconnectAttempts())
             .withBackoff(option.getInitialReconnectDelay(), option.getMaxReconnectDelay())
             .onRetry(e -> {
@@ -350,4 +351,3 @@ final class WatchConnection implements Watch.Watcher, WatchStream.Handler {
         revision = Math.max(revision, newRevision);
     }
 }
-

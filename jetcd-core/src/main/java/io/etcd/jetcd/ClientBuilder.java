@@ -570,7 +570,7 @@ public final class ClientBuilder implements Cloneable {
      * @return               Client instance.
      * @throws EtcdException if client experiences build error.
      */
-    public io.etcd.jetcd.Client build() {
+    public Client build() {
         return new Client(this);
     }
 

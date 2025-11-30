@@ -136,7 +136,8 @@ final class LeaseClient extends AbstractClient implements Lease {
         final AtomicReference<WriteStream<io.etcd.jetcd.api.LeaseKeepAliveRequest>> writeStreamRef = new AtomicReference<>();
         final AtomicReference<ReadStream<io.etcd.jetcd.api.LeaseKeepAliveResponse>> readStreamRef = new AtomicReference<>();
         final CompletableFuture<LeaseKeepAliveResponse> future = new CompletableFuture<>();
-        final io.etcd.jetcd.api.LeaseKeepAliveRequest req = io.etcd.jetcd.api.LeaseKeepAliveRequest.newBuilder().setID(leaseId).build();
+        final io.etcd.jetcd.api.LeaseKeepAliveRequest req = io.etcd.jetcd.api.LeaseKeepAliveRequest.newBuilder().setID(leaseId)
+            .build();
 
         client.leaseKeepAlive((writeStream, err) -> {
             if (err != null) {
@@ -421,4 +422,3 @@ final class LeaseClient extends AbstractClient implements Lease {
         }
     }
 }
-

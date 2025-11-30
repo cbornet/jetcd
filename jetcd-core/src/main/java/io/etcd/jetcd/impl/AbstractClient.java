@@ -21,8 +21,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import dev.failsafe.RetryPolicy;
-import dev.failsafe.RetryPolicyBuilder;
 import io.etcd.jetcd.common.exception.EtcdExceptionFactory;
 import io.etcd.jetcd.common.vertx.Failsafe;
 import io.etcd.jetcd.grpc.GrpcService;
@@ -30,6 +28,9 @@ import io.etcd.jetcd.support.Errors;
 import io.vertx.core.Future;
 import io.vertx.grpc.client.InvalidStatusException;
 import io.vertx.grpc.common.GrpcStatus;
+
+import dev.failsafe.RetryPolicy;
+import dev.failsafe.RetryPolicyBuilder;
 
 import static io.etcd.jetcd.support.Errors.isAuthStoreExpired;
 import static io.etcd.jetcd.support.Errors.isInvalidTokenError;
@@ -56,7 +57,7 @@ abstract class AbstractClient {
      * @return         configured retry policy
      */
     protected <S> RetryPolicy<S> createRetryPolicy(Predicate<GrpcStatus> doRetry) {
-        RetryPolicyBuilder<S> policy = RetryPolicy.<S>builder()
+        RetryPolicyBuilder<S> policy = RetryPolicy.<S> builder()
             .handleIf(throwable -> {
                 GrpcStatus status = getGrpcStatus(throwable);
                 if (isInvalidTokenError(status) || isAuthStoreExpired(status)) {

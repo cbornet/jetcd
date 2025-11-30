@@ -70,4 +70,3 @@ final class LockClient extends AbstractClient implements Lock {
             Errors::isRetryableForSafeRedoOp);
     }
 }
-

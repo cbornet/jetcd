@@ -16,16 +16,6 @@
 
 package io.etcd.jetcd.launcher;
 
-import com.github.dockerjava.api.command.InspectContainerResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.BindMode;
-import org.testcontainers.containers.ContainerLaunchException;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.SelinuxContext;
-import org.testcontainers.containers.output.OutputFrame;
-import org.testcontainers.containers.wait.strategy.Wait;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -44,6 +34,17 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.BindMode;
+import org.testcontainers.containers.ContainerLaunchException;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.SelinuxContext;
+import org.testcontainers.containers.output.OutputFrame;
+import org.testcontainers.containers.wait.strategy.Wait;
+
+import com.github.dockerjava.api.command.InspectContainerResponse;
 
 /**
  * Testcontainer wrapper for a single etcd node.

@@ -20,11 +20,16 @@ import io.vertx.core.Vertx;
 
 /**
  * State machine for watch lifecycle management.
- * 
- * <p>All state transitions happen on the Vert.x event loop, ensuring thread safety
- * without explicit synchronization.</p>
- * 
- * <p>State flow:</p>
+ *
+ * <p>
+ * All state transitions happen on the Vert.x event loop, ensuring thread safety
+ * without explicit synchronization.
+ * </p>
+ *
+ * <p>
+ * State flow:
+ * </p>
+ *
  * <pre>
  * CONNECTING → SUBSCRIBING → WATCHING ←→ RECONNECTING
  *     ↓            ↓            ↓              ↓
@@ -271,4 +276,3 @@ final class WatchStateMachine {
         vertx.runOnContext(v -> action.run());
     }
 }
-

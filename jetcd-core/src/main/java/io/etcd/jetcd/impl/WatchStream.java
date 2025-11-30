@@ -16,6 +16,8 @@
 
 package io.etcd.jetcd.impl;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 import io.etcd.jetcd.api.WatchGrpcClient;
 import io.etcd.jetcd.api.WatchRequest;
 import io.etcd.jetcd.api.WatchResponse;
@@ -26,13 +28,12 @@ import io.vertx.core.Future;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.WriteStream;
 
-import java.util.concurrent.atomic.AtomicReference;
-
 /**
  * Encapsulates the lifecycle management of a gRPC watch stream.
  * Handles stream creation, message sending, and cleanup.
- * 
- * <p>All operations should be called from the Vert.x event loop thread
+ *
+ * <p>
+ * All operations should be called from the Vert.x event loop thread
  * to ensure thread safety without explicit synchronization.
  */
 final class WatchStream {
@@ -79,8 +80,8 @@ final class WatchStream {
      * Connects to the watch stream asynchronously.
      * All handler callbacks will be invoked on the Vert.x event loop.
      *
-     * @param handler the handler to receive stream events
-     * @return a future that completes when the connection is established or fails
+     * @param  handler the handler to receive stream events
+     * @return         a future that completes when the connection is established or fails
      */
     Future<Void> connect(Handler handler) {
         if (readStreamRef.get() != null) {
@@ -90,9 +91,8 @@ final class WatchStream {
         grpcClient = createWatchClient();
 
         return grpcClient.watch((ws, err) -> {
-            if (err != null) {
-                // Error will be handled by the Future's failure path
-            } else {
+            // TODO: Error will be handled by the Future's failure path
+            if (err == null) {
                 writeStreamRef.set(ws);
                 handler.onWriteStreamReady(this);
             }
@@ -107,9 +107,9 @@ final class WatchStream {
 
     /**
      * Sends a request on the write stream.
-     * 
-     * @param request the request to send
-     * @return true if the request was sent, false if write stream not ready
+     *
+     * @param  request the request to send
+     * @return         true if the request was sent, false if write stream not ready
      */
     boolean send(WatchRequest request) {
         WriteStream<WatchRequest> ws = writeStreamRef.get();
@@ -167,4 +167,3 @@ final class WatchStream {
             serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class));
     }
 }
-

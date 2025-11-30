@@ -47,18 +47,18 @@ public final class WatchOption {
     private final Duration maxReconnectDelay;
 
     private WatchOption(
-            ByteSequence endKey,
-            long revision,
-            boolean prevKV,
-            boolean progressNotify,
-            boolean createdNotify,
-            boolean noPut,
-            boolean noDelete,
-            boolean requireLeader,
-            boolean prefix,
-            int maxReconnectAttempts,
-            Duration initialReconnectDelay,
-            Duration maxReconnectDelay) {
+        ByteSequence endKey,
+        long revision,
+        boolean prevKV,
+        boolean progressNotify,
+        boolean createdNotify,
+        boolean noPut,
+        boolean noDelete,
+        boolean requireLeader,
+        boolean prefix,
+        int maxReconnectAttempts,
+        Duration initialReconnectDelay,
+        Duration maxReconnectDelay) {
         this.endKey = endKey;
         this.revision = revision;
         this.prevKV = prevKV;
