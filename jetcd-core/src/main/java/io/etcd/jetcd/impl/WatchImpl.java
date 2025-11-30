@@ -83,6 +83,24 @@ final class WatchImpl extends AbstractService implements Watch {
     }
 
     @Override
+    public CompletableFuture<Watcher> watchAsync(ByteSequence key, WatchOption option, Listener listener) {
+        if (closed.get()) {
+            throw newClosedWatchClientException();
+        }
+
+        WatcherImpl watcher = new WatcherImpl(
+            key,
+            namespace,
+            option,
+            listener,
+            grpc(),
+            watchers::remove);
+
+        watchers.add(watcher);
+        return watcher.getReadyFuture().thenApply(v -> watcher);
+    }
+
+    @Override
     public void close() {
         if (!closed.compareAndSet(false, true)) {
             return;
@@ -133,6 +151,7 @@ final class WatchImpl extends AbstractService implements Watch {
         private final Vertx vertx;
         private final java.util.function.Consumer<WatcherImpl> onClose;
         private final WatchResponseProcessor responseProcessor;
+        private final CompletableFuture<Void> readyFuture = new CompletableFuture<>();
 
         // Thread-safe for external isClosed() queries
         private final AtomicBoolean closed = new AtomicBoolean();
@@ -172,6 +191,13 @@ final class WatchImpl extends AbstractService implements Watch {
         @Override
         public boolean isClosed() {
             return closed.get();
+        }
+
+        /**
+         * Returns a future that completes when the watch is ready (server confirmed).
+         */
+        CompletableFuture<Void> getReadyFuture() {
+            return readyFuture;
         }
 
         @Override
@@ -242,11 +268,13 @@ final class WatchImpl extends AbstractService implements Watch {
                 }
                 case WatchResponseProcessor.Result.Created(long rev, boolean shouldNotify) -> {
                     updateRevision(rev);
+                    readyFuture.complete(null);
                     if (shouldNotify) {
                         notifyListener(response, false);
                     }
                 }
                 case WatchResponseProcessor.Result.Canceled(Throwable error) -> {
+                    readyFuture.completeExceptionally(error);
                     handleError(toEtcdException(error), false);
                 }
                 case WatchResponseProcessor.Result.Progress(long rev, boolean withNamespace) -> {
@@ -440,7 +468,8 @@ final class WatchImpl extends AbstractService implements Watch {
 
                 reconnect();
             } else {
-                close();
+                // Use closeAsync to avoid blocking the event loop
+                closeAsync();
             }
         }
     }

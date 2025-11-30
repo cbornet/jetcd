@@ -17,6 +17,7 @@
 package io.etcd.jetcd;
 
 import java.io.Closeable;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 import io.etcd.jetcd.common.exception.ClosedClientException;
@@ -40,6 +41,44 @@ public interface Watch extends CloseableClient {
      * @throws ClosedClientException if watch client has been closed.
      */
     Watcher watch(ByteSequence key, WatchOption option, Listener listener);
+
+    /**
+     * Watch on a key with option, returning a future that completes when the watch is ready.
+     *
+     * <p>The returned future completes when the etcd server confirms the watch is created.
+     * This is useful when you need to ensure the watch is active before performing operations
+     * that should be observed.</p>
+     *
+     * @param  key                   key to be watched on.
+     * @param  option                see {@link io.etcd.jetcd.options.WatchOption}.
+     * @param  listener              the event consumer
+     * @return                       future that completes with the watcher when watch is ready
+     * @throws ClosedClientException if watch client has been closed.
+     */
+    CompletableFuture<Watcher> watchAsync(ByteSequence key, WatchOption option, Listener listener);
+
+    /**
+     * Watch on a key, returning a future that completes when the watch is ready.
+     *
+     * @param  key                   key to be watched on.
+     * @param  listener              the event consumer
+     * @return                       future that completes with the watcher when watch is ready
+     * @throws ClosedClientException if watch client has been closed.
+     */
+    default CompletableFuture<Watcher> watchAsync(ByteSequence key, Listener listener) {
+        return watchAsync(key, WatchOption.DEFAULT, listener);
+    }
+
+    /**
+     * Watch on a key, returning a future that completes when the watch is ready.
+     *
+     * @param  key    key to be watched on.
+     * @param  onNext the on next consumer
+     * @return        future that completes with the watcher when watch is ready
+     */
+    default CompletableFuture<Watcher> watchAsync(ByteSequence key, Consumer<WatchResponse> onNext) {
+        return watchAsync(key, WatchOption.DEFAULT, listener(onNext));
+    }
 
     /**
      * watch on a key.

@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -130,15 +129,14 @@ public class WatchTest {
     public void testMultipleWatch(boolean useNamespace) throws Exception {
         try (Client client = createClient(useNamespace)) {
             final ByteSequence key = randomByteSequence();
-            final CountDownLatch latch = new CountDownLatch(2);
             final ByteSequence value = randomByteSequence();
             final List<WatchResponse> res = Collections.synchronizedList(new ArrayList<>(2));
 
-            try (Watcher w1 = client.getWatchClient().watch(key, res::add); // NOPMD - UnusedLocalVariable
-                Watcher w2 = client.getWatchClient().watch(key, res::add)) { // NOPMD - UnusedLocalVariable
+            // Use watchAsync to ensure watchers are ready before putting
+            try (Watcher w1 = client.getWatchClient().watchAsync(key, res::add).get(5, TimeUnit.SECONDS);
+                Watcher w2 = client.getWatchClient().watchAsync(key, res::add).get(5, TimeUnit.SECONDS)) {
 
                 client.getKVClient().put(key, value).get();
-                latch.await(4, TimeUnit.SECONDS);
 
                 await().atMost(TIME_OUT_SECONDS, TimeUnit.SECONDS).untilAsserted(() -> assertThat(res).hasSize(2));
                 // Both watchers should receive responses with the same events
@@ -163,7 +161,8 @@ public class WatchTest {
 
             client.getKVClient().put(key, value).get();
 
-            try (Watcher watcher = client.getWatchClient().watch(key, ref::set)) { // NOPMD - UnusedLocalVariable
+            // Use watchAsync to ensure watcher is ready before deleting
+            try (Watcher watcher = client.getWatchClient().watchAsync(key, ref::set).get(5, TimeUnit.SECONDS)) {
                 client.getKVClient().delete(key).get();
 
                 await().atMost(TIME_OUT_SECONDS, TimeUnit.SECONDS).untilAsserted(() -> assertThat(ref.get()).isNotNull());
