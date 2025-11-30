@@ -22,8 +22,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 
 import io.etcd.jetcd.Maintenance;
-import io.etcd.jetcd.api.*;
-import io.etcd.jetcd.api.AlarmType;
 import io.etcd.jetcd.maintenance.AlarmResponse;
 import io.etcd.jetcd.maintenance.DefragmentResponse;
 import io.etcd.jetcd.maintenance.HashKVResponse;
@@ -36,23 +34,23 @@ import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdExceptio
 /**
  * Implementation of maintenance client.
  */
-final class MaintenanceImpl extends AbstractService implements Maintenance {
-    private final MaintenanceGrpcClient client;
+final class MaintenanceService extends AbstractService implements Maintenance {
+    private final io.etcd.jetcd.api.MaintenanceGrpcClient client;
 
-    MaintenanceImpl(GrpcService grpcService) {
+    MaintenanceService(GrpcService grpcService) {
         super(grpcService);
 
         io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();
-        client = MaintenanceGrpcClient.create(
+        client = io.etcd.jetcd.api.MaintenanceGrpcClient.create(
             grpcService.getAuthenticatedGrpcClient(),
             serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class));
     }
 
     @Override
     public CompletableFuture<AlarmResponse> listAlarms() {
-        AlarmRequest alarmRequest = AlarmRequest.newBuilder()
-            .setAlarm(AlarmType.NONE)
-            .setAction(AlarmRequest.AlarmAction.GET)
+        io.etcd.jetcd.api.AlarmRequest alarmRequest = io.etcd.jetcd.api.AlarmRequest.newBuilder()
+            .setAlarm(io.etcd.jetcd.api.AlarmType.NONE)
+            .setAction(io.etcd.jetcd.api.AlarmRequest.AlarmAction.GET)
             .setMemberID(0)
             .build();
 
@@ -64,9 +62,9 @@ final class MaintenanceImpl extends AbstractService implements Maintenance {
         checkArgument(member.getMemberId() != 0, "the member id can not be 0");
         checkArgument(member.getAlarmType() != io.etcd.jetcd.maintenance.AlarmType.NONE, "alarm type can not be NONE");
 
-        AlarmRequest alarmRequest = AlarmRequest.newBuilder()
-            .setAlarm(AlarmType.NOSPACE)
-            .setAction(AlarmRequest.AlarmAction.DEACTIVATE)
+        io.etcd.jetcd.api.AlarmRequest alarmRequest = io.etcd.jetcd.api.AlarmRequest.newBuilder()
+            .setAlarm(io.etcd.jetcd.api.AlarmType.NOSPACE)
+            .setAction(io.etcd.jetcd.api.AlarmRequest.AlarmAction.DEACTIVATE)
             .setMemberID(member.getMemberId())
             .build();
 
@@ -75,35 +73,29 @@ final class MaintenanceImpl extends AbstractService implements Maintenance {
 
     @Override
     public CompletableFuture<DefragmentResponse> defragmentMember(String target) {
-        // TODO: Implement target-specific client creation for defragmentMember
-        // For now, use the default client
         return completable(
-            client.defragment(DefragmentRequest.getDefaultInstance()),
+            client.defragment(io.etcd.jetcd.api.DefragmentRequest.getDefaultInstance()),
             DefragmentResponse::new);
     }
 
     @Override
     public CompletableFuture<StatusResponse> statusMember(String target) {
-        // TODO: Implement target-specific client creation for statusMember
-        // For now, use the default client
         return completable(
-            client.status(StatusRequest.getDefaultInstance()),
+            client.status(io.etcd.jetcd.api.StatusRequest.getDefaultInstance()),
             StatusResponse::new);
     }
 
     @Override
     public CompletableFuture<MoveLeaderResponse> moveLeader(long transfereeID) {
         return completable(
-            client.moveLeader(MoveLeaderRequest.newBuilder().setTargetID(transfereeID).build()),
+            client.moveLeader(io.etcd.jetcd.api.MoveLeaderRequest.newBuilder().setTargetID(transfereeID).build()),
             MoveLeaderResponse::new);
     }
 
     @Override
     public CompletableFuture<HashKVResponse> hashKV(String target, long rev) {
-        // TODO: Implement target-specific client creation for hashKV
-        // For now, use the default client
         return completable(
-            client.hashKV(HashKVRequest.newBuilder().setRevision(rev).build()),
+            client.hashKV(io.etcd.jetcd.api.HashKVRequest.newBuilder().setRevision(rev).build()),
             HashKVResponse::new);
     }
 
@@ -112,7 +104,7 @@ final class MaintenanceImpl extends AbstractService implements Maintenance {
         final CompletableFuture<Long> answer = new CompletableFuture<>();
         final AtomicLong bytes = new AtomicLong(0);
 
-        client.snapshot(SnapshotRequest.getDefaultInstance()).onComplete(ar -> {
+        client.snapshot(io.etcd.jetcd.api.SnapshotRequest.getDefaultInstance()).onComplete(ar -> {
             if (ar.failed()) {
                 answer.completeExceptionally(toEtcdException(ar.cause()));
             } else {
@@ -138,7 +130,7 @@ final class MaintenanceImpl extends AbstractService implements Maintenance {
 
     @Override
     public void snapshot(Maintenance.Listener listener) {
-        client.snapshot(SnapshotRequest.getDefaultInstance()).onComplete(ar -> {
+        client.snapshot(io.etcd.jetcd.api.SnapshotRequest.getDefaultInstance()).onComplete(ar -> {
             if (ar.failed()) {
                 listener.onError(toEtcdException(ar.cause()));
             } else {
@@ -149,3 +141,4 @@ final class MaintenanceImpl extends AbstractService implements Maintenance {
         });
     }
 }
+
