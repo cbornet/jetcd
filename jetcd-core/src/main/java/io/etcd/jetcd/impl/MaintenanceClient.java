@@ -60,13 +60,13 @@ final class MaintenanceClient extends AbstractClient implements Maintenance {
 
     @Override
     public CompletableFuture<AlarmResponse> alarmDisarm(io.etcd.jetcd.maintenance.AlarmMember member) {
-        checkArgument(member.getMemberId() != 0, "the member id can not be 0");
-        checkArgument(member.getAlarmType() != io.etcd.jetcd.maintenance.AlarmType.NONE, "alarm type can not be NONE");
+        checkArgument(member.memberId() != 0, "the member id can not be 0");
+        checkArgument(member.alarmType() != io.etcd.jetcd.maintenance.AlarmType.NONE, "alarm type can not be NONE");
 
         io.etcd.jetcd.api.AlarmRequest alarmRequest = io.etcd.jetcd.api.AlarmRequest.newBuilder()
             .setAlarm(io.etcd.jetcd.api.AlarmType.NOSPACE)
             .setAction(io.etcd.jetcd.api.AlarmRequest.AlarmAction.DEACTIVATE)
-            .setMemberID(member.getMemberId())
+            .setMemberID(member.memberId())
             .build();
 
         return completable(client.alarm(alarmRequest), AlarmResponse::new);
