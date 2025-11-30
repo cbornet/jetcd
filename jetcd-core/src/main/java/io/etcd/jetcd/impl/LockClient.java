@@ -24,7 +24,6 @@ import io.etcd.jetcd.grpc.GrpcService;
 import io.etcd.jetcd.lock.LockResponse;
 import io.etcd.jetcd.lock.UnlockResponse;
 import io.etcd.jetcd.support.Errors;
-import io.etcd.jetcd.support.Responses;
 import io.etcd.jetcd.support.Util;
 
 import static java.util.Objects.requireNonNull;
@@ -67,7 +66,7 @@ final class LockClient extends AbstractClient implements Lock {
 
         return execute(
             () -> client.unlock(request),
-            Responses::newUnlockResponse,
+            responseFactory::newUnlockResponse,
             Errors::isRetryableForSafeRedoOp);
     }
 }

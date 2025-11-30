@@ -29,7 +29,6 @@ import io.etcd.jetcd.election.ProclaimResponse;
 import io.etcd.jetcd.election.ResignResponse;
 import io.etcd.jetcd.grpc.GrpcService;
 import io.etcd.jetcd.support.Errors;
-import io.etcd.jetcd.support.Responses;
 import io.etcd.jetcd.support.Util;
 import io.vertx.grpc.client.InvalidStatusException;
 
@@ -66,7 +65,7 @@ final class ElectionClient extends AbstractClient implements Election {
         return wrapConvertException(
             execute(
                 () -> client.campaign(request),
-                Responses::newCampaignResponse,
+                responseFactory::newCampaignResponse,
                 Errors::isRetryableForNoSafeRedoOp),
             false);
     }
@@ -90,7 +89,7 @@ final class ElectionClient extends AbstractClient implements Election {
         return wrapConvertException(
             execute(
                 () -> client.proclaim(request),
-                Responses::newProclaimResponse,
+                responseFactory::newProclaimResponse,
                 Errors::isRetryableForNoSafeRedoOp),
             false);
     }
@@ -148,7 +147,7 @@ final class ElectionClient extends AbstractClient implements Election {
         return wrapConvertException(
             execute(
                 () -> client.resign(request),
-                Responses::newResignResponse,
+                responseFactory::newResignResponse,
                 Errors::isRetryableForNoSafeRedoOp),
             false);
     }

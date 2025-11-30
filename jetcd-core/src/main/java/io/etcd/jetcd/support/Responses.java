@@ -79,11 +79,11 @@ public final class Responses {
         return new PutResponse(response, namespace);
     }
 
-    public static GetResponse newGetResponse(io.etcd.jetcd.api.RangeResponse response, ByteSequence namespace) {
+    public static GetResponse newGetResponse(RangeResponse response, ByteSequence namespace) {
         return new GetResponse(response, namespace);
     }
 
-    public static DeleteResponse newDeleteResponse(io.etcd.jetcd.api.DeleteRangeResponse response, ByteSequence namespace) {
+    public static DeleteResponse newDeleteResponse(DeleteRangeResponse response, ByteSequence namespace) {
         return new DeleteResponse(response, namespace);
     }
 
@@ -267,8 +267,8 @@ public final class Responses {
      * Returns a namespaced factory for creating namespace-aware responses.
      * Use this to cache the factory in client code for cleaner method references.
      *
-     * @param namespace the namespace for response construction
-     * @return a namespaced factory instance
+     * @param  namespace the namespace for response construction
+     * @return           a namespaced factory instance
      */
     public static Namespaced namespaced(ByteSequence namespace) {
         return new Namespaced(namespace);
@@ -280,6 +280,7 @@ public final class Responses {
      */
     public record Namespaced(ByteSequence namespace) {
 
+        // Namespaced responses
         public PutResponse newPutResponse(io.etcd.jetcd.api.PutResponse response) {
             return Responses.newPutResponse(response, namespace);
         }
@@ -307,6 +308,155 @@ public final class Responses {
         public LockResponse newLockResponse(io.etcd.jetcd.api.lock.LockResponse response) {
             return Responses.newLockResponse(response, namespace);
         }
+
+        // Non-namespaced responses (delegate to static methods)
+
+        // KV responses
+        public CompactResponse newCompactResponse(io.etcd.jetcd.api.CompactionResponse response) {
+            return Responses.newCompactResponse(response);
+        }
+
+        // Lease responses
+        public LeaseGrantResponse newLeaseGrantResponse(io.etcd.jetcd.api.LeaseGrantResponse response) {
+            return Responses.newLeaseGrantResponse(response);
+        }
+
+        public LeaseRevokeResponse newLeaseRevokeResponse(io.etcd.jetcd.api.LeaseRevokeResponse response) {
+            return Responses.newLeaseRevokeResponse(response);
+        }
+
+        public LeaseTimeToLiveResponse newLeaseTimeToLiveResponse(io.etcd.jetcd.api.LeaseTimeToLiveResponse response) {
+            return Responses.newLeaseTimeToLiveResponse(response);
+        }
+
+        // Election responses
+        public CampaignResponse newCampaignResponse(io.etcd.jetcd.api.CampaignResponse response) {
+            return Responses.newCampaignResponse(response);
+        }
+
+        public ProclaimResponse newProclaimResponse(io.etcd.jetcd.api.ProclaimResponse response) {
+            return Responses.newProclaimResponse(response);
+        }
+
+        public ResignResponse newResignResponse(io.etcd.jetcd.api.ResignResponse response) {
+            return Responses.newResignResponse(response);
+        }
+
+        // Lock responses
+        public UnlockResponse newUnlockResponse(io.etcd.jetcd.api.lock.UnlockResponse response) {
+            return Responses.newUnlockResponse(response);
+        }
+
+        // Maintenance responses
+        public AlarmResponse newAlarmResponse(io.etcd.jetcd.api.AlarmResponse response) {
+            return Responses.newAlarmResponse(response);
+        }
+
+        public DefragmentResponse newDefragmentResponse(io.etcd.jetcd.api.DefragmentResponse response) {
+            return Responses.newDefragmentResponse(response);
+        }
+
+        public HashKVResponse newHashKVResponse(io.etcd.jetcd.api.HashKVResponse response) {
+            return Responses.newHashKVResponse(response);
+        }
+
+        public MoveLeaderResponse newMoveLeaderResponse(io.etcd.jetcd.api.MoveLeaderResponse response) {
+            return Responses.newMoveLeaderResponse(response);
+        }
+
+        public SnapshotResponse newSnapshotResponse(io.etcd.jetcd.api.SnapshotResponse response) {
+            return Responses.newSnapshotResponse(response);
+        }
+
+        public StatusResponse newStatusResponse(io.etcd.jetcd.api.StatusResponse response) {
+            return Responses.newStatusResponse(response);
+        }
+
+        // Cluster responses
+        public MemberAddResponse newMemberAddResponse(io.etcd.jetcd.api.MemberAddResponse response) {
+            return Responses.newMemberAddResponse(response);
+        }
+
+        public MemberListResponse newMemberListResponse(io.etcd.jetcd.api.MemberListResponse response) {
+            return Responses.newMemberListResponse(response);
+        }
+
+        public MemberPromoteResponse newMemberPromoteResponse(io.etcd.jetcd.api.MemberPromoteResponse response) {
+            return Responses.newMemberPromoteResponse(response);
+        }
+
+        public MemberRemoveResponse newMemberRemoveResponse(io.etcd.jetcd.api.MemberRemoveResponse response) {
+            return Responses.newMemberRemoveResponse(response);
+        }
+
+        public MemberUpdateResponse newMemberUpdateResponse(io.etcd.jetcd.api.MemberUpdateResponse response) {
+            return Responses.newMemberUpdateResponse(response);
+        }
+
+        // Auth responses
+        public AuthDisableResponse newAuthDisableResponse(io.etcd.jetcd.api.AuthDisableResponse response) {
+            return Responses.newAuthDisableResponse(response);
+        }
+
+        public AuthEnableResponse newAuthEnableResponse(io.etcd.jetcd.api.AuthEnableResponse response) {
+            return Responses.newAuthEnableResponse(response);
+        }
+
+        public AuthRoleAddResponse newAuthRoleAddResponse(io.etcd.jetcd.api.AuthRoleAddResponse response) {
+            return Responses.newAuthRoleAddResponse(response);
+        }
+
+        public AuthRoleDeleteResponse newAuthRoleDeleteResponse(io.etcd.jetcd.api.AuthRoleDeleteResponse response) {
+            return Responses.newAuthRoleDeleteResponse(response);
+        }
+
+        public AuthRoleGetResponse newAuthRoleGetResponse(io.etcd.jetcd.api.AuthRoleGetResponse response) {
+            return Responses.newAuthRoleGetResponse(response);
+        }
+
+        public AuthRoleGrantPermissionResponse newAuthRoleGrantPermissionResponse(
+            io.etcd.jetcd.api.AuthRoleGrantPermissionResponse response) {
+            return Responses.newAuthRoleGrantPermissionResponse(response);
+        }
+
+        public AuthRoleListResponse newAuthRoleListResponse(io.etcd.jetcd.api.AuthRoleListResponse response) {
+            return Responses.newAuthRoleListResponse(response);
+        }
+
+        public AuthRoleRevokePermissionResponse newAuthRoleRevokePermissionResponse(
+            io.etcd.jetcd.api.AuthRoleRevokePermissionResponse response) {
+            return Responses.newAuthRoleRevokePermissionResponse(response);
+        }
+
+        public AuthUserAddResponse newAuthUserAddResponse(io.etcd.jetcd.api.AuthUserAddResponse response) {
+            return Responses.newAuthUserAddResponse(response);
+        }
+
+        public AuthUserChangePasswordResponse newAuthUserChangePasswordResponse(
+            io.etcd.jetcd.api.AuthUserChangePasswordResponse response) {
+            return Responses.newAuthUserChangePasswordResponse(response);
+        }
+
+        public AuthUserDeleteResponse newAuthUserDeleteResponse(io.etcd.jetcd.api.AuthUserDeleteResponse response) {
+            return Responses.newAuthUserDeleteResponse(response);
+        }
+
+        public AuthUserGetResponse newAuthUserGetResponse(io.etcd.jetcd.api.AuthUserGetResponse response) {
+            return Responses.newAuthUserGetResponse(response);
+        }
+
+        public AuthUserGrantRoleResponse newAuthUserGrantRoleResponse(
+            io.etcd.jetcd.api.AuthUserGrantRoleResponse response) {
+            return Responses.newAuthUserGrantRoleResponse(response);
+        }
+
+        public AuthUserListResponse newAuthUserListResponse(io.etcd.jetcd.api.AuthUserListResponse response) {
+            return Responses.newAuthUserListResponse(response);
+        }
+
+        public AuthUserRevokeRoleResponse newAuthUserRevokeRoleResponse(
+            io.etcd.jetcd.api.AuthUserRevokeRoleResponse response) {
+            return Responses.newAuthUserRevokeRoleResponse(response);
+        }
     }
 }
-

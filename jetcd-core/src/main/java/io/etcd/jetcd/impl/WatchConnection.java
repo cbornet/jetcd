@@ -51,6 +51,7 @@ final class WatchConnection implements Watch.Watcher, WatchStream.Handler {
     private final Consumer<WatchConnection> onClose;
     private final WatchResponseProcessor responseProcessor;
     private final WatchStateMachine stateMachine;
+    private final Responses.Namespaced responseFactory;
     private final CompletableFuture<Void> readyFuture = new CompletableFuture<>();
     private final CompletableFuture<Void> closeFuture = new CompletableFuture<>();
 
@@ -72,11 +73,12 @@ final class WatchConnection implements Watch.Watcher, WatchStream.Handler {
         this.namespace = namespace;
         this.option = option;
         this.listener = listener;
-        this.revision = option.getRevision();
+        this.revision = option.revision();
         this.grpcService = grpcService;
         this.vertx = grpcService.vertx();
         this.onClose = onClose;
         this.responseProcessor = new WatchResponseProcessor(option);
+        this.responseFactory = Responses.namespaced(namespace);
         this.stateMachine = new WatchStateMachine(vertx, new WatchStateMachine.Handler() {
             @Override
             public void onConnect() {
@@ -259,18 +261,18 @@ final class WatchConnection implements Watch.Watcher, WatchStream.Handler {
                 updateRevision(rev);
                 stateMachine.watchCreated();
                 if (shouldNotify) {
-                    notifyListener(response, false);
+                    notifyListener(response);
                 }
             }
             case WatchResponseProcessor.Result.Canceled(Throwable error) -> {
                 stateMachine.watchCanceled(error);
             }
             case WatchResponseProcessor.Result.Progress(long rev, boolean withNamespace) -> {
-                notifyListener(response, withNamespace);
+                notifyListener(response);
                 updateRevision(rev);
             }
             case WatchResponseProcessor.Result.Events(long newRevision) -> {
-                notifyListener(response, true);
+                notifyListener(response);
                 revision = newRevision;
             }
             case WatchResponseProcessor.Result.Ignored() -> {
@@ -309,8 +311,8 @@ final class WatchConnection implements Watch.Watcher, WatchStream.Handler {
 
     private RetryPolicy<Void> buildRetryPolicy() {
         return RetryPolicy.<Void> builder()
-            .withMaxRetries(option.getMaxReconnectAttempts())
-            .withBackoff(option.getInitialReconnectDelay(), option.getMaxReconnectDelay())
+            .withMaxRetries(option.maxReconnectAttempts())
+            .withBackoff(option.initialReconnectDelay(), option.maxReconnectDelay())
             .onRetry(e -> {
                 if (stateMachine.isClosed()) {
                     return;
@@ -318,7 +320,7 @@ final class WatchConnection implements Watch.Watcher, WatchStream.Handler {
 
                 RetryContext ctx = RetryContext.of(RetryContext.RetryType.RESUME)
                     .attemptCount(e.getAttemptCount())
-                    .maxAttempts(option.getMaxReconnectAttempts())
+                    .maxAttempts(option.maxReconnectAttempts())
                     .cause(e.getLastException())
                     .build();
 
@@ -336,14 +338,12 @@ final class WatchConnection implements Watch.Watcher, WatchStream.Handler {
         ws.send(WatchRequestFactory.cancelRequest());
     }
 
-    private void notifyListener(io.etcd.jetcd.api.WatchResponse response, boolean withNamespace) {
+    private void notifyListener(io.etcd.jetcd.api.WatchResponse response) {
         if (stateMachine.isClosed()) {
             return;
         }
 
-        WatchResponse watchResponse = withNamespace
-            ? Responses.newWatchResponse(response, namespace)
-            : Responses.newWatchResponse(response, ByteSequence.EMPTY);
+        WatchResponse watchResponse = responseFactory.newWatchResponse(response);
 
         Exceptions.quietly(() -> listener.onNext(watchResponse));
     }

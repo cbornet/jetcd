@@ -36,7 +36,6 @@ import io.etcd.jetcd.lease.LeaseRevokeResponse;
 import io.etcd.jetcd.lease.LeaseTimeToLiveResponse;
 import io.etcd.jetcd.options.LeaseOption;
 import io.etcd.jetcd.support.CloseableClient;
-import io.etcd.jetcd.support.Responses;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.WriteStream;
 
@@ -77,7 +76,7 @@ final class LeaseClient extends AbstractClient implements Lease {
                 io.etcd.jetcd.api.LeaseGrantRequest.newBuilder()
                     .setTTL(ttl)
                     .build()),
-            Responses::newLeaseGrantResponse,
+            responseFactory::newLeaseGrantResponse,
             true);
     }
 
@@ -93,7 +92,7 @@ final class LeaseClient extends AbstractClient implements Lease {
                 io.etcd.jetcd.api.LeaseRevokeRequest.newBuilder()
                     .setID(leaseId)
                     .build()),
-            Responses::newLeaseRevokeResponse,
+            responseFactory::newLeaseRevokeResponse,
             true);
     }
 
@@ -103,12 +102,12 @@ final class LeaseClient extends AbstractClient implements Lease {
 
         io.etcd.jetcd.api.LeaseTimeToLiveRequest leaseTimeToLiveRequest = io.etcd.jetcd.api.LeaseTimeToLiveRequest.newBuilder()
             .setID(leaseId)
-            .setKeys(option.isAttachedKeys())
+            .setKeys(option.attachedKeys())
             .build();
 
         return execute(
             () -> client.leaseTimeToLive(leaseTimeToLiveRequest),
-            Responses::newLeaseTimeToLiveResponse,
+            responseFactory::newLeaseTimeToLiveResponse,
             true);
     }
 

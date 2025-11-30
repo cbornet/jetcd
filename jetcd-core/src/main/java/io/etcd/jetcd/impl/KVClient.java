@@ -34,7 +34,6 @@ import io.etcd.jetcd.options.PutOption;
 import io.etcd.jetcd.options.TxnOption;
 import io.etcd.jetcd.support.Errors;
 import io.etcd.jetcd.support.Requests;
-import io.etcd.jetcd.support.Responses;
 
 import static java.util.Objects.requireNonNull;
 
@@ -68,7 +67,7 @@ final class KVClient extends AbstractClient implements KV {
         return execute(
             () -> client.put(Requests.mapPutRequest(key, value, option, namespace)),
             responseFactory::newPutResponse,
-            option.isAutoRetry() ? Errors::isRetryableForSafeRedoOp : Errors::isRetryableForNoSafeRedoOp);
+            option.autoRetry() ? Errors::isRetryableForSafeRedoOp : Errors::isRetryableForNoSafeRedoOp);
     }
 
     @Override
@@ -100,7 +99,7 @@ final class KVClient extends AbstractClient implements KV {
         return execute(
             () -> client.deleteRange(Requests.mapDeleteRequest(key, option, namespace)),
             responseFactory::newDeleteResponse,
-            option.isAutoRetry() ? Errors::isRetryableForSafeRedoOp : Errors::isRetryableForNoSafeRedoOp);
+            option.autoRetry() ? Errors::isRetryableForSafeRedoOp : Errors::isRetryableForNoSafeRedoOp);
     }
 
     @Override
@@ -113,12 +112,12 @@ final class KVClient extends AbstractClient implements KV {
         requireNonNull(option, "option should not be null");
 
         io.etcd.jetcd.api.CompactionRequest request = io.etcd.jetcd.api.CompactionRequest.newBuilder()
-            .setRevision(rev).setPhysical(option.isPhysical())
+            .setRevision(rev).setPhysical(option.physical())
             .build();
 
         return execute(
             () -> client.compact(request),
-            Responses::newCompactResponse,
+            responseFactory::newCompactResponse,
             Errors::isRetryableForSafeRedoOp);
     }
 
@@ -133,7 +132,7 @@ final class KVClient extends AbstractClient implements KV {
             request -> execute(
                 () -> client.txn(request),
                 responseFactory::newTxnResponse,
-                option.isAutoRetry() ? Errors::isRetryableForSafeRedoOp : Errors::isRetryableForNoSafeRedoOp),
+                option.autoRetry() ? Errors::isRetryableForSafeRedoOp : Errors::isRetryableForNoSafeRedoOp),
             namespace);
     }
 }
