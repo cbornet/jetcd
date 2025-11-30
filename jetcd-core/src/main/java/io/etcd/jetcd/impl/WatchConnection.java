@@ -236,11 +236,11 @@ final class WatchConnection implements Watch.Watcher, WatchStream.Handler {
 
     private static WatchState toPublicState(WatchStateMachine.State state) {
         return switch (state) {
-            case CONNECTING -> WatchState.CONNECTING;
-            case SUBSCRIBING -> WatchState.SUBSCRIBING;
-            case WATCHING -> WatchState.WATCHING;
-            case RECONNECTING -> WatchState.RECONNECTING;
-            case CLOSED -> WatchState.CLOSED;
+            case WatchStateMachine.State.Connecting() -> WatchState.CONNECTING;
+            case WatchStateMachine.State.Subscribing() -> WatchState.SUBSCRIBING;
+            case WatchStateMachine.State.Watching() -> WatchState.WATCHING;
+            case WatchStateMachine.State.Reconnecting() -> WatchState.RECONNECTING;
+            case WatchStateMachine.State.Closed() -> WatchState.CLOSED;
         };
     }
 

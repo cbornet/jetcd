@@ -66,7 +66,7 @@ public class SuppliersTest {
 
         assertThat(supplier.get()).isEqualTo(Optional.of("value"));
         assertThat(counter.get()).isEqualTo(1);
-        
+
         // Change condition - but result is memoized, so still returns original
         hasValue[0] = false;
         assertThat(supplier.get()).isEqualTo(Optional.of("value"));
@@ -76,8 +76,7 @@ public class SuppliersTest {
     @Test
     void testMemoizingOptionalToString() {
         Supplier<Optional<String>> supplier = Suppliers.memoizingOptional(() -> "test");
-        
+
         assertThat(supplier.toString()).contains("Suppliers.memoizingOptional");
     }
 }
-

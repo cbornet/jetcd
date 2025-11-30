@@ -18,8 +18,9 @@ package io.etcd.jetcd.watch;
 
 /**
  * Represents the state of a watcher's connection lifecycle.
- * 
- * <p>This sealed interface ensures exhaustive handling of all watch states
+ *
+ * <p>
+ * This sealed interface ensures exhaustive handling of all watch states
  * and allows for state-specific data to be attached in the future.
  */
 public sealed interface WatchState {

@@ -25,19 +25,19 @@ public final class Requests {
     public static RangeRequest mapRangeRequest(ByteSequence key, GetOption option, ByteSequence namespace) {
         RangeRequest.Builder builder = RangeRequest.newBuilder()
             .setKey(Util.prefixNamespace(key, namespace))
-            .setCountOnly(option.isCountOnly())
-            .setLimit(option.getLimit())
-            .setRevision(option.getRevision())
-            .setKeysOnly(option.isKeysOnly())
-            .setSerializable(option.isSerializable())
-            .setSortOrder(toRangeRequestSortOrder(option.getSortOrder()))
+            .setCountOnly(option.countOnly())
+            .setLimit(option.limit())
+            .setRevision(option.revision())
+            .setKeysOnly(option.keysOnly())
+            .setSerializable(option.serializable())
+            .setSortOrder(toRangeRequestSortOrder(option.sortOrder()))
             .setSortTarget(toRangeRequestSortTarget(option.getSortField()))
-            .setMinCreateRevision(option.getMinCreateRevision())
-            .setMaxCreateRevision(option.getMaxCreateRevision())
-            .setMinModRevision(option.getMinModRevision())
-            .setMaxModRevision(option.getMaxModRevision());
+            .setMinCreateRevision(option.minCreateRevision())
+            .setMaxCreateRevision(option.maxCreateRevision())
+            .setMinModRevision(option.minModRevision())
+            .setMaxModRevision(option.maxModRevision());
 
-        defineRangeRequestEnd(key, option.getEndKey(), option.isPrefix(), namespace, builder::setRangeEnd);
+        defineRangeRequestEnd(key, option.getEndKey(), option.prefix(), namespace, builder::setRangeEnd);
         return builder.build();
     }
 
@@ -45,17 +45,17 @@ public final class Requests {
         return PutRequest.newBuilder()
             .setKey(Util.prefixNamespace(key, namespace))
             .setValue(ByteString.copyFrom(value.getBytes()))
-            .setLease(option.getLeaseId())
-            .setPrevKv(option.getPrevKV())
+            .setLease(option.leaseId())
+            .setPrevKv(option.prevKV())
             .build();
     }
 
     public static DeleteRangeRequest mapDeleteRequest(ByteSequence key, DeleteOption option, ByteSequence namespace) {
         DeleteRangeRequest.Builder builder = DeleteRangeRequest.newBuilder()
             .setKey(Util.prefixNamespace(key, namespace))
-            .setPrevKv(option.isPrevKV());
+            .setPrevKv(option.prevKV());
 
-        defineRangeRequestEnd(key, option.getEndKey(), option.isPrefix(), namespace, builder::setRangeEnd);
+        defineRangeRequestEnd(key, option.getEndKey(), option.prefix(), namespace, builder::setRangeEnd);
 
         return builder.build();
     }

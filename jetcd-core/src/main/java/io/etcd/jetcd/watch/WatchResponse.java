@@ -35,8 +35,7 @@ public class WatchResponse extends AbstractResponse<io.etcd.jetcd.api.WatchRespo
         this.events = Suppliers.memoizing(
             () -> getResponse().getEventsList().stream()
                 .map(event -> toEvent(event, namespace))
-                .toList()
-        );
+                .toList());
     }
 
     public WatchResponse(io.etcd.jetcd.api.WatchResponse response) {

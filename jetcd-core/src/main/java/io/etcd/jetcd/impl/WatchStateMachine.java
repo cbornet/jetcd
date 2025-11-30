@@ -38,27 +38,56 @@ import io.vertx.core.Vertx;
  */
 final class WatchStateMachine {
 
-    enum State {
+    sealed interface State {
         /**
          * Initial state - connecting to gRPC stream.
          */
-        CONNECTING,
+        record Connecting() implements State {
+            @Override
+            public String toString() {
+                return "CONNECTING";
+            }
+        }
+
         /**
          * Stream connected - subscribe request sent, awaiting confirmation.
          */
-        SUBSCRIBING,
+        record Subscribing() implements State {
+            @Override
+            public String toString() {
+                return "SUBSCRIBING";
+            }
+        }
+
         /**
          * Watch active - receiving events.
          */
-        WATCHING,
+        record Watching() implements State {
+            @Override
+            public String toString() {
+                return "WATCHING";
+            }
+        }
+
         /**
          * Connection lost - attempting to reconnect.
          */
-        RECONNECTING,
+        record Reconnecting() implements State {
+            @Override
+            public String toString() {
+                return "RECONNECTING";
+            }
+        }
+
         /**
          * Terminal state - watcher closed.
          */
-        CLOSED
+        record Closed() implements State {
+            @Override
+            public String toString() {
+                return "CLOSED";
+            }
+        }
     }
 
     /**
@@ -104,7 +133,7 @@ final class WatchStateMachine {
 
     private final Vertx vertx;
     private final Handler handler;
-    private volatile State state = State.CONNECTING;
+    private volatile State state = new State.Connecting();
 
     WatchStateMachine(Vertx vertx, Handler handler) {
         this.vertx = vertx;
@@ -116,7 +145,7 @@ final class WatchStateMachine {
      */
     void start() {
         runOnEventLoop(() -> {
-            if (state == State.CONNECTING) {
+            if (state instanceof State.Connecting) {
                 handler.onConnect();
             } else {
                 handler.onError(new IllegalStateException("start() called in state: " + state));
@@ -129,12 +158,12 @@ final class WatchStateMachine {
      */
     void streamReady() {
         runOnEventLoop(() -> {
-            if (state == State.CONNECTING) {
+            if (state instanceof State.Connecting) {
                 State oldState = state;
-                state = State.SUBSCRIBING;
+                state = new State.Subscribing();
                 handler.onStateChange(oldState, state);
                 handler.onSubscribe();
-            } else if (state != State.CLOSED) {
+            } else if (!(state instanceof State.Closed)) {
                 handler.onError(new IllegalStateException("streamReady() called in state: " + state));
             }
         });
@@ -145,12 +174,12 @@ final class WatchStateMachine {
      */
     void watchCreated() {
         runOnEventLoop(() -> {
-            if (state == State.SUBSCRIBING) {
+            if (state instanceof State.Subscribing) {
                 State oldState = state;
-                state = State.WATCHING;
+                state = new State.Watching();
                 handler.onStateChange(oldState, state);
                 handler.onReady();
-            } else if (state != State.CLOSED) {
+            } else if (!(state instanceof State.Closed)) {
                 handler.onError(new IllegalStateException("watchCreated() called in state: " + state));
             }
         });
@@ -161,9 +190,9 @@ final class WatchStateMachine {
      */
     void watchCanceled(Throwable error) {
         runOnEventLoop(() -> {
-            if (state != State.CLOSED) {
+            if (!(state instanceof State.Closed)) {
                 State oldState = state;
-                state = State.CLOSED;
+                state = new State.Closed();
                 handler.onStateChange(oldState, state);
                 handler.onError(error);
                 handler.onClose();
@@ -176,12 +205,12 @@ final class WatchStateMachine {
      */
     void streamEnded() {
         runOnEventLoop(() -> {
-            if (state == State.WATCHING || state == State.SUBSCRIBING || state == State.CONNECTING) {
+            if (state instanceof State.Watching || state instanceof State.Subscribing || state instanceof State.Connecting) {
                 State oldState = state;
-                state = State.RECONNECTING;
+                state = new State.Reconnecting();
                 handler.onStateChange(oldState, state);
                 handler.onReconnect();
-            } else if (state != State.CLOSED && state != State.RECONNECTING) {
+            } else if (!(state instanceof State.Closed) && !(state instanceof State.Reconnecting)) {
                 handler.onError(new IllegalStateException("streamEnded() called in state: " + state));
             }
         });
@@ -192,13 +221,13 @@ final class WatchStateMachine {
      */
     void streamError(Throwable error) {
         runOnEventLoop(() -> {
-            if (state == State.WATCHING || state == State.SUBSCRIBING || state == State.CONNECTING) {
+            if (state instanceof State.Watching || state instanceof State.Subscribing || state instanceof State.Connecting) {
                 State oldState = state;
                 handler.onError(error);
-                state = State.RECONNECTING;
+                state = new State.Reconnecting();
                 handler.onStateChange(oldState, state);
                 handler.onReconnect();
-            } else if (state != State.CLOSED && state != State.RECONNECTING) {
+            } else if (!(state instanceof State.Closed) && !(state instanceof State.Reconnecting)) {
                 handler.onError(new IllegalStateException("streamError() called in state: " + state));
             }
         });
@@ -209,12 +238,12 @@ final class WatchStateMachine {
      */
     void reconnectSucceeded() {
         runOnEventLoop(() -> {
-            if (state == State.RECONNECTING) {
+            if (state instanceof State.Reconnecting) {
                 State oldState = state;
-                state = State.CONNECTING;
+                state = new State.Connecting();
                 handler.onStateChange(oldState, state);
                 handler.onConnect();
-            } else if (state != State.CLOSED) {
+            } else if (!(state instanceof State.Closed)) {
                 handler.onError(new IllegalStateException("reconnectSucceeded() called in state: " + state));
             }
         });
@@ -225,13 +254,13 @@ final class WatchStateMachine {
      */
     void reconnectFailed(Throwable error) {
         runOnEventLoop(() -> {
-            if (state == State.RECONNECTING) {
+            if (state instanceof State.Reconnecting) {
                 State oldState = state;
-                state = State.CLOSED;
+                state = new State.Closed();
                 handler.onStateChange(oldState, state);
                 handler.onError(error);
                 handler.onClose();
-            } else if (state != State.CLOSED) {
+            } else if (!(state instanceof State.Closed)) {
                 handler.onError(new IllegalStateException("reconnectFailed() called in state: " + state));
             }
         });
@@ -242,9 +271,9 @@ final class WatchStateMachine {
      */
     void close() {
         runOnEventLoop(() -> {
-            if (state != State.CLOSED) {
+            if (!(state instanceof State.Closed)) {
                 State oldState = state;
-                state = State.CLOSED;
+                state = new State.Closed();
                 handler.onStateChange(oldState, state);
                 handler.onClose();
             }
@@ -262,14 +291,14 @@ final class WatchStateMachine {
      * Returns true if the watcher is closed.
      */
     boolean isClosed() {
-        return state == State.CLOSED;
+        return state instanceof State.Closed;
     }
 
     /**
      * Returns true if the watcher is actively watching.
      */
     boolean isWatching() {
-        return state == State.WATCHING;
+        return state instanceof State.Watching;
     }
 
     private void runOnEventLoop(Runnable action) {

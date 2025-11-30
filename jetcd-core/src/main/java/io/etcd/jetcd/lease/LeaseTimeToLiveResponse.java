@@ -31,8 +31,7 @@ public class LeaseTimeToLiveResponse extends AbstractResponse<io.etcd.jetcd.api.
         super(response, response.getHeader());
 
         this.keys = Suppliers.memoizing(
-            () -> getResponse().getKeysList().stream().map(ByteSequence::from).toList()
-        );
+            () -> getResponse().getKeysList().stream().map(ByteSequence::from).toList());
     }
 
     /**

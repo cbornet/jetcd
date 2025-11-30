@@ -44,24 +44,24 @@ final class WatchRequestFactory {
 
         WatchCreateRequest.Builder builder = WatchCreateRequest.newBuilder()
             .setKey(Util.prefixNamespace(key, namespace))
-            .setPrevKv(option.isPrevKV())
-            .setProgressNotify(option.isProgressNotify())
+            .setPrevKv(option.prevKV())
+            .setProgressNotify(option.progressNotify())
             .setStartRevision(revision);
 
         option.getEndKey()
             .map(endKey -> Util.prefixNamespaceToRangeEnd(endKey, namespace))
             .ifPresent(builder::setRangeEnd);
 
-        if (option.getEndKey().isEmpty() && option.isPrefix()) {
+        if (option.getEndKey().isEmpty() && option.prefix()) {
             ByteSequence endKey = OptionsUtil.prefixEndOf(key);
             builder.setRangeEnd(Util.prefixNamespaceToRangeEnd(endKey, namespace));
         }
 
-        if (option.isNoDelete()) {
+        if (option.noDelete()) {
             builder.addFilters(WatchCreateRequest.FilterType.NODELETE);
         }
 
-        if (option.isNoPut()) {
+        if (option.noPut()) {
             builder.addFilters(WatchCreateRequest.FilterType.NOPUT);
         }
 

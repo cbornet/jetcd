@@ -61,31 +61,31 @@ class WatchStateMachineTest {
     @Test
     void testHappyPath() {
         // Initial state
-        assertThat(stateMachine.currentState()).isEqualTo(WatchStateMachine.State.CONNECTING);
+        assertThat(stateMachine.currentState()).isInstanceOf(WatchStateMachine.State.Connecting.class);
 
         // Start
         stateMachine.start();
         waitForEventLoop();
         assertThat(handler.events).containsExactly("onConnect");
-        assertThat(stateMachine.currentState()).isEqualTo(WatchStateMachine.State.CONNECTING);
+        assertThat(stateMachine.currentState()).isInstanceOf(WatchStateMachine.State.Connecting.class);
 
         // Stream ready
         handler.clear();
         stateMachine.streamReady();
         waitForEventLoop();
         assertThat(handler.events).containsExactly("onStateChange", "onSubscribe");
-        assertThat(handler.lastOldState).isEqualTo(WatchStateMachine.State.CONNECTING);
-        assertThat(handler.lastNewState).isEqualTo(WatchStateMachine.State.SUBSCRIBING);
-        assertThat(stateMachine.currentState()).isEqualTo(WatchStateMachine.State.SUBSCRIBING);
+        assertThat(handler.lastOldState).isInstanceOf(WatchStateMachine.State.Connecting.class);
+        assertThat(handler.lastNewState).isInstanceOf(WatchStateMachine.State.Subscribing.class);
+        assertThat(stateMachine.currentState()).isInstanceOf(WatchStateMachine.State.Subscribing.class);
 
         // Watch created
         handler.clear();
         stateMachine.watchCreated();
         waitForEventLoop();
         assertThat(handler.events).containsExactly("onStateChange", "onReady");
-        assertThat(handler.lastOldState).isEqualTo(WatchStateMachine.State.SUBSCRIBING);
-        assertThat(handler.lastNewState).isEqualTo(WatchStateMachine.State.WATCHING);
-        assertThat(stateMachine.currentState()).isEqualTo(WatchStateMachine.State.WATCHING);
+        assertThat(handler.lastOldState).isInstanceOf(WatchStateMachine.State.Subscribing.class);
+        assertThat(handler.lastNewState).isInstanceOf(WatchStateMachine.State.Watching.class);
+        assertThat(stateMachine.currentState()).isInstanceOf(WatchStateMachine.State.Watching.class);
         assertThat(stateMachine.isWatching()).isTrue();
     }
 
@@ -102,14 +102,14 @@ class WatchStateMachineTest {
         stateMachine.streamEnded();
         waitForEventLoop();
         assertThat(handler.events).containsExactly("onStateChange", "onReconnect");
-        assertThat(stateMachine.currentState()).isEqualTo(WatchStateMachine.State.RECONNECTING);
+        assertThat(stateMachine.currentState()).isInstanceOf(WatchStateMachine.State.Reconnecting.class);
 
         // Reconnect succeeds
         handler.clear();
         stateMachine.reconnectSucceeded();
         waitForEventLoop();
         assertThat(handler.events).containsExactly("onStateChange", "onConnect");
-        assertThat(stateMachine.currentState()).isEqualTo(WatchStateMachine.State.CONNECTING);
+        assertThat(stateMachine.currentState()).isInstanceOf(WatchStateMachine.State.Connecting.class);
     }
 
     @Test
@@ -127,7 +127,7 @@ class WatchStateMachineTest {
         waitForEventLoop();
         assertThat(handler.events).containsExactly("onError", "onStateChange", "onReconnect");
         assertThat(handler.lastError).isEqualTo(error);
-        assertThat(stateMachine.currentState()).isEqualTo(WatchStateMachine.State.RECONNECTING);
+        assertThat(stateMachine.currentState()).isInstanceOf(WatchStateMachine.State.Reconnecting.class);
     }
 
     @Test
@@ -146,7 +146,7 @@ class WatchStateMachineTest {
         waitForEventLoop();
         assertThat(handler.events).containsExactly("onStateChange", "onError", "onClose");
         assertThat(handler.lastError).isEqualTo(error);
-        assertThat(stateMachine.currentState()).isEqualTo(WatchStateMachine.State.CLOSED);
+        assertThat(stateMachine.currentState()).isInstanceOf(WatchStateMachine.State.Closed.class);
         assertThat(stateMachine.isClosed()).isTrue();
     }
 
@@ -165,7 +165,7 @@ class WatchStateMachineTest {
         waitForEventLoop();
         assertThat(handler.events).containsExactly("onStateChange", "onError", "onClose");
         assertThat(handler.lastError).isEqualTo(error);
-        assertThat(stateMachine.currentState()).isEqualTo(WatchStateMachine.State.CLOSED);
+        assertThat(stateMachine.currentState()).isInstanceOf(WatchStateMachine.State.Closed.class);
     }
 
     @Test
@@ -296,7 +296,7 @@ class WatchStateMachineTest {
         stateMachine.streamEnded();
         waitForEventLoop();
         assertThat(handler.events).containsExactly("onStateChange", "onReconnect");
-        assertThat(stateMachine.currentState()).isEqualTo(WatchStateMachine.State.RECONNECTING);
+        assertThat(stateMachine.currentState()).isInstanceOf(WatchStateMachine.State.Reconnecting.class);
     }
 
     @Test
@@ -309,7 +309,7 @@ class WatchStateMachineTest {
         stateMachine.streamEnded();
         waitForEventLoop();
         assertThat(handler.events).containsExactly("onStateChange", "onReconnect");
-        assertThat(stateMachine.currentState()).isEqualTo(WatchStateMachine.State.RECONNECTING);
+        assertThat(stateMachine.currentState()).isInstanceOf(WatchStateMachine.State.Reconnecting.class);
     }
 
     /**

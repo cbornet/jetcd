@@ -40,7 +40,6 @@ public final class Suppliers {
         return new MemorizingSupplier<>(delegate);
     }
 
-
     /**
      * Returns a supplier that caches the instance retrieved during the first call to {@code get()}
      * and returns that value on subsequent calls. The returned supplier is thread-safe and
@@ -122,7 +121,7 @@ public final class Suppliers {
     /**
      * A supplier that memoizes the result of another supplier.
      */
-    public static class MemorizingSupplier<T> implements Supplier<T>{
+    public static class MemorizingSupplier<T> implements Supplier<T> {
         final Supplier<T> delegate;
         volatile boolean initialized;
         T value;

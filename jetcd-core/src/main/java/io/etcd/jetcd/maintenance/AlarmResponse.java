@@ -35,8 +35,7 @@ public class AlarmResponse extends AbstractResponse<io.etcd.jetcd.api.AlarmRespo
         super(response, response.getHeader());
 
         this.alarms = Suppliers.memoizing(
-            () -> getResponse().getAlarmsList().stream().map(AlarmResponse::toAlarmMember).toList()
-        );
+            () -> getResponse().getAlarmsList().stream().map(AlarmResponse::toAlarmMember).toList());
     }
 
     private static AlarmMember toAlarmMember(io.etcd.jetcd.api.AlarmMember alarmMember) {

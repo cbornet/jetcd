@@ -21,25 +21,20 @@ import static io.etcd.jetcd.common.Preconditions.checkArgument;
 /**
  * The options for put operation.
  */
-public final class PutOption {
+public record PutOption(
+    long leaseId,
+    boolean prevKV,
+    boolean autoRetry) {
+
     public static final PutOption DEFAULT = builder().build();
-
-    private final long leaseId;
-    private final boolean prevKV;
-    private final boolean autoRetry;
-
-    private PutOption(long leaseId, boolean prevKV, boolean autoRetry) {
-        this.leaseId = leaseId;
-        this.prevKV = prevKV;
-        this.autoRetry = autoRetry;
-    }
 
     /**
      * Get the lease id.
      *
      * @return the lease id
      */
-    public long getLeaseId() {
+    @Override
+    public long leaseId() {
         return this.leaseId;
     }
 
@@ -48,7 +43,8 @@ public final class PutOption {
      *
      * @return the prevKV
      */
-    public boolean getPrevKV() {
+    @Override
+    public boolean prevKV() {
         return this.prevKV;
     }
 
@@ -58,20 +54,9 @@ public final class PutOption {
      *
      * @return true if automated retries should happen.
      */
-    public boolean isAutoRetry() {
+    @Override
+    public boolean autoRetry() {
         return autoRetry;
-    }
-
-    /**
-     * Returns the builder.
-     *
-     * @deprecated use {@link #builder()}
-     * @return     the builder
-     */
-    @SuppressWarnings("InlineMeSuggester")
-    @Deprecated
-    public static Builder newBuilder() {
-        return builder();
     }
 
     public static Builder builder() {

@@ -59,10 +59,10 @@ class CommandWatch implements Runnable {
             Consumer<WatchResponse> consumer = response -> {
                 for (WatchEvent event : response.getEvents()) {
                     LOGGER.info("type={}, key={}, value={}",
-                        event.getEventType().toString(),
-                        Optional.ofNullable(event.getKeyValue().getKey()).map(bs -> bs.toString(StandardCharsets.UTF_8))
+                        event.eventType().toString(),
+                        Optional.ofNullable(event.keyValue().getKey()).map(bs -> bs.toString(StandardCharsets.UTF_8))
                             .orElse(""),
-                        Optional.ofNullable(event.getKeyValue().getValue()).map(bs -> bs.toString(StandardCharsets.UTF_8))
+                        Optional.ofNullable(event.keyValue().getValue()).map(bs -> bs.toString(StandardCharsets.UTF_8))
                             .orElse(""));
                 }
 

@@ -27,52 +27,22 @@ import static java.util.Objects.requireNonNull;
 /**
  * The option for get operation.
  */
-public final class GetOption {
+public record GetOption(
+    ByteSequence endKey,
+    long limit,
+    long revision,
+    SortOrder sortOrder,
+    SortTarget sortTarget,
+    boolean serializable,
+    boolean keysOnly,
+    boolean countOnly,
+    long minCreateRevision,
+    long maxCreateRevision,
+    long minModRevision,
+    long maxModRevision,
+    boolean prefix) {
+
     public static final GetOption DEFAULT = builder().build();
-
-    private final ByteSequence endKey;
-    private final long limit;
-    private final long revision;
-    private final SortOrder sortOrder;
-    private final SortTarget sortTarget;
-    private final boolean serializable;
-    private final boolean keysOnly;
-    private final boolean countOnly;
-    private final long minCreateRevision;
-    private final long maxCreateRevision;
-    private final long minModRevision;
-    private final long maxModRevision;
-    private final boolean prefix;
-
-    private GetOption(
-        ByteSequence endKey,
-        long limit,
-        long revision,
-        SortOrder sortOrder,
-        SortTarget sortTarget,
-        boolean serializable,
-        boolean keysOnly,
-        boolean countOnly,
-        long minCreateRevision,
-        long maxCreateRevision,
-        long minModRevision,
-        long maxModRevision,
-        boolean prefix) {
-
-        this.endKey = endKey;
-        this.limit = limit;
-        this.revision = revision;
-        this.sortOrder = sortOrder;
-        this.sortTarget = sortTarget;
-        this.serializable = serializable;
-        this.keysOnly = keysOnly;
-        this.countOnly = countOnly;
-        this.minCreateRevision = minCreateRevision;
-        this.maxCreateRevision = maxCreateRevision;
-        this.minModRevision = minModRevision;
-        this.maxModRevision = maxModRevision;
-        this.prefix = prefix;
-    }
 
     /**
      * Get the maximum number of keys to return for a get request.
@@ -82,10 +52,10 @@ public final class GetOption {
      * {@link GetResponse#getCount()} always counts the number of keys matched on a range, independent of filters.
      * </p>
      *
-     *
      * @return the maximum number of keys to return.
      */
-    public long getLimit() {
+    @Override
+    public long limit() {
         return this.limit;
     }
 
@@ -103,7 +73,8 @@ public final class GetOption {
      *
      * @return the revision for the request
      */
-    public long getRevision() {
+    @Override
+    public long revision() {
         return revision;
     }
 
@@ -112,7 +83,8 @@ public final class GetOption {
      *
      * @return the sort order for the request
      */
-    public SortOrder getSortOrder() {
+    @Override
+    public SortOrder sortOrder() {
         return sortOrder;
     }
 
@@ -132,7 +104,8 @@ public final class GetOption {
      *
      * @return true if this request is only serializable consistency
      */
-    public boolean isSerializable() {
+    @Override
+    public boolean serializable() {
         return serializable;
     }
 
@@ -142,7 +115,8 @@ public final class GetOption {
      *
      * @return true if only get keys
      */
-    public boolean isKeysOnly() {
+    @Override
+    public boolean keysOnly() {
         return keysOnly;
     }
 
@@ -152,7 +126,8 @@ public final class GetOption {
      *
      * @return true if only get the count of keys
      */
-    public boolean isCountOnly() {
+    @Override
+    public boolean countOnly() {
         return countOnly;
     }
 
@@ -169,7 +144,8 @@ public final class GetOption {
      *
      * @return minimum created revision to match, or zero for any.
      */
-    public long getMinCreateRevision() {
+    @Override
+    public long minCreateRevision() {
         return this.minCreateRevision;
     }
 
@@ -186,7 +162,8 @@ public final class GetOption {
      *
      * @return maximum created revision to match, or zero for any.
      */
-    public long getMaxCreateRevision() {
+    @Override
+    public long maxCreateRevision() {
         return this.maxCreateRevision;
     }
 
@@ -203,7 +180,8 @@ public final class GetOption {
      *
      * @return minimum modified revision to match, or zero for any.
      */
-    public long getMinModRevision() {
+    @Override
+    public long minModRevision() {
         return this.minModRevision;
     }
 
@@ -220,7 +198,8 @@ public final class GetOption {
      *
      * @return maximum modified revision to match, or zero for any.
      */
-    public long getMaxModRevision() {
+    @Override
+    public long maxModRevision() {
         return this.maxModRevision;
     }
 
@@ -229,7 +208,8 @@ public final class GetOption {
      *
      * @return true if this Get request should do prefix match
      */
-    public boolean isPrefix() {
+    @Override
+    public boolean prefix() {
         return prefix;
     }
 
@@ -239,18 +219,6 @@ public final class GetOption {
 
     public enum SortTarget {
         KEY, VERSION, CREATE, MOD, VALUE,
-    }
-
-    /**
-     * Returns the builder.
-     *
-     * @deprecated use {@link #builder()}
-     * @return     the builder
-     */
-    @SuppressWarnings("InlineMeSuggester")
-    @Deprecated
-    public static Builder newBuilder() {
-        return builder();
     }
 
     public static Builder builder() {

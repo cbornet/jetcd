@@ -32,8 +32,7 @@ public class GetResponse extends AbstractResponse<RangeResponse> {
         super(rangeResponse, rangeResponse.getHeader());
 
         this.kvs = Suppliers.memoizing(
-            () -> getResponse().getKvsList().stream().map(kv -> new KeyValue(kv, namespace)).toList()
-        );
+            () -> getResponse().getKvsList().stream().map(kv -> new KeyValue(kv, namespace)).toList());
     }
 
     /**

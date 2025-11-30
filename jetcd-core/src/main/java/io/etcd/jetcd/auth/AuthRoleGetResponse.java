@@ -36,8 +36,7 @@ public class AuthRoleGetResponse extends AbstractResponse<io.etcd.jetcd.api.Auth
         super(response, response.getHeader());
 
         this.permissions = Suppliers.memoizing(
-            () -> getResponse().getPermList().stream().map(AuthRoleGetResponse::toPermission).toList()
-        );
+            () -> getResponse().getPermList().stream().map(AuthRoleGetResponse::toPermission).toList());
     }
 
     private static Permission toPermission(io.etcd.jetcd.api.Permission perm) {

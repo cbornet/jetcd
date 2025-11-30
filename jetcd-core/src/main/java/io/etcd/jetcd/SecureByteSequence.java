@@ -25,23 +25,27 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * A secure byte sequence that zeroes its content when closed.
  *
- * <p>This class is designed for storing sensitive data such as passwords or tokens.
+ * <p>
+ * This class is designed for storing sensitive data such as passwords or tokens.
  * The backing byte array is zeroed when {@link #close()} is called to prevent
  * sensitive data from lingering in memory.
  *
- * <p><b>Usage:</b>
+ * <p>
+ * <b>Usage:</b>
+ *
  * <pre>{@code
  * try (SecureByteSequence password = SecureByteSequence.from("myPassword")) {
  *     client.user(username).password(password).build();
  * } // password is automatically zeroed
  * }</pre>
  *
- * <p><b>Important:</b>
+ * <p>
+ * <b>Important:</b>
  * <ul>
- *   <li>Always use try-with-resources to ensure automatic cleanup
- *   <li>Do not share instances across threads without synchronization
- *   <li>Do not call {@link #getBytes()} and store the result (defeats the purpose)
- *   <li>This provides defense-in-depth but is not foolproof against determined attackers
+ * <li>Always use try-with-resources to ensure automatic cleanup
+ * <li>Do not share instances across threads without synchronization
+ * <li>Do not call {@link #getBytes()} and store the result (defeats the purpose)
+ * <li>This provides defense-in-depth but is not foolproof against determined attackers
  * </ul>
  *
  * @see ByteSequence
@@ -108,7 +112,7 @@ public final class SecureByteSequence implements AutoCloseable {
      * Returns the bytes of this SecureByteSequence.
      * Warning: The returned array is a copy but should be zeroed after use.
      *
-     * @return a copy of the byte array
+     * @return                       a copy of the byte array
      * @throws IllegalStateException if this SecureByteSequence has been closed
      */
     public byte[] getBytes() {
@@ -162,7 +166,8 @@ public final class SecureByteSequence implements AutoCloseable {
      * Zeroes the backing byte array and marks this sequence as closed.
      * After calling close(), any attempt to access the data will throw IllegalStateException.
      *
-     * <p>This method is idempotent - calling it multiple times is safe.
+     * <p>
+     * This method is idempotent - calling it multiple times is safe.
      */
     @Override
     public void close() {
@@ -180,5 +185,3 @@ public final class SecureByteSequence implements AutoCloseable {
         return closed.get();
     }
 }
-
-

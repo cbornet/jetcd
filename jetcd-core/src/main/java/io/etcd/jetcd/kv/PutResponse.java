@@ -31,11 +31,9 @@ public class PutResponse extends AbstractResponse<io.etcd.jetcd.api.PutResponse>
     public PutResponse(io.etcd.jetcd.api.PutResponse putResponse, ByteSequence namespace) {
         super(putResponse, putResponse.getHeader());
 
-        this.prevKv = Suppliers.memoizingOptional(() ->
-            getResponse().hasPrevKv()
-                ? new KeyValue(getResponse().getPrevKv(), namespace)
-                : null
-        );
+        this.prevKv = Suppliers.memoizingOptional(() -> getResponse().hasPrevKv()
+            ? new KeyValue(getResponse().getPrevKv(), namespace)
+            : null);
     }
 
     /**
@@ -50,7 +48,7 @@ public class PutResponse extends AbstractResponse<io.etcd.jetcd.api.PutResponse>
     /**
      * Returns whether a previous key-value pair is present.
      *
-     * @return if has prev kv
+     * @return     if has prev kv
      * @deprecated Use {@link #getPrevKv()}.isPresent() instead
      */
     @Deprecated

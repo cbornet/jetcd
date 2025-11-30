@@ -32,8 +32,7 @@ public class DeleteResponse extends AbstractResponse<DeleteRangeResponse> {
         super(deleteRangeResponse, deleteRangeResponse.getHeader());
 
         this.prevKvs = Suppliers.memoizing(
-            () -> getResponse().getPrevKvsList().stream().map(kv -> new KeyValue(kv, namespace)).toList()
-        );
+            () -> getResponse().getPrevKvsList().stream().map(kv -> new KeyValue(kv, namespace)).toList());
     }
 
     /**

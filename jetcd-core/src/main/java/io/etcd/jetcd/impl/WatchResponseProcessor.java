@@ -81,8 +81,8 @@ final class WatchResponseProcessor {
     private final boolean progressNotify;
 
     WatchResponseProcessor(WatchOption option) {
-        this.createdNotify = option.isCreatedNotify();
-        this.progressNotify = option.isProgressNotify();
+        this.createdNotify = option.createdNotify();
+        this.progressNotify = option.progressNotify();
     }
 
     /**

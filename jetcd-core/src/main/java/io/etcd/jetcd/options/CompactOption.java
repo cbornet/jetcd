@@ -16,30 +16,10 @@
 
 package io.etcd.jetcd.options;
 
-public final class CompactOption {
+public record CompactOption(
+    boolean physical) {
+
     public static final CompactOption DEFAULT = builder().build();
-
-    private final boolean physical;
-
-    private CompactOption(boolean physical) {
-        this.physical = physical;
-    }
-
-    public boolean isPhysical() {
-        return physical;
-    }
-
-    /**
-     * Returns the builder.
-     *
-     * @deprecated use {@link #builder()}
-     * @return     the builder
-     */
-    @SuppressWarnings("InlineMeSuggester")
-    @Deprecated
-    public static Builder newBuilder() {
-        return builder();
-    }
 
     public static Builder builder() {
         return new Builder();

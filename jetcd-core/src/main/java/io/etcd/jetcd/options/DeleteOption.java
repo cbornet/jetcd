@@ -23,20 +23,13 @@ import io.etcd.jetcd.KV;
 
 import static java.util.Objects.requireNonNull;
 
-public final class DeleteOption {
+public record DeleteOption(
+    ByteSequence endKey,
+    boolean prevKV,
+    boolean prefix,
+    boolean autoRetry) {
+
     public static final DeleteOption DEFAULT = builder().build();
-
-    private final ByteSequence endKey;
-    private final boolean prevKV;
-    private final boolean prefix;
-    private final boolean autoRetry;
-
-    private DeleteOption(ByteSequence endKey, boolean prevKV, boolean prefix, final boolean autoRetry) {
-        this.endKey = endKey;
-        this.prevKV = prevKV;
-        this.prefix = prefix;
-        this.autoRetry = autoRetry;
-    }
 
     public Optional<ByteSequence> getEndKey() {
         return Optional.ofNullable(endKey);
@@ -47,7 +40,8 @@ public final class DeleteOption {
      *
      * @return true if get the previous key/value pairs before deleting them, otherwise false.
      */
-    public boolean isPrevKV() {
+    @Override
+    public boolean prevKV() {
         return prevKV;
     }
 
@@ -56,7 +50,8 @@ public final class DeleteOption {
      *
      * @return true if deletion by prefix.
      */
-    public boolean isPrefix() {
+    @Override
+    public boolean prefix() {
         return prefix;
     }
 
@@ -66,20 +61,9 @@ public final class DeleteOption {
      *
      * @return true if automated retries should happen.
      */
-    public boolean isAutoRetry() {
+    @Override
+    public boolean autoRetry() {
         return autoRetry;
-    }
-
-    /**
-     * Returns the builder.
-     *
-     * @deprecated use {@link #builder()}
-     * @return     the builder
-     */
-    @SuppressWarnings("InlineMeSuggester")
-    @Deprecated
-    public static Builder newBuilder() {
-        return builder();
     }
 
     /**
@@ -131,7 +115,7 @@ public final class DeleteOption {
          * @param  prefix flag to delete all the keys by prefix
          * @return        builder
          */
-        public DeleteOption.Builder isPrefix(boolean prefix) {
+        public Builder isPrefix(boolean prefix) {
             this.prefix = prefix;
             return this;
         }

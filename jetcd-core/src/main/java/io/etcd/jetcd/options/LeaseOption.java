@@ -16,30 +16,10 @@
 
 package io.etcd.jetcd.options;
 
-public class LeaseOption {
+public record LeaseOption(
+    boolean attachedKeys) {
+
     public static final LeaseOption DEFAULT = builder().build();
-
-    private final boolean attachedKeys;
-
-    private LeaseOption(boolean attachedKeys) {
-        this.attachedKeys = attachedKeys;
-    }
-
-    public boolean isAttachedKeys() {
-        return attachedKeys;
-    }
-
-    /**
-     * Returns the builder.
-     *
-     * @deprecated use {@link #builder()}
-     * @return     the builder
-     */
-    @SuppressWarnings("InlineMeSuggester")
-    @Deprecated
-    public static Builder newBuilder() {
-        return builder();
-    }
 
     public static Builder builder() {
         return new Builder();

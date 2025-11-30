@@ -26,52 +26,25 @@ import static java.util.Objects.requireNonNull;
 /**
  * The option for watch operation.
  */
-public final class WatchOption {
+public record WatchOption(
+    ByteSequence endKey,
+    long revision,
+    boolean prevKV,
+    boolean progressNotify,
+    boolean createdNotify,
+    boolean noPut,
+    boolean noDelete,
+    boolean requireLeader,
+    boolean prefix,
+    int maxReconnectAttempts,
+    Duration initialReconnectDelay,
+    Duration maxReconnectDelay) {
+
     public static final WatchOption DEFAULT = builder().build();
 
     public static final int DEFAULT_MAX_RECONNECT_ATTEMPTS = 10;
     public static final Duration DEFAULT_INITIAL_RECONNECT_DELAY = Duration.ofMillis(500);
     public static final Duration DEFAULT_MAX_RECONNECT_DELAY = Duration.ofSeconds(30);
-
-    private final ByteSequence endKey;
-    private final long revision;
-    private final boolean prevKV;
-    private final boolean progressNotify;
-    private final boolean createdNotify;
-    private final boolean noPut;
-    private final boolean noDelete;
-    private final boolean requireLeader;
-    private final boolean prefix;
-    private final int maxReconnectAttempts;
-    private final Duration initialReconnectDelay;
-    private final Duration maxReconnectDelay;
-
-    private WatchOption(
-        ByteSequence endKey,
-        long revision,
-        boolean prevKV,
-        boolean progressNotify,
-        boolean createdNotify,
-        boolean noPut,
-        boolean noDelete,
-        boolean requireLeader,
-        boolean prefix,
-        int maxReconnectAttempts,
-        Duration initialReconnectDelay,
-        Duration maxReconnectDelay) {
-        this.endKey = endKey;
-        this.revision = revision;
-        this.prevKV = prevKV;
-        this.progressNotify = progressNotify;
-        this.createdNotify = createdNotify;
-        this.noPut = noPut;
-        this.noDelete = noDelete;
-        this.requireLeader = requireLeader;
-        this.prefix = prefix;
-        this.maxReconnectAttempts = maxReconnectAttempts;
-        this.initialReconnectDelay = initialReconnectDelay;
-        this.maxReconnectDelay = maxReconnectDelay;
-    }
 
     public Optional<ByteSequence> getEndKey() {
         return Optional.ofNullable(this.endKey);
@@ -82,7 +55,8 @@ public final class WatchOption {
      *
      * @return the revision.
      */
-    public long getRevision() {
+    @Override
+    public long revision() {
         return revision;
     }
 
@@ -91,7 +65,8 @@ public final class WatchOption {
      *
      * @return if true, watcher receives the previous KV before the event happens.
      */
-    public boolean isPrevKV() {
+    @Override
+    public boolean prevKV() {
         return prevKV;
     }
 
@@ -100,7 +75,8 @@ public final class WatchOption {
      *
      * @return if true, watcher server should send periodic progress updates.
      */
-    public boolean isProgressNotify() {
+    @Override
+    public boolean progressNotify() {
         return progressNotify;
     }
 
@@ -109,7 +85,8 @@ public final class WatchOption {
      *
      * @return if true, watcher server should send watch create event.
      */
-    public boolean isCreatedNotify() {
+    @Override
+    public boolean createdNotify() {
         return createdNotify;
     }
 
@@ -118,7 +95,8 @@ public final class WatchOption {
      *
      * @return if true, filter put event in server side
      */
-    public boolean isNoPut() {
+    @Override
+    public boolean noPut() {
         return noPut;
     }
 
@@ -127,7 +105,8 @@ public final class WatchOption {
      *
      * @return if true, filter delete event in server side
      */
-    public boolean isNoDelete() {
+    @Override
+    public boolean noDelete() {
         return noDelete;
     }
 
@@ -145,16 +124,13 @@ public final class WatchOption {
         return requireLeader;
     }
 
-    public boolean isPrefix() {
-        return prefix;
-    }
-
     /**
      * Returns the maximum number of reconnection attempts.
      *
      * @return the maximum number of reconnection attempts
      */
-    public int getMaxReconnectAttempts() {
+    @Override
+    public int maxReconnectAttempts() {
         return maxReconnectAttempts;
     }
 
@@ -163,7 +139,8 @@ public final class WatchOption {
      *
      * @return the initial reconnection delay
      */
-    public Duration getInitialReconnectDelay() {
+    @Override
+    public Duration initialReconnectDelay() {
         return initialReconnectDelay;
     }
 
@@ -172,20 +149,9 @@ public final class WatchOption {
      *
      * @return the maximum reconnection delay
      */
-    public Duration getMaxReconnectDelay() {
+    @Override
+    public Duration maxReconnectDelay() {
         return maxReconnectDelay;
-    }
-
-    /**
-     * Returns the builder.
-     *
-     * @deprecated use {@link #builder()}
-     * @return     the builder
-     */
-    @SuppressWarnings("InlineMeSuggester")
-    @Deprecated
-    public static Builder newBuilder() {
-        return builder();
     }
 
     public static Builder builder() {
@@ -311,7 +277,7 @@ public final class WatchOption {
          * @param  prefix flag to watch all the keys by prefix
          * @return        builder
          */
-        public WatchOption.Builder isPrefix(boolean prefix) {
+        public Builder isPrefix(boolean prefix) {
             this.prefix = prefix;
             return this;
         }

@@ -22,7 +22,8 @@ import io.etcd.jetcd.ByteSequence;
  * Represents a leader key in an election.
  *
  * @param name     the election identifier that corresponds to the leadership key
- * @param key      the opaque key representing the ownership of the election; if the key is deleted, then leadership is lost
+ * @param key      the opaque key representing the ownership of the election; if the key is deleted, then leadership is
+ *                 lost
  * @param revision the creation revision of the key; can be used to test for ownership during transactions
  * @param lease    the lease ID of the election leader
  */
