@@ -88,7 +88,7 @@ final class GrpcService {
         return authenticatedGrpcClient;
     }
 
-    ServiceResolver getServiceResolver() {
+    ServiceResolver<?> getServiceResolver() {
         if (builder.serviceResolver() == null) {
             throw new IllegalArgumentException("EndpointResolver must be configured");
         }

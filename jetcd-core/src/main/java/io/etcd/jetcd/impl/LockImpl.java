@@ -51,9 +51,9 @@ final class LockImpl extends AbstractService implements Lock {
     LockImpl(GrpcService grpcService) {
         super(grpcService);
 
-        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = grpcService.getServiceResolver();
+        io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();
         this.client = LockGrpcClient.create(grpcService.getAuthenticatedGrpcClient(),
-            (io.vertx.core.net.SocketAddress) serviceResolver.getTarget());
+            serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class));
         this.namespace = grpcService.getNamespace();
     }
 

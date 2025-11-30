@@ -44,10 +44,10 @@ final class ClusterImpl extends AbstractService implements Cluster {
     ClusterImpl(GrpcService grpcService) {
         super(grpcService);
 
-        io.etcd.jetcd.resolver.ServiceResolver serviceResolver = grpcService.getServiceResolver();
+        io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();
         this.client = ClusterGrpcClient.create(
             grpcService.getAuthenticatedGrpcClient(),
-            (io.vertx.core.net.SocketAddress) serviceResolver.getTarget());
+            serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class));
     }
 
     /**
