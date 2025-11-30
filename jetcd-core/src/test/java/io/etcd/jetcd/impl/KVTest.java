@@ -95,7 +95,7 @@ public class KVTest {
         CompletableFuture<PutResponse> feature = kvClient.put(SAMPLE_KEY, SAMPLE_VALUE);
         PutResponse response = feature.get();
         assertThat(response.getHeader()).isNotNull();
-        assertThat(!response.hasPrevKv()).isTrue();
+        assertThat(response.getPrevKv()).isEmpty();
     }
 
     @Test

@@ -268,9 +268,12 @@ public class KVNamespaceTest {
                 .Else(Op.put(key2, TestUtil.randomByteSequence(), PutOption.builder().withPrevKV().build())).commit();
             TxnResponse txnResponse = txnFuture.get();
             assertThat(txnResponse.getPutResponses().size()).isEqualTo(1);
-            assertThat(txnResponse.getPutResponses().get(0).hasPrevKv()).isTrue();
-            assertThat(txnResponse.getPutResponses().get(0).getPrevKv().getKey()).isEqualTo(key1);
-            assertThat(txnResponse.getPutResponses().get(0).getPrevKv().getValue()).isEqualTo(value1);
+            assertThat(txnResponse.getPutResponses().get(0).getPrevKv())
+                .isPresent()
+                .hasValueSatisfying(kv -> {
+                    assertThat(kv.getKey()).isEqualTo(key1);
+                    assertThat(kv.getValue()).isEqualTo(value1);
+                });
         }
 
         // test comparison fails, with get operation.
@@ -344,9 +347,13 @@ public class KVNamespaceTest {
             TxnResponse response = txnFuture.get();
             assertThat(response.getTxnResponses().size()).isEqualTo(1);
             assertThat(response.getTxnResponses().get(0).getPutResponses().size()).isEqualTo(1);
-            assertThat(response.getTxnResponses().get(0).getPutResponses().get(0).hasPrevKv()).isTrue();
-            assertThat(response.getTxnResponses().get(0).getPutResponses().get(0).getPrevKv().getKey()).isEqualTo(key1);
-            assertThat(response.getTxnResponses().get(0).getPutResponses().get(0).getPrevKv().getValue()).isEqualTo(value1);
+            final ByteSequence expectedValue = value1;
+            assertThat(response.getTxnResponses().get(0).getPutResponses().get(0).getPrevKv())
+                .isPresent()
+                .hasValueSatisfying(kv -> {
+                    assertThat(kv.getKey()).isEqualTo(key1);
+                    assertThat(kv.getValue()).isEqualTo(expectedValue);
+                });
             value1 = nextValue1;
             assertExistentKey(kvClient, ByteSequence.from(namespace.concat(key1).getBytes()), value1);
         }
@@ -390,11 +397,14 @@ public class KVNamespaceTest {
         CompletableFuture<PutResponse> feature = kvClient.put(key, value, PutOption.builder().withPrevKV().build());
         PutResponse response = feature.get();
         if (prevValue != null) {
-            assertThat(response.hasPrevKv()).isTrue();
-            assertThat(response.getPrevKv().getKey()).isEqualTo(key);
-            assertThat(response.getPrevKv().getValue()).isEqualTo(prevValue);
+            assertThat(response.getPrevKv())
+                .isPresent()
+                .hasValueSatisfying(kv -> {
+                    assertThat(kv.getKey()).isEqualTo(key);
+                    assertThat(kv.getValue()).isEqualTo(prevValue);
+                });
         }
-        return response.hasPrevKv();
+        return response.getPrevKv().isPresent();
     }
 
     private static void deleteKVWithAssertion(KV kvClient, ByteSequence key, ByteSequence prevValue) throws Exception {

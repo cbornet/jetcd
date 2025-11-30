@@ -8,6 +8,7 @@ The following Java 21 features have been introduced:
 - **Records** for immutable data classes
 - **Sealed Interfaces** for state hierarchies  
 - **SecureByteSequence** for secure credential handling
+- **Optional Return Values** for explicit absence handling
 
 ## Records Migration
 
@@ -199,6 +200,51 @@ authenticate(pwd);
 pwd.close(); // Easy to forget, may leak if exception thrown
 ```
 
+## Optional Return Values
+
+### Breaking Change: Nullable Returns → Optional<T>
+
+Methods that may return null now return `Optional<T>` to make absence explicit.
+
+#### PutResponse.getPrevKv()
+
+```java
+// Before
+PutResponse response = kvClient.put(key, value, 
+    PutOption.builder().withPrevKV().build()).get();
+    
+if (response.hasPrevKv()) {
+    KeyValue prev = response.getPrevKv();
+    System.out.println("Previous: " + prev.getValue());
+}
+
+// After
+PutResponse response = kvClient.put(key, value, 
+    PutOption.builder().withPrevKV().build()).get();
+    
+// Functional style (recommended)
+response.getPrevKv().ifPresent(prev -> 
+    System.out.println("Previous: " + prev.getValue())
+);
+
+// Or traditional style
+Optional<KeyValue> prevOpt = response.getPrevKv();
+if (prevOpt.isPresent()) {
+    KeyValue prev = prevOpt.get();
+    System.out.println("Previous: " + prev.getValue());
+}
+
+// Or with orElse
+KeyValue prev = response.getPrevKv().orElse(null);
+```
+
+**Migration Note**: The `hasPrevKv()` method is deprecated but still available for transition.
+
+**Benefits**:
+- Compiler enforces handling of absent values (no more NPE)
+- Explicit in the type system - `Optional<KeyValue>` clearly communicates "may be absent"
+- Enables functional programming patterns (`.map()`, `.flatMap()`, `.filter()`, `.orElse()`)
+
 ## Summary of Breaking Changes
 
 | Class | Old Method | New Method | Type |
@@ -213,6 +259,7 @@ pwd.close(); // Easy to forget, may leak if exception thrown
 | WatchEvent | `getPrevKV()` | `prevKV()` | Record accessor |
 | WatchEvent | `getEventType()` | `eventType()` | Record accessor |
 | WatchState | `enum` | `sealed interface` | Backward compatible |
+| PutResponse | `getPrevKv()` returns `KeyValue` | `getPrevKv()` returns `Optional<KeyValue>` | Optional return value |
 
 ## Testing
 

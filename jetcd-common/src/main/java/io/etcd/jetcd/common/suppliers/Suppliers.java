@@ -17,6 +17,7 @@
 package io.etcd.jetcd.common.suppliers;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
@@ -51,6 +52,19 @@ public final class Suppliers {
      */
     public static <T extends AutoCloseable> CloseableSupplier<T> memoizingCloseable(Supplier<T> delegate) {
         return new MemorizingCloseableSupplier<>(delegate);
+    }
+
+    /**
+     * Returns a memoizing supplier that returns Optional.
+     * The supplier may return null to indicate absence, which will be wrapped as Optional.empty().
+     * The result is cached after the first invocation.
+     *
+     * @param  supplier function that computes the value (may return null)
+     * @param  <T>      the type of the value
+     * @return          Supplier that caches and returns Optional
+     */
+    public static <T> Supplier<Optional<T>> memoizingOptional(Supplier<T> supplier) {
+        return new MemorizingOptionalSupplier<>(supplier);
     }
 
     /**
@@ -138,6 +152,29 @@ public final class Suppliers {
             return "Suppliers.memoizing("
                 + (initialized ? "<supplier that returned " + value + ">" : delegate)
                 + ")";
+        }
+    }
+
+    /**
+     * A supplier that memoizes an Optional result.
+     * The supplied value may be null, which is wrapped as Optional.empty().
+     */
+    public static class MemorizingOptionalSupplier<T> implements Supplier<Optional<T>> {
+        private final Supplier<T> delegate;
+
+        MemorizingOptionalSupplier(Supplier<T> supplier) {
+            Objects.requireNonNull(supplier);
+            this.delegate = memoizing(supplier);
+        }
+
+        @Override
+        public Optional<T> get() {
+            return Optional.ofNullable(delegate.get());
+        }
+
+        @Override
+        public String toString() {
+            return "Suppliers.memoizingOptional(...)";
         }
     }
 }
