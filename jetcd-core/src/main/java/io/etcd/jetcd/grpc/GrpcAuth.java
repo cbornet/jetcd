@@ -131,7 +131,7 @@ public final class GrpcAuth implements AutoCloseable {
             .thenApply(response -> {
                 String tokenString = response.getToken();
                 io.etcd.jetcd.SecureByteSequence newToken = io.etcd.jetcd.SecureByteSequence.from(tokenString);
-                
+
                 synchronized (tokenLock) {
                     io.etcd.jetcd.SecureByteSequence oldToken = this.token;
                     this.token = newToken;
@@ -139,7 +139,7 @@ public final class GrpcAuth implements AutoCloseable {
                         oldToken.close();
                     }
                 }
-                
+
                 return tokenString;
             });
     }

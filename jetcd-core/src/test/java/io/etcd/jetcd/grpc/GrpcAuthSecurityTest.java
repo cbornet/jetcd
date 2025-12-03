@@ -215,4 +215,3 @@ public class GrpcAuthSecurityTest {
         assertThat(mockToken.isClosed()).isTrue();
     }
 }
-

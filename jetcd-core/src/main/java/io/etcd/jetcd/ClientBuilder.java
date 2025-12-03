@@ -84,10 +84,10 @@ public final class ClientBuilder implements Cloneable {
     /**
      * config etcd auth user.
      *
-     * @param  user                 etcd auth user
-     * @return                      this builder
-     * @throws NullPointerException if user is <code>null</code>
-     * @deprecated                  Use {@link #user(SecureByteSequence)} for better security
+     * @param      user                 etcd auth user
+     * @return                          this builder
+     * @throws     NullPointerException if user is <code>null</code>
+     * @deprecated                      Use {@link #user(SecureByteSequence)} for better security
      */
     @Deprecated
     public ClientBuilder user(ByteSequence user) {
@@ -121,10 +121,10 @@ public final class ClientBuilder implements Cloneable {
     /**
      * config etcd auth password.
      *
-     * @param  password             etcd auth password
-     * @return                      this builder
-     * @throws NullPointerException if password is <code>null</code>
-     * @deprecated                  Use {@link #password(SecureByteSequence)} for better security
+     * @param      password             etcd auth password
+     * @return                          this builder
+     * @throws     NullPointerException if password is <code>null</code>
+     * @deprecated                      Use {@link #password(SecureByteSequence)} for better security
      */
     @Deprecated
     public ClientBuilder password(ByteSequence password) {
