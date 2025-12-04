@@ -23,6 +23,7 @@ import java.util.Objects;
  */
 public class EtcdException extends RuntimeException {
 
+    /** The error code. */
     private final ErrorCode code;
 
     /**

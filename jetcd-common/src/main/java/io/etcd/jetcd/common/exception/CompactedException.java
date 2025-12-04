@@ -22,6 +22,7 @@ package io.etcd.jetcd.common.exception;
  */
 public class CompactedException extends EtcdException {
 
+    /** The revision at which compaction occurred. */
     private long compactedRevision;
 
     /**
