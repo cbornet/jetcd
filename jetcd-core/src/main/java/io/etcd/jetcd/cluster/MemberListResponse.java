@@ -31,6 +31,11 @@ public class MemberListResponse extends AbstractResponse<io.etcd.jetcd.api.Membe
 
     private final Supplier<List<Member>> members;
 
+    /**
+     * Creates a new MemberListResponse from the gRPC response.
+     *
+     * @param response the gRPC member list response
+     */
     public MemberListResponse(io.etcd.jetcd.api.MemberListResponse response) {
         super(response, response.getHeader());
 

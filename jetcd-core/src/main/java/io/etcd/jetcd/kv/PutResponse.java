@@ -24,10 +24,19 @@ import io.etcd.jetcd.KeyValue;
 import io.etcd.jetcd.common.suppliers.Suppliers;
 import io.etcd.jetcd.impl.AbstractResponse;
 
+/**
+ * Response from a put operation.
+ */
 public class PutResponse extends AbstractResponse<io.etcd.jetcd.api.PutResponse> {
 
     private final Supplier<Optional<KeyValue>> prevKv;
 
+    /**
+     * Creates a new PutResponse from the gRPC response.
+     *
+     * @param putResponse the gRPC put response
+     * @param namespace   the namespace used
+     */
     public PutResponse(io.etcd.jetcd.api.PutResponse putResponse, ByteSequence namespace) {
         super(putResponse, putResponse.getHeader());
 

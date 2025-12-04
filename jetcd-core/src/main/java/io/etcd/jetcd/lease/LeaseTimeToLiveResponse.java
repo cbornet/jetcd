@@ -23,10 +23,18 @@ import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.common.suppliers.Suppliers;
 import io.etcd.jetcd.impl.AbstractResponse;
 
+/**
+ * Response from a lease time-to-live operation.
+ */
 public class LeaseTimeToLiveResponse extends AbstractResponse<io.etcd.jetcd.api.LeaseTimeToLiveResponse> {
 
     private final Supplier<List<ByteSequence>> keys;
 
+    /**
+     * Creates a new LeaseTimeToLiveResponse from the gRPC response.
+     *
+     * @param response the gRPC lease time to live response
+     */
     public LeaseTimeToLiveResponse(io.etcd.jetcd.api.LeaseTimeToLiveResponse response) {
         super(response, response.getHeader());
 

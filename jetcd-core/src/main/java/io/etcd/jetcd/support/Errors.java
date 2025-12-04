@@ -19,10 +19,17 @@ package io.etcd.jetcd.support;
 import io.vertx.grpc.client.InvalidStatusException;
 import io.vertx.grpc.common.GrpcStatus;
 
+/**
+ * Utility class for error detection and classification.
+ */
 public final class Errors {
+    /** Error message indicating no leader. */
     public static final String NO_LEADER_ERROR_MESSAGE = "etcdserver: no leader";
+    /** Error message indicating invalid auth token. */
     public static final String INVALID_AUTH_TOKEN_ERROR_MESSAGE = "etcdserver: invalid auth token";
+    /** Error message indicating permission denied. */
     public static final String PERMISSION_DENIED_ERROR_MESSAGE = "etcdserver: permission denied";
+    /** Error message indicating old auth store revision. */
     public static final String ERROR_AUTH_STORE_OLD = "etcdserver: revision of auth store is old";
 
     private Errors() {
@@ -119,6 +126,9 @@ public final class Errors {
 
     /**
      * Checks if the error message indicates a permission denied error.
+     *
+     * @param  message the error message to check
+     * @return         true if permission denied error
      */
     public static boolean isPermissionDenied(String message) {
         return message != null && message.contains(PERMISSION_DENIED_ERROR_MESSAGE);
@@ -126,6 +136,9 @@ public final class Errors {
 
     /**
      * Checks if the error message indicates an invalid auth token error.
+     *
+     * @param  message the error message to check
+     * @return         true if invalid auth token error
      */
     public static boolean isInvalidAuthToken(String message) {
         return message != null && message.contains(INVALID_AUTH_TOKEN_ERROR_MESSAGE);
@@ -133,6 +146,9 @@ public final class Errors {
 
     /**
      * Checks if the error message indicates an authentication error (permission denied or invalid token).
+     *
+     * @param  message the error message to check
+     * @return         true if authentication error
      */
     public static boolean isAuthenticationError(String message) {
         return isPermissionDenied(message) || isInvalidAuthToken(message);
