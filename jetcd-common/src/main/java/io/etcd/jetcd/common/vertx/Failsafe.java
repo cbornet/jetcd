@@ -123,7 +123,7 @@ public final class Failsafe {
 
             return new DefaultScheduledFuture<>() {
                 {
-                    if (delay == 0) {
+                    if (timerDelay == 0) {
                         vertx.getOrCreateContext().runOnContext(v -> runnable.run());
                     } else {
                         timerId.set(
@@ -133,7 +133,7 @@ public final class Failsafe {
 
                 @Override
                 public boolean cancel(boolean mayInterruptIfRunning) {
-                    return delay != 0 && vertx.cancelTimer(timerId.get());
+                    return timerDelay != 0 && vertx.cancelTimer(timerId.get());
                 }
             };
         };
