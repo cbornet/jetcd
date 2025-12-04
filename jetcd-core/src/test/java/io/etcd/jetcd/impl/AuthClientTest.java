@@ -19,6 +19,7 @@ package io.etcd.jetcd.impl;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -50,6 +51,7 @@ public class AuthClientTest {
     private static final String rootRoleString = "root";
     private static final String userString = "user";
     private static final String userRoleString = "userRole";
+    private static Client authDisabledClient;
     private static Auth authDisabledAuthClient;
     private static KV authDisabledKVClient;
     private final ByteSequence rootRoleKey = bytesOf("root");
@@ -72,9 +74,16 @@ public class AuthClientTest {
      */
     @BeforeAll
     public static void setupEnv() {
-        Client client = TestUtil.client(cluster).build();
-        authDisabledKVClient = client.getKVClient();
-        authDisabledAuthClient = client.getAuthClient();
+        authDisabledClient = TestUtil.client(cluster).build();
+        authDisabledKVClient = authDisabledClient.getKVClient();
+        authDisabledAuthClient = authDisabledClient.getAuthClient();
+    }
+
+    @AfterAll
+    public static void tearDownEnv() throws Exception {
+        if (authDisabledClient != null) {
+            authDisabledClient.close();
+        }
     }
 
     @Test

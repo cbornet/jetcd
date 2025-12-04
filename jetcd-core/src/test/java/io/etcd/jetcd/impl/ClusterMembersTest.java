@@ -61,76 +61,80 @@ public class ClusterMembersTest {
 
     @Test
     public void testMemberManagement() throws ExecutionException, InterruptedException, TimeoutException {
-        final Client client = Client.builder(n1.clientEndpoints()).build();
-        final Cluster clusterClient = client.getClusterClient();
+        try (Client client = Client.builder(n1.clientEndpoints()).build()) {
+            final Cluster clusterClient = client.getClusterClient();
 
-        Member m2 = clusterClient.addMember(n2.peerEndpoints())
-            .get(5, TimeUnit.SECONDS)
-            .getMember();
+            Member m2 = clusterClient.addMember(n2.peerEndpoints())
+                .get(5, TimeUnit.SECONDS)
+                .getMember();
 
-        assertThat(m2).isNotNull();
-        assertThat(clusterClient.listMember().get().getMembers()).hasSize(2);
+            assertThat(m2).isNotNull();
+            assertThat(clusterClient.listMember().get().getMembers()).hasSize(2);
 
-        /*
-        TODO: check
-        Member m3 = clusterClient.addMember(n3.peerEndpoints())
-            .get(5, TimeUnit.SECONDS)
-            .getMember();
-        
-        assertThat(m3).isNotNull();
-        assertThat(clusterClient.listMember().get().getMembers()).hasSize(3);
-        */
+            /*
+            TODO: check
+            Member m3 = clusterClient.addMember(n3.peerEndpoints())
+                .get(5, TimeUnit.SECONDS)
+                .getMember();
+            
+            assertThat(m3).isNotNull();
+            assertThat(clusterClient.listMember().get().getMembers()).hasSize(3);
+            */
+        }
     }
 
     @Test
     public void testMemberManagementAddNonLearner() throws ExecutionException, InterruptedException, TimeoutException {
-        final Client client = Client.builder(n1.clientEndpoints()).build();
-        final Cluster clusterClient = client.getClusterClient();
+        try (Client client = Client.builder(n1.clientEndpoints()).build()) {
+            final Cluster clusterClient = client.getClusterClient();
 
-        Member m2 = clusterClient.addMember(n2.peerEndpoints(), false)
-            .get(5, TimeUnit.SECONDS)
-            .getMember();
+            Member m2 = clusterClient.addMember(n2.peerEndpoints(), false)
+                .get(5, TimeUnit.SECONDS)
+                .getMember();
 
-        assertThat(m2).isNotNull();
-        assertThat(m2.isLearner()).isFalse();
+            assertThat(m2).isNotNull();
+            assertThat(m2.isLearner()).isFalse();
 
-        List<Member> members = clusterClient.listMember().get().getMembers();
-        assertThat(members).hasSize(2);
-        assertThat(members.stream().filter(Member::isLearner).findAny()).isEmpty();
+            List<Member> members = clusterClient.listMember().get().getMembers();
+            assertThat(members).hasSize(2);
+            assertThat(members.stream().filter(Member::isLearner).findAny()).isEmpty();
+        }
     }
 
     @Test
     public void testMemberManagementAddLearner() throws ExecutionException, InterruptedException, TimeoutException {
-        final Client client = Client.builder(n1.clientEndpoints()).build();
-        final Cluster clusterClient = client.getClusterClient();
+        try (Client client = Client.builder(n1.clientEndpoints()).build()) {
+            final Cluster clusterClient = client.getClusterClient();
 
-        Member m2 = clusterClient.addMember(n2.peerEndpoints(), true)
-            .get(5, TimeUnit.SECONDS)
-            .getMember();
+            Member m2 = clusterClient.addMember(n2.peerEndpoints(), true)
+                .get(5, TimeUnit.SECONDS)
+                .getMember();
 
-        assertThat(m2).isNotNull();
-        assertThat(m2.isLearner()).isTrue();
+            assertThat(m2).isNotNull();
+            assertThat(m2.isLearner()).isTrue();
 
-        List<Member> members = clusterClient.listMember().get().getMembers();
-        assertThat(members).hasSize(2);
-        assertThat(members.stream().filter(Member::isLearner).findAny()).isPresent();
+            List<Member> members = clusterClient.listMember().get().getMembers();
+            assertThat(members).hasSize(2);
+            assertThat(members.stream().filter(Member::isLearner).findAny()).isPresent();
+        }
     }
 
     @Test
     public void testMemberManagementAddLearnerAndPromote() throws ExecutionException, InterruptedException, TimeoutException {
-        final Client client = Client.builder(n1.clientEndpoints()).build();
-        final Cluster clusterClient = client.getClusterClient();
+        try (Client client = Client.builder(n1.clientEndpoints()).build()) {
+            final Cluster clusterClient = client.getClusterClient();
 
-        Member m2 = clusterClient.addMember(n2.peerEndpoints(), true)
-            .get(5, TimeUnit.SECONDS)
-            .getMember();
+            Member m2 = clusterClient.addMember(n2.peerEndpoints(), true)
+                .get(5, TimeUnit.SECONDS)
+                .getMember();
 
-        assertThat(m2).isNotNull();
-        assertThat(m2.isLearner()).isTrue();
+            assertThat(m2).isNotNull();
+            assertThat(m2.isLearner()).isTrue();
 
-        // Now attempt to promote a member; although it fails, it confirms that the API was executed.
-        Future<MemberPromoteResponse> promoteResponseFuture = clusterClient.promoteMember(m2.getId());
-        assertThatExceptionOfType(ExecutionException.class)
-            .isThrownBy(promoteResponseFuture::get).withMessageContaining("EtcdException");
+            // Now attempt to promote a member; although it fails, it confirms that the API was executed.
+            Future<MemberPromoteResponse> promoteResponseFuture = clusterClient.promoteMember(m2.getId());
+            assertThatExceptionOfType(ExecutionException.class)
+                .isThrownBy(promoteResponseFuture::get).withMessageContaining("EtcdException");
+        }
     }
 }

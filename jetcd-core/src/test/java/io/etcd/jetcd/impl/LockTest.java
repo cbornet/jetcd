@@ -24,6 +24,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,6 +54,7 @@ public class LockTest {
         .build();
 
     private Lock lockClient;
+    private static Client staticClient;
     private static Lease leaseClient;
     private Set<ByteSequence> locksToRelease;
 
@@ -62,8 +64,15 @@ public class LockTest {
 
     @BeforeAll
     public static void setUp() {
-        Client client = TestUtil.client(cluster).build();
-        leaseClient = client.getLeaseClient();
+        staticClient = TestUtil.client(cluster).build();
+        leaseClient = staticClient.getLeaseClient();
+    }
+
+    @AfterAll
+    public static void tearDown() throws Exception {
+        if (staticClient != null) {
+            staticClient.close();
+        }
     }
 
     @BeforeEach
@@ -170,51 +179,53 @@ public class LockTest {
 
         // prepare two LockClients with different namespaces, lock operations on one LockClient
         // should have no effect on the other client.
-        Client clientWithNamespace = TestUtil.client(cluster).namespace(namespace).build();
-        Lock lockClientWithNamespace = clientWithNamespace.getLockClient();
+        try (Client clientWithNamespace = TestUtil.client(cluster).namespace(namespace).build();
+            Client clientWithNamespace2 = TestUtil.client(cluster).namespace(namespace2).build()) {
 
-        long lease = grantLease(5);
-        CompletableFuture<LockResponse> feature = lockClientWithNamespace.lock(SAMPLE_NAME, lease);
-        LockResponse response = feature.get();
+            Lock lockClientWithNamespace = clientWithNamespace.getLockClient();
 
-        assertThat(response.getKey().startsWith(SAMPLE_NAME)).isTrue();
+            long lease = grantLease(5);
+            CompletableFuture<LockResponse> feature = lockClientWithNamespace.lock(SAMPLE_NAME, lease);
+            LockResponse response = feature.get();
 
-        // Unlock by full key name using LockClient without namespace, thus it should not take
-        // much time to lock the same key again.
-        ByteSequence nsKey = ByteSequence.from(namespace.concat(response.getKey()).getBytes());
-        lockClient.unlock(nsKey).get();
-        lease = grantLease(30);
-        CompletableFuture<LockResponse> feature2 = lockClientWithNamespace.lock(SAMPLE_NAME, lease);
-        LockResponse response2 = feature2.get();
+            assertThat(response.getKey().startsWith(SAMPLE_NAME)).isTrue();
 
-        long timestamp2 = System.currentTimeMillis();
+            // Unlock by full key name using LockClient without namespace, thus it should not take
+            // much time to lock the same key again.
+            ByteSequence nsKey = ByteSequence.from(namespace.concat(response.getKey()).getBytes());
+            lockClient.unlock(nsKey).get();
+            lease = grantLease(30);
+            CompletableFuture<LockResponse> feature2 = lockClientWithNamespace.lock(SAMPLE_NAME, lease);
+            LockResponse response2 = feature2.get();
 
-        long startTime = System.currentTimeMillis();
-        assertThat(response2.getKey().startsWith(SAMPLE_NAME)).isTrue();
-        assertThat(response2.getKey()).isNotEqualTo(response.getKey());
-        assertThat((timestamp2 - startTime) <= 1000)
-            .withFailMessage(String.format("Lease not unlocked, wait time was too long (%dms)", timestamp2 - startTime))
-            .isTrue();
+            long timestamp2 = System.currentTimeMillis();
 
-        locksToRelease.add(ByteSequence.from(namespace.concat(response2.getKey()).getBytes()));
+            long startTime = System.currentTimeMillis();
+            assertThat(response2.getKey().startsWith(SAMPLE_NAME)).isTrue();
+            assertThat(response2.getKey()).isNotEqualTo(response.getKey());
+            assertThat((timestamp2 - startTime) <= 1000)
+                .withFailMessage(String.format("Lease not unlocked, wait time was too long (%dms)", timestamp2 - startTime))
+                .isTrue();
 
-        // Lock the same key using LockClient with another namespace, it also should not take much time.
-        lease = grantLease(5);
-        Client clientWithNamespace2 = TestUtil.client(cluster).namespace(namespace2).build();
-        Lock lockClientWithNamespace2 = clientWithNamespace2.getLockClient();
-        CompletableFuture<LockResponse> feature3 = lockClientWithNamespace2.lock(SAMPLE_NAME, lease);
-        LockResponse response3 = feature3.get();
+            locksToRelease.add(ByteSequence.from(namespace.concat(response2.getKey()).getBytes()));
 
-        long timestamp3 = System.currentTimeMillis();
+            // Lock the same key using LockClient with another namespace, it also should not take much time.
+            lease = grantLease(5);
+            Lock lockClientWithNamespace2 = clientWithNamespace2.getLockClient();
+            CompletableFuture<LockResponse> feature3 = lockClientWithNamespace2.lock(SAMPLE_NAME, lease);
+            LockResponse response3 = feature3.get();
 
-        assertThat(response3.getKey().startsWith(SAMPLE_NAME)).isTrue();
-        assertThat(response3.getKey()).isNotEqualTo(response2.getKey());
-        assertThat((timestamp3 - timestamp2) <= 1000)
-            .withFailMessage(
-                String.format("wait time for requiring the lock was too long (%dms)", timestamp3 - timestamp2))
-            .isTrue();
+            long timestamp3 = System.currentTimeMillis();
 
-        locksToRelease.add(ByteSequence.from(namespace2.concat(response3.getKey()).getBytes()));
+            assertThat(response3.getKey().startsWith(SAMPLE_NAME)).isTrue();
+            assertThat(response3.getKey()).isNotEqualTo(response2.getKey());
+            assertThat((timestamp3 - timestamp2) <= 1000)
+                .withFailMessage(
+                    String.format("wait time for requiring the lock was too long (%dms)", timestamp3 - timestamp2))
+                .isTrue();
+
+            locksToRelease.add(ByteSequence.from(namespace2.concat(response3.getKey()).getBytes()));
+        }
     }
 
     private static long grantLease(long ttl) throws Exception {

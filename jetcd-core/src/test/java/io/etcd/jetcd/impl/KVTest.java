@@ -27,6 +27,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -63,6 +64,7 @@ public class KVTest {
         .withNodes(1)
         .build();
 
+    private static Client client;
     private static KV kvClient;
 
     private static final ByteSequence SAMPLE_KEY = bytesOf("sample_key");
@@ -73,7 +75,15 @@ public class KVTest {
 
     @BeforeAll
     public static void setUp() throws Exception {
-        kvClient = TestUtil.client(cluster).build().getKVClient();
+        client = TestUtil.client(cluster).build();
+        kvClient = client.getKVClient();
+    }
+
+    @AfterAll
+    public static void tearDown() throws Exception {
+        if (client != null) {
+            client.close();
+        }
     }
 
     @Test

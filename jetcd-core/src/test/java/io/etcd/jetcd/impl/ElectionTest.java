@@ -23,6 +23,7 @@ import java.util.Random;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -47,16 +48,24 @@ public class ElectionTest {
         .withNodes(3)
         .build();
 
+    private static Client client;
     private static Election electionClient;
     private static Lease leaseClient;
     private static KV kvClient;
 
     @BeforeAll
     public static void setUp() {
-        Client client = TestUtil.client(cluster).build();
+        client = TestUtil.client(cluster).build();
         electionClient = client.getElectionClient();
         leaseClient = client.getLeaseClient();
         kvClient = client.getKVClient();
+    }
+
+    @AfterAll
+    public static void tearDown() throws Exception {
+        if (client != null) {
+            client.close();
+        }
     }
 
     @Test
