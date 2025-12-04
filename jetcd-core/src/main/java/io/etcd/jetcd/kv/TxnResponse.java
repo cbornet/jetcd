@@ -39,6 +39,11 @@ public class TxnResponse extends AbstractResponse<io.etcd.jetcd.api.TxnResponse>
     private final Supplier<List<DeleteResponse>> deleteResponses;
     private final Supplier<List<TxnResponse>> txnResponses;
 
+    /**
+     * Creates a new TxnResponse from the gRPC response.
+     * @param txnResponse the gRPC transaction response
+     * @param namespace the namespace
+     */
     public TxnResponse(io.etcd.jetcd.api.TxnResponse txnResponse, ByteSequence namespace) {
         super(txnResponse, txnResponse.getHeader());
 

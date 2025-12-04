@@ -59,6 +59,10 @@ public record WatchOption(
 
     public static final WatchOption DEFAULT = builder().build();
 
+    /**
+     * Returns the end key for range watches.
+     * @return the end key, or empty if not set
+     */
     public Optional<ByteSequence> getEndKey() {
         return Optional.ofNullable(this.endKey);
     }
@@ -167,10 +171,17 @@ public record WatchOption(
         return maxReconnectDelay;
     }
 
+    /**
+     * Creates a new builder.
+     * @return the builder
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /**
+     * Builder for WatchOption.
+     */
     public static final class Builder {
         private long revision = 0L;
         private ByteSequence endKey;
@@ -359,6 +370,10 @@ public record WatchOption(
             return this;
         }
 
+        /**
+         * Builds the WatchOption.
+         * @return the watch option
+         */
         public WatchOption build() {
             return new WatchOption(
                 endKey,

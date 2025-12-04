@@ -16,9 +16,14 @@
 
 package io.etcd.jetcd.options;
 
+/**
+ * Options for transaction operations.
+ * @param autoRetry whether to automatically retry
+ */
 public record TxnOption(
     boolean autoRetry) {
 
+    /** Default transaction option. */
     public static final TxnOption DEFAULT = builder().build();
 
     /**
@@ -40,6 +45,9 @@ public record TxnOption(
         return new Builder();
     }
 
+    /**
+     * Builder for TxnOption.
+     */
     public static final class Builder {
         private boolean autoRetry = false;
 
@@ -60,6 +68,10 @@ public record TxnOption(
             return this;
         }
 
+        /**
+         * Builds the TxnOption.
+         * @return the txn option
+         */
         public TxnOption build() {
             return new TxnOption(autoRetry);
         }

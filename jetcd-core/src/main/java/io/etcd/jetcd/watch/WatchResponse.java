@@ -25,10 +25,18 @@ import io.etcd.jetcd.api.Event;
 import io.etcd.jetcd.common.suppliers.Suppliers;
 import io.etcd.jetcd.impl.AbstractResponse;
 
+/**
+ * Response from a watch operation.
+ */
 public class WatchResponse extends AbstractResponse<io.etcd.jetcd.api.WatchResponse> {
 
     private final Supplier<List<WatchEvent>> events;
 
+    /**
+     * Creates a new WatchResponse with namespace.
+     * @param response the gRPC watch response
+     * @param namespace the namespace
+     */
     public WatchResponse(io.etcd.jetcd.api.WatchResponse response, ByteSequence namespace) {
         super(response, response.getHeader());
 
@@ -38,6 +46,10 @@ public class WatchResponse extends AbstractResponse<io.etcd.jetcd.api.WatchRespo
                 .toList());
     }
 
+    /**
+     * Creates a new WatchResponse without namespace.
+     * @param response the gRPC watch response
+     */
     public WatchResponse(io.etcd.jetcd.api.WatchResponse response) {
         this(response, ByteSequence.EMPTY);
     }
@@ -55,6 +67,10 @@ public class WatchResponse extends AbstractResponse<io.etcd.jetcd.api.WatchRespo
         return new WatchEvent(new KeyValue(event.getKv(), namespace), new KeyValue(event.getPrevKv(), namespace), eventType);
     }
 
+    /**
+     * Returns the list of watch events.
+     * @return the watch events
+     */
     public List<WatchEvent> getEvents() {
         return events.get();
     }

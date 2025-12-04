@@ -81,14 +81,32 @@ public final class Util {
         return sequence == null || sequence.isEmpty();
     }
 
+    /**
+     * Prefixes a key with the namespace.
+     * @param key the key
+     * @param namespace the namespace
+     * @return the prefixed key
+     */
     public static ByteString prefixNamespace(ByteSequence key, ByteSequence namespace) {
         return ByteString.copyFrom(namespace.isEmpty() ? key.getBytes() : namespace.concat(key).getBytes());
     }
 
+    /**
+     * Prefixes a key with the namespace.
+     * @param key the key
+     * @param namespace the namespace
+     * @return the prefixed key
+     */
     public static ByteString prefixNamespace(ByteString key, ByteSequence namespace) {
         return namespace.isEmpty() ? key : ByteString.copyFrom(namespace.concat(key).getBytes());
     }
 
+    /**
+     * Prefixes a range end key with the namespace.
+     * @param end the range end
+     * @param namespace the namespace
+     * @return the prefixed range end
+     */
     public static ByteString prefixNamespaceToRangeEnd(ByteSequence end, ByteSequence namespace) {
         if (namespace.isEmpty()) {
             return ByteString.copyFrom(end.getBytes());
@@ -115,6 +133,12 @@ public final class Util {
         }
     }
 
+    /**
+     * Prefixes a range end key with the namespace.
+     * @param end the range end
+     * @param namespace the namespace
+     * @return the prefixed range end
+     */
     public static ByteString prefixNamespaceToRangeEnd(ByteString end, ByteSequence namespace) {
         if (namespace.isEmpty()) {
             return end;
@@ -141,6 +165,12 @@ public final class Util {
         }
     }
 
+    /**
+     * Removes the namespace prefix from a key.
+     * @param key the prefixed key
+     * @param namespace the namespace
+     * @return the unprefixed key
+     */
     public static ByteString unprefixNamespace(ByteString key, ByteSequence namespace) {
         return namespace.isEmpty() ? key : key.substring(namespace.size());
     }
@@ -160,6 +190,12 @@ public final class Util {
         return vertxFuture.toCompletionStage().toCompletableFuture();
     }
 
+    /**
+     * Creates a thread factory with custom prefix and daemon setting.
+     * @param prefix the thread name prefix
+     * @param daemon whether threads should be daemon threads
+     * @return the thread factory
+     */
     public static ThreadFactory createThreadFactory(String prefix, boolean daemon) {
         ThreadFactory backingThreadFactory = Executors.defaultThreadFactory();
 

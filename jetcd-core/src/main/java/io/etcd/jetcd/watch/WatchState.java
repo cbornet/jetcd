@@ -55,10 +55,14 @@ public sealed interface WatchState {
     record Closed() implements WatchState {
     }
 
-    // Singleton instances for convenience
+    /** Connecting state. */
     WatchState CONNECTING = new Connecting();
+    /** Subscribing state. */
     WatchState SUBSCRIBING = new Subscribing();
+    /** Watching state. */
     WatchState WATCHING = new Watching();
+    /** Reconnecting state. */
     WatchState RECONNECTING = new Reconnecting();
+    /** Closed state. */
     WatchState CLOSED = new Closed();
 }

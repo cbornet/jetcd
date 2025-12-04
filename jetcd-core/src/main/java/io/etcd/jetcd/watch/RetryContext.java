@@ -81,26 +81,50 @@ public record RetryContext(
             this.type = type;
         }
 
+        /**
+         * Sets the attempt count.
+         * @param attemptCount the attempt count
+         * @return this builder
+         */
         public Builder attemptCount(int attemptCount) {
             this.attemptCount = attemptCount;
             return this;
         }
 
+        /**
+         * Sets the maximum attempts.
+         * @param maxAttempts the maximum attempts
+         * @return this builder
+         */
         public Builder maxAttempts(int maxAttempts) {
             this.maxAttempts = maxAttempts;
             return this;
         }
 
+        /**
+         * Sets the next delay.
+         * @param nextDelay the next delay
+         * @return this builder
+         */
         public Builder nextDelay(Duration nextDelay) {
             this.nextDelay = nextDelay;
             return this;
         }
 
+        /**
+         * Sets the cause.
+         * @param cause the cause
+         * @return this builder
+         */
         public Builder cause(Throwable cause) {
             this.cause = cause;
             return this;
         }
 
+        /**
+         * Builds the RetryContext.
+         * @return the retry context
+         */
         public RetryContext build() {
             return new RetryContext(type, attemptCount, maxAttempts, nextDelay, cause);
         }

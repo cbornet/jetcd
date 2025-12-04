@@ -203,22 +203,46 @@ public interface Watch extends CloseableClient {
      */
     void requestProgress();
 
+    /**
+     * Creates a listener with only onNext callback.
+     * @param onNext the callback for watch responses
+     * @return the listener
+     */
     static Listener listener(Consumer<WatchResponse> onNext) {
         return listener(onNext, t -> {
         }, () -> {
         });
     }
 
+    /**
+     * Creates a listener with onNext and onError callbacks.
+     * @param onNext the callback for watch responses
+     * @param onError the callback for errors
+     * @return the listener
+     */
     static Listener listener(Consumer<WatchResponse> onNext, Consumer<Throwable> onError) {
         return listener(onNext, onError, () -> {
         });
     }
 
+    /**
+     * Creates a listener with onNext and onCompleted callbacks.
+     * @param onNext the callback for watch responses
+     * @param onCompleted the callback when completed
+     * @return the listener
+     */
     static Listener listener(Consumer<WatchResponse> onNext, Runnable onCompleted) {
         return listener(onNext, t -> {
         }, onCompleted);
     }
 
+    /**
+     * Creates a listener with all callbacks.
+     * @param onNext the callback for watch responses
+     * @param onError the callback for errors
+     * @param onCompleted the callback when completed
+     * @return the listener
+     */
     static Listener listener(Consumer<WatchResponse> onNext, Consumer<Throwable> onError, Runnable onCompleted) {
         return new Listener() {
             @Override
@@ -283,6 +307,9 @@ public interface Watch extends CloseableClient {
         }
     }
 
+    /**
+     * Watcher interface for watching etcd keys.
+     */
     interface Watcher extends Closeable {
         /**
          * Asynchronously closes this watcher and all its resources.
@@ -308,7 +335,8 @@ public interface Watch extends CloseableClient {
         }
 
         /**
-         * Returns if watcher is already closed
+         * Returns if watcher is already closed.
+         * @return true if closed
          */
         boolean isClosed();
 

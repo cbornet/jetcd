@@ -27,7 +27,15 @@ import io.etcd.jetcd.KeyValue;
  */
 public record WatchEvent(KeyValue keyValue, KeyValue prevKV, EventType eventType) {
 
+    /**
+     * Watch event type.
+     */
     public enum EventType {
-        PUT, DELETE, UNRECOGNIZED,
+        /** Put event. */
+        PUT,
+        /** Delete event. */
+        DELETE,
+        /** Unrecognized event type. */
+        UNRECOGNIZED,
     }
 }
