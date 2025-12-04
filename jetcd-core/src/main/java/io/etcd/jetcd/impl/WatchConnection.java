@@ -23,23 +23,20 @@ import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Watch;
 import io.etcd.jetcd.common.exception.EtcdException;
 import io.etcd.jetcd.common.exception.Exceptions;
-import io.etcd.jetcd.common.vertx.Failsafe;
 import io.etcd.jetcd.grpc.GrpcService;
 import io.etcd.jetcd.options.WatchOption;
 import io.etcd.jetcd.support.Responses;
-import io.etcd.jetcd.watch.RetryContext;
 import io.etcd.jetcd.watch.WatchResponse;
 import io.etcd.jetcd.watch.WatchState;
 import io.vertx.core.Vertx;
 import io.vertx.grpc.common.GrpcStatus;
 
-import dev.failsafe.RetryPolicy;
-
 import static io.etcd.jetcd.common.exception.EtcdExceptionFactory.toEtcdException;
 
 /**
  * Individual watcher that owns its dedicated gRPC stream.
- * Uses WatchStateMachine for lifecycle management and WatchStream for gRPC stream handling.
+ * Uses WatchStateMachine for lifecycle management, WatchStream for gRPC stream handling,
+ * and WatchReconnectionManager for retry logic with exponential backoff.
  */
 final class WatchConnection implements Watch.Watcher, WatchStream.Handler {
     private final ByteSequence key;
@@ -54,10 +51,10 @@ final class WatchConnection implements Watch.Watcher, WatchStream.Handler {
     private final Responses.Namespaced responseFactory;
     private final CompletableFuture<Void> readyFuture = new CompletableFuture<>();
     private final CompletableFuture<Void> closeFuture = new CompletableFuture<>();
+    private final WatchReconnectionManager reconnectionManager;
 
     // Event loop only fields
     private WatchStream watchStream;
-    private CompletableFuture<Void> reconnectFuture;
     private boolean pendingProgressRequest;
     private long revision;
 
@@ -115,6 +112,12 @@ final class WatchConnection implements Watch.Watcher, WatchStream.Handler {
                 handleStateChange(oldState, newState);
             }
         });
+
+        this.reconnectionManager = new WatchReconnectionManager(
+            vertx,
+            option,
+            listener,
+            stateMachine);
 
         // Start the state machine
         stateMachine.start();
@@ -190,27 +193,23 @@ final class WatchConnection implements Watch.Watcher, WatchStream.Handler {
     }
 
     private void handleReconnect() {
-        if (reconnectFuture != null && !reconnectFuture.isDone()) {
-            return;
-        }
-
-        reconnectFuture = Failsafe.runAsync(vertx, this::disconnect, buildRetryPolicy())
-            .whenComplete((result, error) -> {
-                reconnectFuture = null;
-                if (error == null) {
+        reconnectionManager.attemptReconnection(
+            this::disconnect,
+            new WatchReconnectionManager.ReconnectionCallback() {
+                @Override
+                public void onReconnectSucceeded() {
                     stateMachine.reconnectSucceeded();
-                } else {
+                }
+
+                @Override
+                public void onReconnectFailed(Throwable error) {
                     stateMachine.reconnectFailed(error);
                 }
             });
     }
 
     private void handleClose() {
-        // Cancel pending reconnect
-        if (reconnectFuture != null && !reconnectFuture.isDone()) {
-            reconnectFuture.cancel(true);
-            reconnectFuture = null;
-        }
+        reconnectionManager.cancelReconnection();
 
         sendCancelRequest();
         disconnect();
@@ -307,26 +306,6 @@ final class WatchConnection implements Watch.Watcher, WatchStream.Handler {
         if (ws != null) {
             ws.disconnect();
         }
-    }
-
-    private RetryPolicy<Void> buildRetryPolicy() {
-        return RetryPolicy.<Void> builder()
-            .withMaxRetries(option.maxReconnectAttempts())
-            .withBackoff(option.initialReconnectDelay(), option.maxReconnectDelay())
-            .onRetry(e -> {
-                if (stateMachine.isClosed()) {
-                    return;
-                }
-
-                RetryContext ctx = RetryContext.of(RetryContext.RetryType.RESUME)
-                    .attemptCount(e.getAttemptCount())
-                    .maxAttempts(option.maxReconnectAttempts())
-                    .cause(e.getLastException())
-                    .build();
-
-                Exceptions.quietly(() -> listener.onRetry(ctx));
-            })
-            .build();
     }
 
     private void sendCancelRequest() {
