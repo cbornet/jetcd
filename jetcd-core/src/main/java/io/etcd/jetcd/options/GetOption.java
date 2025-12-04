@@ -227,18 +227,46 @@ public record GetOption(
         return prefix;
     }
 
+    /**
+     * Sort order for range requests.
+     */
     public enum SortOrder {
-        NONE, ASCEND, DESCEND,
+        /** No sorting. */
+        NONE,
+        /** Ascending order. */
+        ASCEND,
+        /** Descending order. */
+        DESCEND,
     }
 
+    /**
+     * Sort target for range requests.
+     */
     public enum SortTarget {
-        KEY, VERSION, CREATE, MOD, VALUE,
+        /** Sort by key. */
+        KEY,
+        /** Sort by version. */
+        VERSION,
+        /** Sort by creation revision. */
+        CREATE,
+        /** Sort by modification revision. */
+        MOD,
+        /** Sort by value. */
+        VALUE,
     }
 
+    /**
+     * Creates a new builder for GetOption.
+     *
+     * @return a new builder instance
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /**
+     * Builder for GetOption.
+     */
     public static final class Builder {
 
         private long limit = 0L;
@@ -379,8 +407,6 @@ public record GetOption(
 
         /**
          * Enables 'Get' requests to obtain all the keys by prefix.
-         *
-         * <p>
          *
          * @param  prefix flag to obtain all the keys by prefix
          * @return        builder
