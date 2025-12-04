@@ -616,6 +616,10 @@ public final class ClientBuilder implements Cloneable {
             if (this.headers != null) {
                 clone.headers = new HashMap<>(this.headers);
             }
+            // Deep copy HttpClientOptions to avoid shared mutable state
+            if (this.httpClientOptions != null) {
+                clone.httpClientOptions = new HttpClientOptions(this.httpClientOptions);
+            }
             return clone;
         } catch (CloneNotSupportedException e) {
             throw EtcdExceptionFactory.toEtcdException(e);
