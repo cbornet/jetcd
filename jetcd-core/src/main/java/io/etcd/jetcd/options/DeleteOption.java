@@ -39,6 +39,11 @@ public record DeleteOption(
 
     public static final DeleteOption DEFAULT = builder().build();
 
+    /**
+     * Returns the end key of the range.
+     *
+     * @return the end key, or empty if not set
+     */
     public Optional<ByteSequence> getEndKey() {
         return Optional.ofNullable(endKey);
     }
@@ -83,6 +88,9 @@ public record DeleteOption(
         return new Builder();
     }
 
+    /**
+     * Builder for DeleteOption.
+     */
     public static final class Builder {
         private ByteSequence endKey;
         private boolean prevKV = false;
@@ -117,8 +125,6 @@ public record DeleteOption(
 
         /**
          * Enables 'Delete' requests to delete all the keys by prefix.
-         *
-         * <p>
          *
          * @param  prefix flag to delete all the keys by prefix
          * @return        builder
@@ -173,6 +179,11 @@ public record DeleteOption(
             return this;
         }
 
+        /**
+         * Builds the DeleteOption.
+         *
+         * @return the DeleteOption
+         */
         public DeleteOption build() {
             return new DeleteOption(endKey, prevKV, prefix, autoRetry);
         }

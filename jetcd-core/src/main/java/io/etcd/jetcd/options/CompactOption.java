@@ -26,10 +26,18 @@ public record CompactOption(
 
     public static final CompactOption DEFAULT = builder().build();
 
+    /**
+     * Creates a new builder for CompactOption.
+     *
+     * @return a new builder instance
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /**
+     * Builder for CompactOption.
+     */
     public static final class Builder {
         private boolean physical = false;
 
@@ -50,6 +58,11 @@ public record CompactOption(
             return this;
         }
 
+        /**
+         * Builds the CompactOption.
+         *
+         * @return the CompactOption
+         */
         public CompactOption build() {
             return new CompactOption(this.physical);
         }
