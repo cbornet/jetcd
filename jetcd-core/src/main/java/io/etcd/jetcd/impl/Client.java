@@ -54,6 +54,11 @@ public final class Client implements io.etcd.jetcd.Client {
     private final CloseableSupplier<Lock> lockClient;
     private final CloseableSupplier<Election> electionClient;
 
+    /**
+     * Creates a new Client instance from the builder.
+     *
+     * @param clientBuilder the client builder configuration
+     */
     public Client(ClientBuilder clientBuilder) {
         this.grpcService = new GrpcService(clientBuilder.copy());
         this.kvClient = Suppliers.memoizingCloseable(() -> new KVClient(this.grpcService));

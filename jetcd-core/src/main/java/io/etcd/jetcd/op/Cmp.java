@@ -28,14 +28,31 @@ import com.google.protobuf.ByteString;
  */
 public class Cmp {
 
+    /**
+     * Comparison operations.
+     */
     public enum Op {
-        EQUAL, GREATER, LESS, NOT_EQUAL
+        /** Equal comparison. */
+        EQUAL,
+        /** Greater than comparison. */
+        GREATER,
+        /** Less than comparison. */
+        LESS,
+        /** Not equal comparison. */
+        NOT_EQUAL
     }
 
     private final ByteString key;
     private final Op op;
     private final CmpTarget<?> target;
 
+    /**
+     * Creates a new comparison.
+     *
+     * @param key       the key to compare
+     * @param compareOp the comparison operation
+     * @param target    the comparison target
+     */
     public Cmp(ByteSequence key, Op compareOp, CmpTarget<?> target) {
         this.key = ByteString.copyFrom(key.getBytes());
         this.op = compareOp;

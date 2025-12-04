@@ -461,6 +461,11 @@ public final class ClientBuilder implements Cloneable {
         return this;
     }
 
+    /**
+     * Returns the keepalive without calls setting.
+     *
+     * @return true if keepalive is sent without calls
+     */
     public Boolean keepaliveWithoutCalls() {
         return keepaliveWithoutCalls;
     }
