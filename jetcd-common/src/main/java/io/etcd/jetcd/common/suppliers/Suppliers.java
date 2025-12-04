@@ -69,6 +69,8 @@ public final class Suppliers {
     /**
      * A supplier that memoizes the result of another supplier and implements AutoCloseable
      * to properly clean up the cached resource.
+     *
+     * @param <T> the type of closeable results supplied
      */
     public static class MemorizingCloseableSupplier<T extends AutoCloseable> implements CloseableSupplier<T> {
         final Supplier<T> delegate;
@@ -120,6 +122,8 @@ public final class Suppliers {
 
     /**
      * A supplier that memoizes the result of another supplier.
+     *
+     * @param <T> the type of results supplied
      */
     public static class MemorizingSupplier<T> implements Supplier<T> {
         final Supplier<T> delegate;
@@ -157,6 +161,8 @@ public final class Suppliers {
     /**
      * A supplier that memoizes an Optional result.
      * The supplied value may be null, which is wrapped as Optional.empty().
+     *
+     * @param <T> the type of results supplied
      */
     public static class MemorizingOptionalSupplier<T> implements Supplier<Optional<T>> {
         private final Supplier<T> delegate;

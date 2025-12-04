@@ -22,6 +22,9 @@ package io.etcd.jetcd.common.exception;
  */
 public class ClosedSnapshotException extends EtcdException {
 
+    /**
+     * Creates a new ClosedSnapshotException.
+     */
     public ClosedSnapshotException() {
         super(ErrorCode.CANCELLED, "Snapshot has been closed", null);
     }

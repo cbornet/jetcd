@@ -42,6 +42,12 @@ public final class Errors {
         return isInvalidTokenError(status) || isAuthStoreExpired(status);
     }
 
+    /**
+     * Checks if the throwable represents an invalid token error.
+     *
+     * @param  e the throwable to check
+     * @return   true if it represents an invalid token error
+     */
     public static boolean isInvalidTokenError(Throwable e) {
         if (e instanceof InvalidStatusException invalidStatusException) {
             return isInvalidTokenError(invalidStatusException.actualStatus());
@@ -49,12 +55,24 @@ public final class Errors {
         return false;
     }
 
+    /**
+     * Checks if the gRPC status represents an invalid token error.
+     *
+     * @param  status the gRPC status to check
+     * @return        true if it represents an invalid token error
+     */
     public static boolean isInvalidTokenError(GrpcStatus status) {
         // Note: Vert.x GrpcStatus doesn't have description/message
         // We'll need to check the exception message if needed
         return status == GrpcStatus.UNAUTHENTICATED || status == GrpcStatus.UNKNOWN;
     }
 
+    /**
+     * Checks if the throwable represents an expired auth store error.
+     *
+     * @param  e the throwable to check
+     * @return   true if it represents an expired auth store error
+     */
     public static boolean isAuthStoreExpired(Throwable e) {
         if (e instanceof InvalidStatusException invalidStatusException) {
             return isAuthStoreExpired(invalidStatusException.actualStatus());
@@ -62,10 +80,23 @@ public final class Errors {
         return false;
     }
 
+    /**
+     * Checks if the gRPC status represents an expired auth store error.
+     *
+     * @param  status the gRPC status to check
+     * @return        true if it represents an expired auth store error
+     */
     public static boolean isAuthStoreExpired(GrpcStatus status) {
         return status == GrpcStatus.UNAUTHENTICATED || status == GrpcStatus.INVALID_ARGUMENT;
     }
 
+    /**
+     * Checks if the error status should halt reconnection attempts.
+     * Transient errors (UNAVAILABLE, INTERNAL, UNKNOWN) allow reconnection.
+     *
+     * @param  status the gRPC status to check
+     * @return        true if reconnection should be halted
+     */
     public static boolean isHaltError(final GrpcStatus status) {
         // Allow reconnection for transient errors:
         // - UNAVAILABLE: server temporarily unavailable
@@ -76,6 +107,12 @@ public final class Errors {
             && status != GrpcStatus.UNKNOWN;
     }
 
+    /**
+     * Checks if the error status indicates a no-leader condition.
+     *
+     * @param  status the gRPC status to check
+     * @return        true if it indicates a no-leader condition
+     */
     public static boolean isNoLeaderError(final GrpcStatus status) {
         return status == GrpcStatus.UNAVAILABLE;
     }

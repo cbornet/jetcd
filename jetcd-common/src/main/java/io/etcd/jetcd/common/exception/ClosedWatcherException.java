@@ -22,6 +22,9 @@ package io.etcd.jetcd.common.exception;
  */
 public class ClosedWatcherException extends EtcdException {
 
+    /**
+     * Creates a new ClosedWatcherException.
+     */
     public ClosedWatcherException() {
         super(ErrorCode.CANCELLED, "Watcher has been closed", null);
     }

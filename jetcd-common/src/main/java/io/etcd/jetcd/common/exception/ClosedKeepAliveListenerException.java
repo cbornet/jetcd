@@ -22,6 +22,9 @@ package io.etcd.jetcd.common.exception;
  */
 public class ClosedKeepAliveListenerException extends EtcdException {
 
+    /**
+     * Creates a new ClosedKeepAliveListenerException.
+     */
     public ClosedKeepAliveListenerException() {
         super(ErrorCode.CANCELLED, "KeepAliveListener has been closed", null);
     }

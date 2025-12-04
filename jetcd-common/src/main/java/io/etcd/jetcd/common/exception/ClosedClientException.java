@@ -22,6 +22,11 @@ package io.etcd.jetcd.common.exception;
  */
 public class ClosedClientException extends EtcdException {
 
+    /**
+     * Creates a new ClosedClientException with the specified reason.
+     *
+     * @param reason the reason the client was closed
+     */
     public ClosedClientException(String reason) {
         super(ErrorCode.CANCELLED, reason, null);
     }

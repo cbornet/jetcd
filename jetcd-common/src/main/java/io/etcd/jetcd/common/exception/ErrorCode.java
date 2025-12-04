@@ -32,21 +32,37 @@ import io.vertx.grpc.common.GrpcStatus;
  */
 public enum ErrorCode {
 
+    /** The operation was cancelled. */
     CANCELLED(GrpcStatus.CANCELLED),
+    /** Unknown error occurred. */
     UNKNOWN(GrpcStatus.UNKNOWN),
+    /** Client specified an invalid argument. */
     INVALID_ARGUMENT(GrpcStatus.INVALID_ARGUMENT),
+    /** Deadline expired before operation could complete. */
     DEADLINE_EXCEEDED(GrpcStatus.DEADLINE_EXCEEDED),
+    /** Some requested entity was not found. */
     NOT_FOUND(GrpcStatus.NOT_FOUND),
+    /** An entity that we attempted to create already exists. */
     ALREADY_EXISTS(GrpcStatus.ALREADY_EXISTS),
+    /** The caller does not have permission to execute the specified operation. */
     PERMISSION_DENIED(GrpcStatus.PERMISSION_DENIED),
+    /** The request does not have valid authentication credentials. */
     UNAUTHENTICATED(GrpcStatus.UNAUTHENTICATED),
+    /** Some resource has been exhausted. */
     RESOURCE_EXHAUSTED(GrpcStatus.RESOURCE_EXHAUSTED),
+    /** Operation was rejected because the system is not in a state required for execution. */
     FAILED_PRECONDITION(GrpcStatus.FAILED_PRECONDITION),
+    /** The operation was aborted. */
     ABORTED(GrpcStatus.ABORTED),
+    /** Operation was attempted past the valid range. */
     OUT_OF_RANGE(GrpcStatus.OUT_OF_RANGE),
+    /** Operation is not implemented or not supported. */
     UNIMPLEMENTED(GrpcStatus.UNIMPLEMENTED),
+    /** Internal errors. */
     INTERNAL(GrpcStatus.INTERNAL),
+    /** The service is currently unavailable. */
     UNAVAILABLE(GrpcStatus.UNAVAILABLE),
+    /** Unrecoverable data loss or corruption. */
     DATA_LOSS(GrpcStatus.DATA_LOSS),;
 
     private static final Map<Integer, ErrorCode> errorByRpcCode;
