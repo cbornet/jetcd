@@ -63,6 +63,11 @@ public record PutOption(
         return autoRetry;
     }
 
+    /**
+     * Creates a new builder for PutOption.
+     *
+     * @return the builder
+     */
     public static Builder builder() {
         return new Builder();
     }

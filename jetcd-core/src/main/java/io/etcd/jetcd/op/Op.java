@@ -35,10 +35,19 @@ public abstract class Op {
      * Operation type.
      */
     public enum Type {
-        PUT, RANGE, DELETE_RANGE, TXN
+        /** Put operation. */
+        PUT,
+        /** Range/get operation. */
+        RANGE,
+        /** Delete range operation. */
+        DELETE_RANGE,
+        /** Transaction operation. */
+        TXN
     }
 
+    /** The operation type. */
     protected final Type type;
+    /** The key for the operation. */
     protected final ByteString key;
 
     /**
@@ -100,6 +109,9 @@ public abstract class Op {
         return new TxnOp(cmps, thenOps, elseOps);
     }
 
+    /**
+     * Put operation implementation.
+     */
     public static final class PutOp extends Op {
 
         private final ByteString value;
@@ -120,6 +132,9 @@ public abstract class Op {
         }
     }
 
+    /**
+     * Get operation implementation.
+     */
     public static final class GetOp extends Op {
 
         private final GetOption option;
@@ -137,6 +152,9 @@ public abstract class Op {
         }
     }
 
+    /**
+     * Delete operation implementation.
+     */
     public static final class DeleteOp extends Op {
 
         private final DeleteOption option;
@@ -154,6 +172,9 @@ public abstract class Op {
         }
     }
 
+    /**
+     * Transaction operation implementation.
+     */
     public static final class TxnOp extends Op {
         private final Cmp[] cmps;
         private final Op[] thenOps;

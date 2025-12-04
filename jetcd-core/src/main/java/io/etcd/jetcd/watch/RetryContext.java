@@ -50,6 +50,8 @@ public record RetryContext(
 
     /**
      * True if this is the last retry attempt.
+     *
+     * @return true if this is the last attempt
      */
     public boolean isLastAttempt() {
         return attemptCount >= maxAttempts;
@@ -57,6 +59,9 @@ public record RetryContext(
 
     /**
      * Creates a builder for the specified retry type.
+     *
+     * @param  type the retry type
+     * @return      a new builder
      */
     public static Builder of(RetryType type) {
         return new Builder(type);

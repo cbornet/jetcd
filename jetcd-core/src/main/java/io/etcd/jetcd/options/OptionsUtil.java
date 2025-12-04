@@ -23,6 +23,9 @@ import io.etcd.jetcd.api.RangeRequest;
 import io.etcd.jetcd.options.GetOption.SortOrder;
 import io.etcd.jetcd.options.GetOption.SortTarget;
 
+/**
+ * Utility class for working with options.
+ */
 public final class OptionsUtil {
     private static final byte[] NO_PREFIX_END = { 0 };
 
