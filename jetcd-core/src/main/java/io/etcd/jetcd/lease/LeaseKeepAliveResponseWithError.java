@@ -18,15 +18,28 @@ package io.etcd.jetcd.lease;
 
 import io.etcd.jetcd.common.exception.EtcdException;
 
+/**
+ * Wraps a lease keep alive response or an error.
+ */
 public class LeaseKeepAliveResponseWithError {
 
     public LeaseKeepAliveResponse leaseKeepAliveResponse;
     public EtcdException error;
 
+    /**
+     * Creates a new wrapper with a successful response.
+     *
+     * @param leaseKeepAliveResponse the lease keep alive response
+     */
     public LeaseKeepAliveResponseWithError(LeaseKeepAliveResponse leaseKeepAliveResponse) {
         this.leaseKeepAliveResponse = leaseKeepAliveResponse;
     }
 
+    /**
+     * Creates a new wrapper with an error.
+     *
+     * @param e the exception
+     */
     public LeaseKeepAliveResponseWithError(EtcdException e) {
         this.error = e;
     }

@@ -25,9 +25,18 @@ import io.etcd.jetcd.api.RangeResponse;
 import io.etcd.jetcd.common.suppliers.Suppliers;
 import io.etcd.jetcd.impl.AbstractResponse;
 
+/**
+ * Response from a get/range operation.
+ */
 public class GetResponse extends AbstractResponse<RangeResponse> {
     private final Supplier<List<KeyValue>> kvs;
 
+    /**
+     * Creates a new GetResponse from the gRPC response.
+     *
+     * @param rangeResponse the gRPC range response
+     * @param namespace     the namespace used
+     */
     public GetResponse(RangeResponse rangeResponse, ByteSequence namespace) {
         super(rangeResponse, rangeResponse.getHeader());
 
