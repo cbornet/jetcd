@@ -29,6 +29,7 @@ public class StatusResponse extends AbstractResponse<io.etcd.jetcd.api.StatusRes
 
     /**
      * Creates a new StatusResponse from the gRPC response.
+     *
      * @param response the gRPC status response
      */
     public StatusResponse(io.etcd.jetcd.api.StatusResponse response) {

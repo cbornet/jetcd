@@ -61,6 +61,7 @@ public record WatchOption(
 
     /**
      * Returns the end key for range watches.
+     *
      * @return the end key, or empty if not set
      */
     public Optional<ByteSequence> getEndKey() {
@@ -173,6 +174,7 @@ public record WatchOption(
 
     /**
      * Creates a new builder.
+     *
      * @return the builder
      */
     public static Builder builder() {
@@ -372,6 +374,7 @@ public record WatchOption(
 
         /**
          * Builds the WatchOption.
+         *
          * @return the watch option
          */
         public WatchOption build() {

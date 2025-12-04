@@ -25,6 +25,7 @@ public class UnlockResponse extends AbstractResponse<io.etcd.jetcd.api.lock.Unlo
 
     /**
      * Creates a new UnlockResponse from the gRPC response.
+     *
      * @param response the gRPC unlock response
      */
     public UnlockResponse(io.etcd.jetcd.api.lock.UnlockResponse response) {

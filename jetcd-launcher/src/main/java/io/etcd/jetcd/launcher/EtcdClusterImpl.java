@@ -55,19 +55,19 @@ public class EtcdClusterImpl implements EtcdCluster {
     /**
      * Creates a new etcd cluster implementation with the specified configuration.
      *
-     * @param image                      the container image to use
-     * @param clusterName                the cluster name for identification
-     * @param prefix                     the prefix for container names
-     * @param nodes                      the number of nodes in the cluster
-     * @param ssl                        whether to enable SSL
-     * @param debug                      whether to enable debug mode
-     * @param logConsumer                consumer for container logs
-     * @param additionalArgs             additional etcd arguments
-     * @param network                    the Docker network to use
-     * @param shouldMountDataDirectory   whether to mount data directory
-     * @param user                       the user to run etcd as
-     * @param startupTimeout             the startup timeout value
-     * @param startupTimeoutUnit         the startup timeout unit
+     * @param image                    the container image to use
+     * @param clusterName              the cluster name for identification
+     * @param prefix                   the prefix for container names
+     * @param nodes                    the number of nodes in the cluster
+     * @param ssl                      whether to enable SSL
+     * @param debug                    whether to enable debug mode
+     * @param logConsumer              consumer for container logs
+     * @param additionalArgs           additional etcd arguments
+     * @param network                  the Docker network to use
+     * @param shouldMountDataDirectory whether to mount data directory
+     * @param user                     the user to run etcd as
+     * @param startupTimeout           the startup timeout value
+     * @param startupTimeoutUnit       the startup timeout unit
      */
     public EtcdClusterImpl(
         String image,

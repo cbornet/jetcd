@@ -42,9 +42,10 @@ public interface ServiceResolver<S extends Address> {
 
     /**
      * Gets the target address cast to the specified type.
-     * @param type the target type
-     * @param <T> the type parameter
-     * @return the target address
+     *
+     * @param  type the target type
+     * @param  <T>  the type parameter
+     * @return      the target address
      */
     default <T> T getTarget(Class<T> type) {
         return type.cast(getTarget());

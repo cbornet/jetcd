@@ -18,6 +18,7 @@ package io.etcd.jetcd.options;
 
 /**
  * Options for transaction operations.
+ *
  * @param autoRetry whether to automatically retry
  */
 public record TxnOption(
@@ -70,6 +71,7 @@ public record TxnOption(
 
         /**
          * Builds the TxnOption.
+         *
          * @return the txn option
          */
         public TxnOption build() {

@@ -28,6 +28,7 @@ public class SnapshotReaderResponseWithError {
 
     /**
      * Creates a wrapper with a successful response.
+     *
      * @param snapshotResponse the snapshot response
      */
     public SnapshotReaderResponseWithError(SnapshotResponse snapshotResponse) {
@@ -36,6 +37,7 @@ public class SnapshotReaderResponseWithError {
 
     /**
      * Creates a wrapper with an error.
+     *
      * @param e the exception
      */
     public SnapshotReaderResponseWithError(Exception e) {

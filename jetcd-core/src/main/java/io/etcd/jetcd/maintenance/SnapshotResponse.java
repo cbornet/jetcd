@@ -27,6 +27,7 @@ public class SnapshotResponse extends AbstractResponse<io.etcd.jetcd.api.Snapsho
 
     /**
      * Creates a new SnapshotResponse from the gRPC response.
+     *
      * @param response the gRPC snapshot response
      */
     public SnapshotResponse(io.etcd.jetcd.api.SnapshotResponse response) {

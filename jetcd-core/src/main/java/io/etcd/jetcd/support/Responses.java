@@ -526,8 +526,9 @@ public final class Responses {
 
         /**
          * Creates PutResponse with namespace.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public PutResponse newPutResponse(io.etcd.jetcd.api.PutResponse response) {
             return Responses.newPutResponse(response, namespace);
@@ -535,8 +536,9 @@ public final class Responses {
 
         /**
          * Creates GetResponse with namespace.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public GetResponse newGetResponse(RangeResponse response) {
             return Responses.newGetResponse(response, namespace);
@@ -544,8 +546,9 @@ public final class Responses {
 
         /**
          * Creates DeleteResponse with namespace.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public DeleteResponse newDeleteResponse(DeleteRangeResponse response) {
             return Responses.newDeleteResponse(response, namespace);
@@ -553,8 +556,9 @@ public final class Responses {
 
         /**
          * Creates TxnResponse with namespace.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public TxnResponse newTxnResponse(io.etcd.jetcd.api.TxnResponse response) {
             return Responses.newTxnResponse(response, namespace);
@@ -562,8 +566,9 @@ public final class Responses {
 
         /**
          * Creates WatchResponse with namespace.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public WatchResponse newWatchResponse(io.etcd.jetcd.api.WatchResponse response) {
             return Responses.newWatchResponse(response, namespace);
@@ -571,8 +576,9 @@ public final class Responses {
 
         /**
          * Creates LeaderResponse with namespace.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public LeaderResponse newLeaderResponse(io.etcd.jetcd.api.LeaderResponse response) {
             return Responses.newLeaderResponse(response, namespace);
@@ -580,8 +586,9 @@ public final class Responses {
 
         /**
          * Creates LockResponse with namespace.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public LockResponse newLockResponse(io.etcd.jetcd.api.lock.LockResponse response) {
             return Responses.newLockResponse(response, namespace);
@@ -589,8 +596,9 @@ public final class Responses {
 
         /**
          * Creates CompactResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public CompactResponse newCompactResponse(io.etcd.jetcd.api.CompactionResponse response) {
             return Responses.newCompactResponse(response);
@@ -598,8 +606,9 @@ public final class Responses {
 
         /**
          * Creates LeaseGrantResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public LeaseGrantResponse newLeaseGrantResponse(io.etcd.jetcd.api.LeaseGrantResponse response) {
             return Responses.newLeaseGrantResponse(response);
@@ -607,8 +616,9 @@ public final class Responses {
 
         /**
          * Creates LeaseRevokeResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public LeaseRevokeResponse newLeaseRevokeResponse(io.etcd.jetcd.api.LeaseRevokeResponse response) {
             return Responses.newLeaseRevokeResponse(response);
@@ -616,8 +626,9 @@ public final class Responses {
 
         /**
          * Creates LeaseTimeToLiveResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public LeaseTimeToLiveResponse newLeaseTimeToLiveResponse(io.etcd.jetcd.api.LeaseTimeToLiveResponse response) {
             return Responses.newLeaseTimeToLiveResponse(response);
@@ -625,8 +636,9 @@ public final class Responses {
 
         /**
          * Creates CampaignResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public CampaignResponse newCampaignResponse(io.etcd.jetcd.api.CampaignResponse response) {
             return Responses.newCampaignResponse(response);
@@ -634,8 +646,9 @@ public final class Responses {
 
         /**
          * Creates ProclaimResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public ProclaimResponse newProclaimResponse(io.etcd.jetcd.api.ProclaimResponse response) {
             return Responses.newProclaimResponse(response);
@@ -643,8 +656,9 @@ public final class Responses {
 
         /**
          * Creates ResignResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public ResignResponse newResignResponse(io.etcd.jetcd.api.ResignResponse response) {
             return Responses.newResignResponse(response);
@@ -652,8 +666,9 @@ public final class Responses {
 
         /**
          * Creates UnlockResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public UnlockResponse newUnlockResponse(io.etcd.jetcd.api.lock.UnlockResponse response) {
             return Responses.newUnlockResponse(response);
@@ -661,8 +676,9 @@ public final class Responses {
 
         /**
          * Creates AlarmResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public AlarmResponse newAlarmResponse(io.etcd.jetcd.api.AlarmResponse response) {
             return Responses.newAlarmResponse(response);
@@ -670,8 +686,9 @@ public final class Responses {
 
         /**
          * Creates DefragmentResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public DefragmentResponse newDefragmentResponse(io.etcd.jetcd.api.DefragmentResponse response) {
             return Responses.newDefragmentResponse(response);
@@ -679,8 +696,9 @@ public final class Responses {
 
         /**
          * Creates HashKVResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public HashKVResponse newHashKVResponse(io.etcd.jetcd.api.HashKVResponse response) {
             return Responses.newHashKVResponse(response);
@@ -688,8 +706,9 @@ public final class Responses {
 
         /**
          * Creates MoveLeaderResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public MoveLeaderResponse newMoveLeaderResponse(io.etcd.jetcd.api.MoveLeaderResponse response) {
             return Responses.newMoveLeaderResponse(response);
@@ -697,8 +716,9 @@ public final class Responses {
 
         /**
          * Creates SnapshotResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public SnapshotResponse newSnapshotResponse(io.etcd.jetcd.api.SnapshotResponse response) {
             return Responses.newSnapshotResponse(response);
@@ -706,8 +726,9 @@ public final class Responses {
 
         /**
          * Creates StatusResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public StatusResponse newStatusResponse(io.etcd.jetcd.api.StatusResponse response) {
             return Responses.newStatusResponse(response);
@@ -715,8 +736,9 @@ public final class Responses {
 
         /**
          * Creates MemberAddResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public MemberAddResponse newMemberAddResponse(io.etcd.jetcd.api.MemberAddResponse response) {
             return Responses.newMemberAddResponse(response);
@@ -724,8 +746,9 @@ public final class Responses {
 
         /**
          * Creates MemberListResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public MemberListResponse newMemberListResponse(io.etcd.jetcd.api.MemberListResponse response) {
             return Responses.newMemberListResponse(response);
@@ -733,8 +756,9 @@ public final class Responses {
 
         /**
          * Creates MemberPromoteResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public MemberPromoteResponse newMemberPromoteResponse(io.etcd.jetcd.api.MemberPromoteResponse response) {
             return Responses.newMemberPromoteResponse(response);
@@ -742,8 +766,9 @@ public final class Responses {
 
         /**
          * Creates MemberRemoveResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public MemberRemoveResponse newMemberRemoveResponse(io.etcd.jetcd.api.MemberRemoveResponse response) {
             return Responses.newMemberRemoveResponse(response);
@@ -751,8 +776,9 @@ public final class Responses {
 
         /**
          * Creates MemberUpdateResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public MemberUpdateResponse newMemberUpdateResponse(io.etcd.jetcd.api.MemberUpdateResponse response) {
             return Responses.newMemberUpdateResponse(response);
@@ -760,8 +786,9 @@ public final class Responses {
 
         /**
          * Creates AuthDisableResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public AuthDisableResponse newAuthDisableResponse(io.etcd.jetcd.api.AuthDisableResponse response) {
             return Responses.newAuthDisableResponse(response);
@@ -769,8 +796,9 @@ public final class Responses {
 
         /**
          * Creates AuthEnableResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public AuthEnableResponse newAuthEnableResponse(io.etcd.jetcd.api.AuthEnableResponse response) {
             return Responses.newAuthEnableResponse(response);
@@ -778,8 +806,9 @@ public final class Responses {
 
         /**
          * Creates AuthRoleAddResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public AuthRoleAddResponse newAuthRoleAddResponse(io.etcd.jetcd.api.AuthRoleAddResponse response) {
             return Responses.newAuthRoleAddResponse(response);
@@ -787,8 +816,9 @@ public final class Responses {
 
         /**
          * Creates AuthRoleDeleteResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public AuthRoleDeleteResponse newAuthRoleDeleteResponse(io.etcd.jetcd.api.AuthRoleDeleteResponse response) {
             return Responses.newAuthRoleDeleteResponse(response);
@@ -796,8 +826,9 @@ public final class Responses {
 
         /**
          * Creates AuthRoleGetResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public AuthRoleGetResponse newAuthRoleGetResponse(io.etcd.jetcd.api.AuthRoleGetResponse response) {
             return Responses.newAuthRoleGetResponse(response);
@@ -805,8 +836,9 @@ public final class Responses {
 
         /**
          * Creates AuthRoleGrantPermissionResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public AuthRoleGrantPermissionResponse newAuthRoleGrantPermissionResponse(
             io.etcd.jetcd.api.AuthRoleGrantPermissionResponse response) {
@@ -815,8 +847,9 @@ public final class Responses {
 
         /**
          * Creates AuthRoleListResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public AuthRoleListResponse newAuthRoleListResponse(io.etcd.jetcd.api.AuthRoleListResponse response) {
             return Responses.newAuthRoleListResponse(response);
@@ -824,8 +857,9 @@ public final class Responses {
 
         /**
          * Creates AuthRoleRevokePermissionResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public AuthRoleRevokePermissionResponse newAuthRoleRevokePermissionResponse(
             io.etcd.jetcd.api.AuthRoleRevokePermissionResponse response) {
@@ -834,8 +868,9 @@ public final class Responses {
 
         /**
          * Creates AuthUserAddResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public AuthUserAddResponse newAuthUserAddResponse(io.etcd.jetcd.api.AuthUserAddResponse response) {
             return Responses.newAuthUserAddResponse(response);
@@ -843,8 +878,9 @@ public final class Responses {
 
         /**
          * Creates AuthUserChangePasswordResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public AuthUserChangePasswordResponse newAuthUserChangePasswordResponse(
             io.etcd.jetcd.api.AuthUserChangePasswordResponse response) {
@@ -853,8 +889,9 @@ public final class Responses {
 
         /**
          * Creates AuthUserDeleteResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public AuthUserDeleteResponse newAuthUserDeleteResponse(io.etcd.jetcd.api.AuthUserDeleteResponse response) {
             return Responses.newAuthUserDeleteResponse(response);
@@ -862,8 +899,9 @@ public final class Responses {
 
         /**
          * Creates AuthUserGetResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public AuthUserGetResponse newAuthUserGetResponse(io.etcd.jetcd.api.AuthUserGetResponse response) {
             return Responses.newAuthUserGetResponse(response);
@@ -871,8 +909,9 @@ public final class Responses {
 
         /**
          * Creates AuthUserGrantRoleResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public AuthUserGrantRoleResponse newAuthUserGrantRoleResponse(
             io.etcd.jetcd.api.AuthUserGrantRoleResponse response) {
@@ -881,8 +920,9 @@ public final class Responses {
 
         /**
          * Creates AuthUserListResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public AuthUserListResponse newAuthUserListResponse(io.etcd.jetcd.api.AuthUserListResponse response) {
             return Responses.newAuthUserListResponse(response);
@@ -890,8 +930,9 @@ public final class Responses {
 
         /**
          * Creates AuthUserRevokeRoleResponse.
-         * @param response gRPC response
-         * @return response wrapper
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
          */
         public AuthUserRevokeRoleResponse newAuthUserRevokeRoleResponse(
             io.etcd.jetcd.api.AuthUserRevokeRoleResponse response) {

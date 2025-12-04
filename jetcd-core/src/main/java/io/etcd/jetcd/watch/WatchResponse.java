@@ -34,7 +34,8 @@ public class WatchResponse extends AbstractResponse<io.etcd.jetcd.api.WatchRespo
 
     /**
      * Creates a new WatchResponse with namespace.
-     * @param response the gRPC watch response
+     *
+     * @param response  the gRPC watch response
      * @param namespace the namespace
      */
     public WatchResponse(io.etcd.jetcd.api.WatchResponse response, ByteSequence namespace) {
@@ -48,6 +49,7 @@ public class WatchResponse extends AbstractResponse<io.etcd.jetcd.api.WatchRespo
 
     /**
      * Creates a new WatchResponse without namespace.
+     *
      * @param response the gRPC watch response
      */
     public WatchResponse(io.etcd.jetcd.api.WatchResponse response) {
@@ -69,6 +71,7 @@ public class WatchResponse extends AbstractResponse<io.etcd.jetcd.api.WatchRespo
 
     /**
      * Returns the list of watch events.
+     *
      * @return the watch events
      */
     public List<WatchEvent> getEvents() {

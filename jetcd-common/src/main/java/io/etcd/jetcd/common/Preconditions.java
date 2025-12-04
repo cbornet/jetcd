@@ -30,8 +30,8 @@ public final class Preconditions {
     /**
      * Checks that an argument condition is true.
      *
-     * @param expression   the condition to check
-     * @param errorMessage the error message if check fails
+     * @param  expression               the condition to check
+     * @param  errorMessage             the error message if check fails
      * @throws IllegalArgumentException if expression is false
      */
     public static void checkArgument(boolean expression, String errorMessage) {
@@ -43,8 +43,8 @@ public final class Preconditions {
     /**
      * Checks that a state condition is true.
      *
-     * @param expression   the condition to check
-     * @param errorMessage the error message if check fails
+     * @param  expression            the condition to check
+     * @param  errorMessage          the error message if check fails
      * @throws IllegalStateException if expression is false
      */
     public static void checkState(boolean expression, String errorMessage) {
@@ -56,10 +56,10 @@ public final class Preconditions {
     /**
      * Checks that an object is not null.
      *
-     * @param  <T>          the type of object
-     * @param  obj          the object to check
-     * @param  errorMessage the error message if check fails
-     * @return              the non-null object
+     * @param  <T>                  the type of object
+     * @param  obj                  the object to check
+     * @param  errorMessage         the error message if check fails
+     * @return                      the non-null object
      * @throws NullPointerException if obj is null
      */
     public static <T> T requireNonNull(T obj, String errorMessage) {

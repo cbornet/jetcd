@@ -83,8 +83,9 @@ public record RetryContext(
 
         /**
          * Sets the attempt count.
-         * @param attemptCount the attempt count
-         * @return this builder
+         *
+         * @param  attemptCount the attempt count
+         * @return              this builder
          */
         public Builder attemptCount(int attemptCount) {
             this.attemptCount = attemptCount;
@@ -93,8 +94,9 @@ public record RetryContext(
 
         /**
          * Sets the maximum attempts.
-         * @param maxAttempts the maximum attempts
-         * @return this builder
+         *
+         * @param  maxAttempts the maximum attempts
+         * @return             this builder
          */
         public Builder maxAttempts(int maxAttempts) {
             this.maxAttempts = maxAttempts;
@@ -103,8 +105,9 @@ public record RetryContext(
 
         /**
          * Sets the next delay.
-         * @param nextDelay the next delay
-         * @return this builder
+         *
+         * @param  nextDelay the next delay
+         * @return           this builder
          */
         public Builder nextDelay(Duration nextDelay) {
             this.nextDelay = nextDelay;
@@ -113,8 +116,9 @@ public record RetryContext(
 
         /**
          * Sets the cause.
-         * @param cause the cause
-         * @return this builder
+         *
+         * @param  cause the cause
+         * @return       this builder
          */
         public Builder cause(Throwable cause) {
             this.cause = cause;
@@ -123,6 +127,7 @@ public record RetryContext(
 
         /**
          * Builds the RetryContext.
+         *
          * @return the retry context
          */
         public RetryContext build() {
