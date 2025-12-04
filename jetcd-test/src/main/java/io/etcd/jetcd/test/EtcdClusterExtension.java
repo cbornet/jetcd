@@ -201,6 +201,12 @@ public class EtcdClusterExtension implements BeforeAllCallback, BeforeEachCallba
         after(context);
     }
 
+    /**
+     * Lifecycle hook called before each test or before all tests.
+     * Creates or retrieves a shared cluster instance and increments its reference count.
+     *
+     * @param context the extension context
+     */
     protected synchronized void before(ExtensionContext context) {
         ClusterReference ref = CLUSTERS.computeIfAbsent(clusterName, k -> {
             ClusterReference newRef = new ClusterReference(clusterTemplate);
@@ -210,6 +216,12 @@ public class EtcdClusterExtension implements BeforeAllCallback, BeforeEachCallba
         ref.incrementRef();
     }
 
+    /**
+     * Lifecycle hook called after each test or after all tests.
+     * Decrements the cluster reference count and closes the cluster if no longer needed.
+     *
+     * @param context the extension context
+     */
     protected synchronized void after(ExtensionContext context) {
         if (!this.beforeAll.get()) {
             ClusterReference ref = CLUSTERS.get(clusterName);
@@ -251,6 +263,12 @@ public class EtcdClusterExtension implements BeforeAllCallback, BeforeEachCallba
      */
     public static class Builder {
         private final Etcd.Builder builder = new Etcd.Builder();
+
+        /**
+         * Creates a new builder instance.
+         */
+        Builder() {
+        }
 
         /**
          * Sets the cluster name for identification and shared cluster access.

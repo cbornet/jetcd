@@ -94,6 +94,12 @@ public class DnsSrvContainer extends GenericContainer<DnsSrvContainer> {
 
     /**
      * Represents a DNS SRV record configuration.
+     *
+     * @param domain   the service domain (e.g., "_etcd._tcp.cluster.local")
+     * @param target   the target host
+     * @param port     the target port
+     * @param priority the priority value for the SRV record
+     * @param weight   the weight value for the SRV record
      */
     public record SrvRecord(
         String domain,
