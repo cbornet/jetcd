@@ -32,11 +32,20 @@ import io.vertx.core.net.SocketAddress;
 
 import com.google.protobuf.ByteString;
 
+/**
+ * Utility methods for jetcd internal use.
+ */
 public final class Util {
 
     private Util() {
     }
 
+    /**
+     * Converts a collection of URI strings to a list of URI objects.
+     *
+     * @param  uris the URI strings
+     * @return      the list of URIs
+     */
     public static List<URI> toURIs(Collection<String> uris) {
         return uris.stream().map(uri -> {
             try {
