@@ -35,7 +35,8 @@ public class GrpcAuthSecurityTest {
             .password(SecureByteSequence.from("secret"));
 
         GrpcService grpcService = new GrpcService(builder);
-        GrpcAuth grpcAuth = grpcService.auth(); // NOPMD - UnusedLocalVariable
+        @SuppressWarnings("unused")
+        GrpcAuth grpcAuth = grpcService.auth();
 
         Field tokenField = GrpcAuth.class.getDeclaredField("token");
         tokenField.setAccessible(true);
