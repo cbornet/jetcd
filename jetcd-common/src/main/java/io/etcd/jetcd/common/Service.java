@@ -26,6 +26,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public abstract class Service implements AutoCloseable {
     private final AtomicBoolean running;
 
+    /**
+     * Creates a new service instance.
+     */
     protected Service() {
         this.running = new AtomicBoolean();
     }

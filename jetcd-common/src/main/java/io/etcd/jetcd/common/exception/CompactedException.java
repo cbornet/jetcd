@@ -24,6 +24,13 @@ public class CompactedException extends EtcdException {
 
     private long compactedRevision;
 
+    /**
+     * Package-private constructor for creating compacted exceptions.
+     *
+     * @param code         the error code
+     * @param message      the error message
+     * @param compactedRev the revision at which compaction occurred
+     */
     CompactedException(ErrorCode code, String message, long compactedRev) {
         super(code, message, null);
         this.compactedRevision = compactedRev;

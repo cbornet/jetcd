@@ -28,6 +28,12 @@ public abstract class AbstractServiceResolver<S extends Address> implements Serv
     private final AddressResolver<S> resolver;
     private final Address target;
 
+    /**
+     * Creates a new service resolver.
+     *
+     * @param resolver the address resolver
+     * @param target   the target address
+     */
     protected AbstractServiceResolver(AddressResolver<S> resolver, Address target) {
         this.resolver = resolver;
         this.target = target;

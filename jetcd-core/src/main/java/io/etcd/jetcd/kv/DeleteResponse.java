@@ -25,9 +25,18 @@ import io.etcd.jetcd.api.DeleteRangeResponse;
 import io.etcd.jetcd.common.suppliers.Suppliers;
 import io.etcd.jetcd.impl.AbstractResponse;
 
+/**
+ * Response from a delete range operation.
+ */
 public class DeleteResponse extends AbstractResponse<DeleteRangeResponse> {
     private final Supplier<List<KeyValue>> prevKvs;
 
+    /**
+     * Creates a new DeleteResponse from the gRPC response.
+     *
+     * @param deleteRangeResponse the gRPC delete range response
+     * @param namespace           the namespace used
+     */
     public DeleteResponse(DeleteRangeResponse deleteRangeResponse, ByteSequence namespace) {
         super(deleteRangeResponse, deleteRangeResponse.getHeader());
 

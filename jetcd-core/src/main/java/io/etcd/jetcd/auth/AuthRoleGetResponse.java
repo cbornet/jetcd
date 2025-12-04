@@ -32,6 +32,11 @@ public class AuthRoleGetResponse extends AbstractResponse<io.etcd.jetcd.api.Auth
 
     private final Supplier<List<Permission>> permissions;
 
+    /**
+     * Creates a new AuthRoleGetResponse from the gRPC response.
+     *
+     * @param response the gRPC auth role get response
+     */
     public AuthRoleGetResponse(io.etcd.jetcd.api.AuthRoleGetResponse response) {
         super(response, response.getHeader());
 
@@ -53,6 +58,11 @@ public class AuthRoleGetResponse extends AbstractResponse<io.etcd.jetcd.api.Auth
         return new Permission(type, key, rangeEnd);
     }
 
+    /**
+     * Returns the list of permissions for this role.
+     *
+     * @return the list of permissions
+     */
     public List<Permission> getPermissions() {
         return permissions.get();
     }

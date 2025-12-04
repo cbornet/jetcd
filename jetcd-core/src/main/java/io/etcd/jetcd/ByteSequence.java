@@ -25,7 +25,9 @@ import com.google.protobuf.ByteString;
  * Etcd binary bytes, easy to convert between byte[], String and ByteString.
  */
 public final class ByteSequence {
+    /** Empty byte sequence constant. */
     public static final ByteSequence EMPTY = new ByteSequence(ByteString.EMPTY);
+    /** Namespace delimiter ('/') byte sequence constant. */
     public static final ByteSequence NAMESPACE_DELIMITER = from(new byte[] { '/' });
 
     private final int hashVal;
@@ -121,18 +123,39 @@ public final class ByteSequence {
         return hashVal;
     }
 
+    /**
+     * Converts this byte sequence to a string using the specified charset.
+     *
+     * @param  charset the charset to use for decoding
+     * @return         the decoded string
+     */
     public String toString(Charset charset) {
         return byteString.toString(charset);
     }
 
+    /**
+     * Returns the raw bytes of this sequence.
+     *
+     * @return a copy of the bytes in this sequence
+     */
     public byte[] getBytes() {
         return byteString.toByteArray();
     }
 
+    /**
+     * Checks if this byte sequence is empty.
+     *
+     * @return true if the sequence has zero length
+     */
     public boolean isEmpty() {
         return byteString.isEmpty();
     }
 
+    /**
+     * Returns the size of this byte sequence.
+     *
+     * @return the number of bytes in this sequence
+     */
     public int size() {
         return byteString.size();
     }

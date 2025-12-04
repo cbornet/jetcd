@@ -31,6 +31,11 @@ public class AlarmResponse extends AbstractResponse<io.etcd.jetcd.api.AlarmRespo
 
     private final Supplier<List<AlarmMember>> alarms;
 
+    /**
+     * Creates a new AlarmResponse from the gRPC response.
+     *
+     * @param response the gRPC alarm response
+     */
     public AlarmResponse(io.etcd.jetcd.api.AlarmResponse response) {
         super(response, response.getHeader());
 

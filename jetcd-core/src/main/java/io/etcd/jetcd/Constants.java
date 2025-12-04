@@ -20,9 +20,17 @@ package io.etcd.jetcd;
  * Constants of Etcd.
  */
 public class Constants {
+    /** Null key constant (byte 0). */
     public static final ByteSequence NULL_KEY = ByteSequence.from(new byte[] { '\0' });
 
-    // Header key for requiring leader
+    /** Header key for requiring leader. */
     public static final String REQUIRE_LEADER_KEY = "hasleader";
+    /** Header value for requiring leader. */
     public static final String REQUIRE_LEADER_VALUE = "true";
+
+    /**
+     * Private constructor to prevent instantiation.
+     */
+    private Constants() {
+    }
 }

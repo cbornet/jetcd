@@ -27,6 +27,12 @@ import io.vertx.grpc.common.GrpcStatus;
 public final class EtcdExceptionFactory {
 
     /**
+     * Private constructor to prevent instantiation.
+     */
+    private EtcdExceptionFactory() {
+    }
+
+    /**
      * Creates a new EtcdException with the specified error code and message.
      *
      * @param  code    the error code
