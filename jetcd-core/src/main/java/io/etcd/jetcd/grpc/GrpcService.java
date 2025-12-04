@@ -43,10 +43,21 @@ public final class GrpcService {
     private volatile GrpcClient grpcClient;
     private volatile GrpcClient authenticatedGrpcClient;
 
+    /**
+     * Creates a new GrpcService with the given builder.
+     *
+     * @param builder the client builder
+     */
     public GrpcService(ClientBuilder builder) {
         this(builder, null);
     }
 
+    /**
+     * Creates a new GrpcService with the given builder and gRPC client.
+     *
+     * @param builder    the client builder
+     * @param grpcClient the gRPC client to use, or null to create a new one
+     */
     public GrpcService(ClientBuilder builder, GrpcClient grpcClient) {
         this.lock = new Object();
         this.builder = builder;
@@ -58,6 +69,11 @@ public final class GrpcService {
             : Vertx.vertx(new VertxOptions().setUseDaemonThread(true));
     }
 
+    /**
+     * Returns the gRPC client for this service.
+     *
+     * @return the gRPC client
+     */
     public GrpcClient getGrpcClient() {
         if (grpcClient == null) {
             synchronized (lock) {
@@ -88,6 +104,11 @@ public final class GrpcService {
         return authenticatedGrpcClient;
     }
 
+    /**
+     * Returns the service resolver for this service.
+     *
+     * @return the service resolver
+     */
     public ServiceResolver<?> getServiceResolver() {
         if (builder.serviceResolver() == null) {
             throw new IllegalArgumentException("EndpointResolver must be configured");
@@ -95,22 +116,47 @@ public final class GrpcService {
         return builder.serviceResolver();
     }
 
+    /**
+     * Returns the namespace for this service.
+     *
+     * @return the namespace
+     */
     public ByteSequence getNamespace() {
         return builder.namespace();
     }
 
+    /**
+     * Returns the client builder for this service.
+     *
+     * @return the client builder
+     */
     public ClientBuilder builder() {
         return builder;
     }
 
+    /**
+     * Returns the auth service.
+     *
+     * @return the GrpcAuth instance
+     */
     public GrpcAuth auth() {
         return this.auth;
     }
 
+    /**
+     * Returns the Vert.x instance used by this service.
+     *
+     * @return the Vert.x instance
+     */
     public Vertx vertx() {
         return this.vertx;
     }
 
+    /**
+     * Closes this service and releases all resources.
+     *
+     * @return a CompletableFuture that completes when the service is closed
+     */
     public CompletableFuture<Void> close() {
         return CompletableFuture.runAsync(() -> {
             synchronized (lock) {
@@ -133,6 +179,14 @@ public final class GrpcService {
         });
     }
 
+    /**
+     * Creates a new temporary client for the given target and executes the consumer.
+     *
+     * @param  target         the target endpoint
+     * @param  clientConsumer the consumer function
+     * @param  <R>            the result type
+     * @return                a CompletableFuture with the result
+     */
     public <R> CompletableFuture<R> withNewClient(
         String target,
         Function<GrpcClient, CompletableFuture<R>> clientConsumer) {

@@ -38,6 +38,11 @@ public final class DnsSrvAddressResolver implements AddressResolver<SocketAddres
     private final Map<Vertx, EndpointResolver<SocketAddress, ?, ?, ?>> resolverCache;
     private final DnsSrvClientOptions options;
 
+    /**
+     * Creates a new DnsSrvAddressResolver with the specified options.
+     *
+     * @param options the DNS SRV client options
+     */
     public DnsSrvAddressResolver(DnsSrvClientOptions options) {
         this.resolverCache = new ConcurrentHashMap<>();
         this.options = options;

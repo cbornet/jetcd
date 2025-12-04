@@ -42,6 +42,11 @@ public record LeaseOption(
             return this;
         }
 
+        /**
+         * Builds the LeaseOption.
+         *
+         * @return the lease option
+         */
         public LeaseOption build() {
             return new LeaseOption(this.attachedKeys);
         }

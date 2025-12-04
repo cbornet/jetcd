@@ -43,6 +43,11 @@ public final class GrpcAuth implements AutoCloseable {
     private volatile io.etcd.jetcd.SecureByteSequence token;
     private final Object tokenLock = new Object();
 
+    /**
+     * Creates a new GrpcAuth instance.
+     *
+     * @param grpcService the gRPC service
+     */
     GrpcAuth(GrpcService grpcService) {
         this.grpcService = grpcService;
     }

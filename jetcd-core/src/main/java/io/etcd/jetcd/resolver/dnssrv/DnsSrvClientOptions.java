@@ -75,60 +75,131 @@ public final class DnsSrvClientOptions {
         return this;
     }
 
+    /**
+     * Gets the DNS server host.
+     *
+     * @return the DNS server host
+     */
     public String getHost() {
         return dnsOptions.getHost();
     }
 
+    /**
+     * Sets the DNS server host.
+     *
+     * @param  host the DNS server host
+     * @return      this instance for fluent API
+     */
     public DnsSrvClientOptions setHost(String host) {
         dnsOptions.setHost(host);
         return this;
     }
 
+    /**
+     * Gets the DNS server port.
+     *
+     * @return the DNS server port
+     */
     public int getPort() {
         return dnsOptions.getPort();
     }
 
+    /**
+     * Sets the DNS server port.
+     *
+     * @param  port the DNS server port
+     * @return      this instance for fluent API
+     */
     public DnsSrvClientOptions setPort(int port) {
         dnsOptions.setPort(port);
         return this;
     }
 
+    /**
+     * Gets the query timeout in milliseconds.
+     *
+     * @return the query timeout
+     */
     public long getQueryTimeout() {
         return dnsOptions.getQueryTimeout();
     }
 
+    /**
+     * Sets the query timeout in milliseconds.
+     *
+     * @param  queryTimeout the query timeout
+     * @return              this instance for fluent API
+     */
     public DnsSrvClientOptions setQueryTimeout(long queryTimeout) {
         dnsOptions.setQueryTimeout(queryTimeout);
         return this;
     }
 
+    /**
+     * Gets whether activity logging is enabled.
+     *
+     * @return true if activity logging is enabled
+     */
     public boolean getLogActivity() {
         return dnsOptions.getLogActivity();
     }
 
+    /**
+     * Sets whether activity logging is enabled.
+     *
+     * @param  logActivity true to enable activity logging
+     * @return             this instance for fluent API
+     */
     public DnsSrvClientOptions setLogActivity(boolean logActivity) {
         dnsOptions.setLogActivity(logActivity);
         return this;
     }
 
+    /**
+     * Gets the activity log format.
+     *
+     * @return the activity log format
+     */
     public ByteBufFormat getActivityLogFormat() {
         return dnsOptions.getActivityLogFormat();
     }
 
+    /**
+     * Sets the activity log format.
+     *
+     * @param  activityLogFormat the activity log format
+     * @return                   this instance for fluent API
+     */
     public DnsSrvClientOptions setActivityLogFormat(ByteBufFormat activityLogFormat) {
         dnsOptions.setActivityLogFormat(activityLogFormat);
         return this;
     }
 
+    /**
+     * Gets whether recursion is desired for DNS queries.
+     *
+     * @return true if recursion is desired
+     */
     public boolean isRecursionDesired() {
         return dnsOptions.isRecursionDesired();
     }
 
+    /**
+     * Sets whether recursion is desired for DNS queries.
+     *
+     * @param  recursionDesired true if recursion is desired
+     * @return                  this instance for fluent API
+     */
     public DnsSrvClientOptions setRecursionDesired(boolean recursionDesired) {
         dnsOptions.setRecursionDesired(recursionDesired);
         return this;
     }
 
+    /**
+     * Gets the underlying DNS client options.
+     *
+     * @return the DNS client options
+     */
     public DnsClientOptions getDnsOptions() {
         return dnsOptions;
     }
