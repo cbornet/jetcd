@@ -78,7 +78,7 @@ public class ClientBuilderSecurityTest {
         byte[] passwordBytes = "secret123".getBytes(StandardCharsets.UTF_8);
         SecureByteSequence password = SecureByteSequence.from(passwordBytes);
 
-        ClientBuilder builder = Client.builder("http://localhost:2379")
+        ClientBuilder builder = Client.builder("http://localhost:2379") // NOPMD - UnusedLocalVariable
             .password(password);
 
         Field bytesField = SecureByteSequence.class.getDeclaredField("bytes");
@@ -97,7 +97,7 @@ public class ClientBuilderSecurityTest {
         byte[] userBytes = "admin".getBytes(StandardCharsets.UTF_8);
         SecureByteSequence user = SecureByteSequence.from(userBytes);
 
-        ClientBuilder builder = Client.builder("http://localhost:2379")
+        ClientBuilder builder = Client.builder("http://localhost:2379") // NOPMD - UnusedLocalVariable
             .user(user);
 
         Field bytesField = SecureByteSequence.class.getDeclaredField("bytes");

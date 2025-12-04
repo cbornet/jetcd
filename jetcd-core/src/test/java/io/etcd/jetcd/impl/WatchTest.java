@@ -133,8 +133,8 @@ public class WatchTest {
             final List<WatchResponse> res = Collections.synchronizedList(new ArrayList<>(2));
 
             // Use watchAsync to ensure watchers are ready before putting
-            try (Watcher w1 = client.getWatchClient().watchAsync(key, res::add).get(5, TimeUnit.SECONDS);
-                Watcher w2 = client.getWatchClient().watchAsync(key, res::add).get(5, TimeUnit.SECONDS)) {
+            try (Watcher w1 = client.getWatchClient().watchAsync(key, res::add).get(5, TimeUnit.SECONDS); // NOPMD - UnusedLocalVariable
+                Watcher w2 = client.getWatchClient().watchAsync(key, res::add).get(5, TimeUnit.SECONDS)) { // NOPMD - UnusedLocalVariable
 
                 client.getKVClient().put(key, value).get();
 
@@ -162,7 +162,7 @@ public class WatchTest {
             client.getKVClient().put(key, value).get();
 
             // Use watchAsync to ensure watcher is ready before deleting
-            try (Watcher watcher = client.getWatchClient().watchAsync(key, ref::set).get(5, TimeUnit.SECONDS)) {
+            try (Watcher watcher = client.getWatchClient().watchAsync(key, ref::set).get(5, TimeUnit.SECONDS)) { // NOPMD - UnusedLocalVariable
                 client.getKVClient().delete(key).get();
 
                 await().atMost(TIME_OUT_SECONDS, TimeUnit.SECONDS).untilAsserted(() -> assertThat(ref.get()).isNotNull());

@@ -109,7 +109,7 @@ public class WatchTokenExpireTest {
 
             // watch should handle token refresh automatically
             // token is already expired when we attempt to create a watch
-            try (Watch.Watcher watcher = authWatchClient.watch(
+            try (Watch.Watcher watcher = authWatchClient.watch( // NOPMD - UnusedLocalVariable
                 key,
                 WatchOption.builder().withRange(keyEnd).build(),
                 response -> {
