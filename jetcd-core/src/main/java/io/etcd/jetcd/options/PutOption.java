@@ -20,6 +20,10 @@ import static io.etcd.jetcd.common.Preconditions.checkArgument;
 
 /**
  * The options for put operation.
+ *
+ * @param leaseId   lease ID to associate with the key
+ * @param prevKV    whether to return previous key-value
+ * @param autoRetry whether to automatically retry on failure
  */
 public record PutOption(
     long leaseId,

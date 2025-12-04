@@ -25,6 +25,19 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * The option for watch operation.
+ *
+ * @param endKey                end key for range watch
+ * @param revision              revision to watch from
+ * @param prevKV                whether to include previous key-value
+ * @param progressNotify        whether to receive progress notifications
+ * @param createdNotify         whether to receive creation notification
+ * @param noPut                 whether to filter put events
+ * @param noDelete              whether to filter delete events
+ * @param requireLeader         whether to require leader
+ * @param prefix                whether to watch by prefix
+ * @param maxReconnectAttempts  maximum number of reconnection attempts
+ * @param initialReconnectDelay initial delay before reconnection
+ * @param maxReconnectDelay     maximum delay between reconnection attempts
  */
 public record WatchOption(
     ByteSequence endKey,

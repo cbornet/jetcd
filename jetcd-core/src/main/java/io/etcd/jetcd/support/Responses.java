@@ -277,6 +277,8 @@ public final class Responses {
     /**
      * Factory for creating namespace-aware Response objects.
      * Designed to be cached in client implementations for method reference usage.
+     *
+     * @param namespace the namespace to use for responses
      */
     public record Namespaced(ByteSequence namespace) {
 

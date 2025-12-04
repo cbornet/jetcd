@@ -26,6 +26,20 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * The option for get operation.
+ *
+ * @param endKey            end key for range get
+ * @param limit             maximum number of keys to return
+ * @param revision          revision to get from
+ * @param sortOrder         sort order for results
+ * @param sortTarget        field to sort by
+ * @param serializable      whether to use serializable read
+ * @param keysOnly          whether to return only keys
+ * @param countOnly         whether to return only count
+ * @param minCreateRevision minimum create revision filter
+ * @param maxCreateRevision maximum create revision filter
+ * @param minModRevision    minimum modification revision filter
+ * @param maxModRevision    maximum modification revision filter
+ * @param prefix            whether to get by prefix
  */
 public record GetOption(
     ByteSequence endKey,

@@ -20,6 +20,12 @@ import java.time.Duration;
 
 /**
  * Context information about a retry attempt.
+ *
+ * @param type         type of retry operation
+ * @param attemptCount current attempt number
+ * @param maxAttempts  maximum number of attempts
+ * @param nextDelay    delay until next retry
+ * @param cause        exception that triggered the retry
  */
 public record RetryContext(
     RetryType type,

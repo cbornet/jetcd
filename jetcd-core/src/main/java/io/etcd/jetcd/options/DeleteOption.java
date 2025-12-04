@@ -23,6 +23,14 @@ import io.etcd.jetcd.KV;
 
 import static java.util.Objects.requireNonNull;
 
+/**
+ * The option for delete operation.
+ *
+ * @param endKey    end key for range delete
+ * @param prevKV    whether to return previous key-value
+ * @param prefix    whether to delete by prefix
+ * @param autoRetry whether to automatically retry on failure
+ */
 public record DeleteOption(
     ByteSequence endKey,
     boolean prevKV,

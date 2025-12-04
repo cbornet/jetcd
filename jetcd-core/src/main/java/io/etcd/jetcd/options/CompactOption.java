@@ -16,6 +16,11 @@
 
 package io.etcd.jetcd.options;
 
+/**
+ * The option for compact operation.
+ *
+ * @param physical whether to wait for physical compaction
+ */
 public record CompactOption(
     boolean physical) {
 

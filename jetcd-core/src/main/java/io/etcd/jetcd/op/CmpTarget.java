@@ -24,6 +24,8 @@ import com.google.protobuf.ByteString;
 
 /**
  * Cmp target used in {@link Txn}.
+ *
+ * @param <T> the type of value being compared
  */
 public abstract class CmpTarget<T> {
 
