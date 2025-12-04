@@ -17,11 +17,9 @@
 package io.etcd.jetcd.grpc;
 
 import java.lang.reflect.Field;
-import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.Test;
 
-import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.ClientBuilder;
 import io.etcd.jetcd.SecureByteSequence;

@@ -117,8 +117,10 @@ public class AuthClientTest {
 
         authDisabledAuthClient.authEnable().get();
 
-        final Client userClient = TestUtil.client(cluster).user(SecureByteSequence.from(user.getBytes())).password(SecureByteSequence.from(userNewPass.getBytes())).build();
-        final Client rootClient = TestUtil.client(cluster).user(SecureByteSequence.from(root.getBytes())).password(SecureByteSequence.from(rootPass.getBytes())).build();
+        final Client userClient = TestUtil.client(cluster).user(SecureByteSequence.from(user.getBytes()))
+            .password(SecureByteSequence.from(userNewPass.getBytes())).build();
+        final Client rootClient = TestUtil.client(cluster).user(SecureByteSequence.from(root.getBytes()))
+            .password(SecureByteSequence.from(rootPass.getBytes())).build();
 
         userClient.getKVClient().put(rootRoleKey, rootRoleValue).get();
         userClient.getKVClient().put(userRoleKey, userRoleValue).get();
