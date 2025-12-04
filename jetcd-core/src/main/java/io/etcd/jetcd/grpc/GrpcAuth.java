@@ -37,6 +37,7 @@ import static io.etcd.jetcd.common.Preconditions.checkArgument;
  * Consolidates token management and GrpcClient wrapping with auth headers.
  */
 public final class GrpcAuth implements AutoCloseable {
+    /** Header name for authentication tokens. */
     public static final String TOKEN_HEADER = "token";
 
     private final GrpcService grpcService;

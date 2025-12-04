@@ -23,7 +23,9 @@ import io.etcd.jetcd.common.exception.EtcdException;
  */
 public class LeaseKeepAliveResponseWithError {
 
+    /** The successful lease keep alive response, if any. */
     public LeaseKeepAliveResponse leaseKeepAliveResponse;
+    /** The error, if any. */
     public EtcdException error;
 
     /**

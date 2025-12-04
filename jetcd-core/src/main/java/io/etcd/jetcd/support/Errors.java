@@ -35,16 +35,32 @@ public final class Errors {
     private Errors() {
     }
 
-    // isRetryable implementation for idempotent operations.
+    /**
+     * Checks if a status is retryable for idempotent operations.
+     *
+     * @param  status the gRPC status
+     * @return        true if retryable
+     */
     public static boolean isRetryableForSafeRedoOp(GrpcStatus status) {
         return GrpcStatus.UNAVAILABLE.equals(status) || isAlwaysSafeToRetry(status);
     }
 
-    // isRetryable implementation for non-idempotent operations
+    /**
+     * Checks if a status is retryable for non-idempotent operations.
+     *
+     * @param  status the gRPC status
+     * @return        true if retryable
+     */
     public static boolean isRetryableForNoSafeRedoOp(GrpcStatus status) {
         return isAlwaysSafeToRetry(status);
     }
 
+    /**
+     * Checks if a status is always safe to retry.
+     *
+     * @param  status the gRPC status
+     * @return        true if always safe to retry
+     */
     public static boolean isAlwaysSafeToRetry(GrpcStatus status) {
         return isInvalidTokenError(status) || isAuthStoreExpired(status);
     }

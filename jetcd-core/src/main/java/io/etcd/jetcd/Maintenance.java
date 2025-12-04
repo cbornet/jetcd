@@ -156,17 +156,38 @@ public interface Maintenance extends CloseableClient {
      */
     CompletableFuture<MoveLeaderResponse> moveLeader(long transfereeID);
 
+    /**
+     * Creates a snapshot listener with only onNext callback.
+     *
+     * @param  onNext the callback for snapshot responses
+     * @return        the listener
+     */
     static Listener listener(Consumer<SnapshotResponse> onNext) {
         return listener(onNext, t -> {
         }, () -> {
         });
     }
 
+    /**
+     * Creates a snapshot listener with onNext and onError callbacks.
+     *
+     * @param  onNext  the callback for snapshot responses
+     * @param  onError the callback for errors
+     * @return         the listener
+     */
     static Listener listener(Consumer<SnapshotResponse> onNext, Consumer<Throwable> onError) {
         return listener(onNext, onError, () -> {
         });
     }
 
+    /**
+     * Creates a snapshot listener with all callbacks.
+     *
+     * @param  onNext      the callback for snapshot responses
+     * @param  onError     the callback for errors
+     * @param  onCompleted the callback when completed
+     * @return             the listener
+     */
     static Listener listener(Consumer<SnapshotResponse> onNext, Consumer<Throwable> onError, Runnable onCompleted) {
         return new Listener() {
             @Override

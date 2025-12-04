@@ -122,17 +122,38 @@ public interface Lease extends CloseableClient {
         return keepAlive(leaseId, listener(onNext, onError, onCompleted));
     }
 
+    /**
+     * Creates a listener with only onNext callback.
+     *
+     * @param  onNext the callback for responses
+     * @return        the listener
+     */
     static Listener listener(Consumer<LeaseKeepAliveResponse> onNext) {
         return listener(onNext, t -> {
         }, () -> {
         });
     }
 
+    /**
+     * Creates a listener with onNext and onError callbacks.
+     *
+     * @param  onNext  the callback for responses
+     * @param  onError the callback for errors
+     * @return         the listener
+     */
     static Listener listener(Consumer<LeaseKeepAliveResponse> onNext, Consumer<Throwable> onError) {
         return listener(onNext, onError, () -> {
         });
     }
 
+    /**
+     * Creates a listener with all callbacks.
+     *
+     * @param  onNext      the callback for responses
+     * @param  onError     the callback for errors
+     * @param  onCompleted the callback when completed
+     * @return             the listener
+     */
     static Listener listener(Consumer<LeaseKeepAliveResponse> onNext, Consumer<Throwable> onError, Runnable onCompleted) {
         return new Listener() {
             @Override

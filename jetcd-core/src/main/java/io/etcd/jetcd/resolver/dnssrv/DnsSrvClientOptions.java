@@ -28,25 +28,52 @@ public final class DnsSrvClientOptions {
     private String serviceName;
     private int minTTL;
 
+    /**
+     * Creates a new DnsSrvClientOptions with the given service name.
+     *
+     * @param serviceName the DNS SRV service name
+     */
     public DnsSrvClientOptions(String serviceName) {
         this(new DnsClientOptions(), serviceName);
     }
 
+    /**
+     * Creates a new DnsSrvClientOptions with base DNS options and service name.
+     *
+     * @param base        the base DNS client options
+     * @param serviceName the DNS SRV service name
+     */
     public DnsSrvClientOptions(DnsClientOptions base, String serviceName) {
         this.serviceName = serviceName;
         this.minTTL = 30;
         this.dnsOptions = base != null ? copyDnsClientOptions(base) : new DnsClientOptions();
     }
 
+    /**
+     * Gets the DNS SRV service name.
+     *
+     * @return the service name
+     */
     public String getServiceName() {
         return serviceName;
     }
 
+    /**
+     * Sets the DNS SRV service name.
+     *
+     * @param  serviceName the service name
+     * @return             this instance for fluent API
+     */
     public DnsSrvClientOptions setServiceName(String serviceName) {
         this.serviceName = serviceName;
         return this;
     }
 
+    /**
+     * Gets the minimum TTL in seconds.
+     *
+     * @return the minimum TTL
+     */
     public int getMinTTL() {
         return minTTL;
     }
