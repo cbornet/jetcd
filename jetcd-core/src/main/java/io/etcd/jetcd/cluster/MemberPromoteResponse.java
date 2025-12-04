@@ -31,6 +31,11 @@ public class MemberPromoteResponse extends AbstractResponse<io.etcd.jetcd.api.Me
 
     private final Supplier<List<Member>> members;
 
+    /**
+     * Creates a new MemberPromoteResponse from the gRPC response.
+     *
+     * @param response the gRPC member promote response
+     */
     public MemberPromoteResponse(io.etcd.jetcd.api.MemberPromoteResponse response) {
         super(response, response.getHeader());
 

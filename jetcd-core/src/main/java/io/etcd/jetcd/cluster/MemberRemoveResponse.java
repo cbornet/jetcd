@@ -31,6 +31,11 @@ public class MemberRemoveResponse extends AbstractResponse<io.etcd.jetcd.api.Mem
 
     private final Supplier<List<Member>> members;
 
+    /**
+     * Creates a new MemberRemoveResponse from the gRPC response.
+     *
+     * @param response the gRPC member remove response
+     */
     public MemberRemoveResponse(io.etcd.jetcd.api.MemberRemoveResponse response) {
         super(response, response.getHeader());
 
