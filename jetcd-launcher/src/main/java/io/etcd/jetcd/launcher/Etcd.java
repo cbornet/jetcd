@@ -120,6 +120,12 @@ public final class Etcd {
         private TimeUnit startupTimeoutUnit = TimeUnit.MINUTES;
 
         /**
+         * Creates a new Builder instance with default settings.
+         */
+        public Builder() {
+        }
+
+        /**
          * Sets the cluster name for identification.
          *
          * @param  clusterName the cluster name
