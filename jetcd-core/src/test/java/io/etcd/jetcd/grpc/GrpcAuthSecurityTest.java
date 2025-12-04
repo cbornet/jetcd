@@ -33,8 +33,8 @@ public class GrpcAuthSecurityTest {
     @Test
     public void testTokenIsStoredAsSecureByteSequence() throws Exception {
         ClientBuilder builder = Client.builder("http://localhost:2379")
-            .user(ByteSequence.from("admin", StandardCharsets.UTF_8))
-            .password(ByteSequence.from("secret", StandardCharsets.UTF_8));
+            .user(SecureByteSequence.from("admin"))
+            .password(SecureByteSequence.from("secret"));
 
         GrpcService grpcService = new GrpcService(builder);
         GrpcAuth grpcAuth = grpcService.auth(); // NOPMD - UnusedLocalVariable
@@ -48,8 +48,8 @@ public class GrpcAuthSecurityTest {
     @Test
     public void testRefreshTokenZerosOldToken() throws Exception {
         ClientBuilder builder = Client.builder("http://localhost:2379")
-            .user(ByteSequence.from("admin", StandardCharsets.UTF_8))
-            .password(ByteSequence.from("secret", StandardCharsets.UTF_8));
+            .user(SecureByteSequence.from("admin"))
+            .password(SecureByteSequence.from("secret"));
 
         GrpcService grpcService = new GrpcService(builder);
         GrpcAuth grpcAuth = grpcService.auth();
@@ -75,8 +75,8 @@ public class GrpcAuthSecurityTest {
     @Test
     public void testCloseZerosToken() throws Exception {
         ClientBuilder builder = Client.builder("http://localhost:2379")
-            .user(ByteSequence.from("admin", StandardCharsets.UTF_8))
-            .password(ByteSequence.from("secret", StandardCharsets.UTF_8));
+            .user(SecureByteSequence.from("admin"))
+            .password(SecureByteSequence.from("secret"));
 
         GrpcService grpcService = new GrpcService(builder);
         GrpcAuth grpcAuth = grpcService.auth();
@@ -105,8 +105,8 @@ public class GrpcAuthSecurityTest {
     @Test
     public void testMultipleCloseCallsAreSafe() throws Exception {
         ClientBuilder builder = Client.builder("http://localhost:2379")
-            .user(ByteSequence.from("admin", StandardCharsets.UTF_8))
-            .password(ByteSequence.from("secret", StandardCharsets.UTF_8));
+            .user(SecureByteSequence.from("admin"))
+            .password(SecureByteSequence.from("secret"));
 
         GrpcService grpcService = new GrpcService(builder);
         GrpcAuth grpcAuth = grpcService.auth();
@@ -127,8 +127,8 @@ public class GrpcAuthSecurityTest {
     @Test
     public void testRefreshTokenWhenTokenIsNull() {
         ClientBuilder builder = Client.builder("http://localhost:2379")
-            .user(ByteSequence.from("admin", StandardCharsets.UTF_8))
-            .password(ByteSequence.from("secret", StandardCharsets.UTF_8));
+            .user(SecureByteSequence.from("admin"))
+            .password(SecureByteSequence.from("secret"));
 
         GrpcService grpcService = new GrpcService(builder);
         GrpcAuth grpcAuth = grpcService.auth();
@@ -139,8 +139,8 @@ public class GrpcAuthSecurityTest {
     @Test
     public void testCloseWhenTokenIsNull() {
         ClientBuilder builder = Client.builder("http://localhost:2379")
-            .user(ByteSequence.from("admin", StandardCharsets.UTF_8))
-            .password(ByteSequence.from("secret", StandardCharsets.UTF_8));
+            .user(SecureByteSequence.from("admin"))
+            .password(SecureByteSequence.from("secret"));
 
         GrpcService grpcService = new GrpcService(builder);
         GrpcAuth grpcAuth = grpcService.auth();
@@ -160,8 +160,8 @@ public class GrpcAuthSecurityTest {
     @Test
     public void testRequiresAuthWithCredentials() {
         ClientBuilder builder = Client.builder("http://localhost:2379")
-            .user(ByteSequence.from("admin", StandardCharsets.UTF_8))
-            .password(ByteSequence.from("secret", StandardCharsets.UTF_8));
+            .user(SecureByteSequence.from("admin"))
+            .password(SecureByteSequence.from("secret"));
 
         GrpcService grpcService = new GrpcService(builder);
         GrpcAuth grpcAuth = grpcService.auth();
@@ -172,8 +172,8 @@ public class GrpcAuthSecurityTest {
     @Test
     public void testGrpcServiceCloseCallsAuthClose() throws Exception {
         ClientBuilder builder = Client.builder("http://localhost:2379")
-            .user(ByteSequence.from("admin", StandardCharsets.UTF_8))
-            .password(ByteSequence.from("secret", StandardCharsets.UTF_8));
+            .user(SecureByteSequence.from("admin"))
+            .password(SecureByteSequence.from("secret"));
 
         GrpcService grpcService = new GrpcService(builder);
         GrpcAuth grpcAuth = grpcService.auth();
@@ -199,8 +199,8 @@ public class GrpcAuthSecurityTest {
     @Test
     public void testGetTokenWithClosedToken() throws Exception {
         ClientBuilder builder = Client.builder("http://localhost:2379")
-            .user(ByteSequence.from("admin", StandardCharsets.UTF_8))
-            .password(ByteSequence.from("secret", StandardCharsets.UTF_8));
+            .user(SecureByteSequence.from("admin"))
+            .password(SecureByteSequence.from("secret"));
 
         GrpcService grpcService = new GrpcService(builder);
         GrpcAuth grpcAuth = grpcService.auth();

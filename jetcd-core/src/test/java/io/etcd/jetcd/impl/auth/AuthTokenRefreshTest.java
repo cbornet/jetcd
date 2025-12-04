@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.KV;
+import io.etcd.jetcd.SecureByteSequence;
 import io.etcd.jetcd.auth.Permission;
 import io.etcd.jetcd.common.vertx.Ssl;
 import io.etcd.jetcd.impl.TestUtil;
@@ -88,8 +89,8 @@ public class AuthTokenRefreshTest {
         final File caFile = new File(Objects.requireNonNull(getClass().getResource("/ssl/cert/ca.pem")).toURI());
 
         return TestUtil.client(cluster)
-            .user(user)
-            .password(password)
+            .user(SecureByteSequence.from(user.getBytes()))
+            .password(SecureByteSequence.from(password.getBytes()))
             .httpClientOptions(Ssl.withTrustManager(caFile)
                 .andThen(options -> options.setVerifyHost(false)))
             .build();

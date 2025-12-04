@@ -82,21 +82,6 @@ public final class ClientBuilder implements Cloneable {
     }
 
     /**
-     * config etcd auth user.
-     *
-     * @param      user                 etcd auth user
-     * @return                          this builder
-     * @throws     NullPointerException if user is <code>null</code>
-     * @deprecated                      Use {@link #user(SecureByteSequence)} for better security
-     */
-    @Deprecated
-    public ClientBuilder user(ByteSequence user) {
-        Objects.requireNonNull(user, "user can't be null");
-        this.user = SecureByteSequence.from(user.getBytes());
-        return this;
-    }
-
-    /**
      * config etcd auth user with secure credential handling.
      *
      * @param  user                 etcd auth user as SecureByteSequence
@@ -116,21 +101,6 @@ public final class ClientBuilder implements Cloneable {
      */
     public ByteSequence password() {
         return password != null ? password.toByteSequence() : null;
-    }
-
-    /**
-     * config etcd auth password.
-     *
-     * @param      password             etcd auth password
-     * @return                          this builder
-     * @throws     NullPointerException if password is <code>null</code>
-     * @deprecated                      Use {@link #password(SecureByteSequence)} for better security
-     */
-    @Deprecated
-    public ClientBuilder password(ByteSequence password) {
-        Objects.requireNonNull(password, "password can't be null");
-        this.password = SecureByteSequence.from(password.getBytes());
-        return this;
     }
 
     /**

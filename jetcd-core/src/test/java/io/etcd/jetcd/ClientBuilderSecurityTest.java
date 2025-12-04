@@ -46,34 +46,6 @@ public class ClientBuilderSecurityTest {
     }
 
     @Test
-    public void testByteSequenceUserIsConvertedToSecure() throws Exception {
-        ByteSequence user = ByteSequence.from("admin", StandardCharsets.UTF_8);
-        ClientBuilder builder = Client.builder("http://localhost:2379")
-            .user(user);
-
-        Field userField = ClientBuilder.class.getDeclaredField("user");
-        userField.setAccessible(true);
-        Object storedUser = userField.get(builder);
-
-        assertThat(storedUser).isInstanceOf(SecureByteSequence.class);
-        assertThat(builder.user().getBytes()).isEqualTo("admin".getBytes(StandardCharsets.UTF_8));
-    }
-
-    @Test
-    public void testByteSequencePasswordIsConvertedToSecure() throws Exception {
-        ByteSequence password = ByteSequence.from("secret", StandardCharsets.UTF_8);
-        ClientBuilder builder = Client.builder("http://localhost:2379")
-            .password(password);
-
-        Field passwordField = ClientBuilder.class.getDeclaredField("password");
-        passwordField.setAccessible(true);
-        Object storedPassword = passwordField.get(builder);
-
-        assertThat(storedPassword).isInstanceOf(SecureByteSequence.class);
-        assertThat(builder.password().getBytes()).isEqualTo("secret".getBytes(StandardCharsets.UTF_8));
-    }
-
-    @Test
     public void testPasswordZeroingAfterClose() throws Exception {
         byte[] passwordBytes = "secret123".getBytes(StandardCharsets.UTF_8);
         SecureByteSequence password = SecureByteSequence.from(passwordBytes);
@@ -146,27 +118,8 @@ public class ClientBuilderSecurityTest {
     }
 
     @Test
-    public void testBackwardCompatibilityWithByteSequence() {
-        ByteSequence user = ByteSequence.from("admin", StandardCharsets.UTF_8);
-        ByteSequence password = ByteSequence.from("secret", StandardCharsets.UTF_8);
-
-        ClientBuilder builder = Client.builder("http://localhost:2379")
-            .user(user)
-            .password(password);
-
-        assertThat(builder.user()).isNotNull();
-        assertThat(builder.user().getBytes()).isEqualTo("admin".getBytes(StandardCharsets.UTF_8));
-        assertThat(builder.password()).isNotNull();
-        assertThat(builder.password().getBytes()).isEqualTo("secret".getBytes(StandardCharsets.UTF_8));
-    }
-
-    @Test
     public void testNullUserThrowsException() {
         ClientBuilder builder = Client.builder("http://localhost:2379");
-
-        org.junit.jupiter.api.Assertions.assertThrows(NullPointerException.class, () -> {
-            builder.user((ByteSequence) null);
-        });
 
         org.junit.jupiter.api.Assertions.assertThrows(NullPointerException.class, () -> {
             builder.user((SecureByteSequence) null);
@@ -176,10 +129,6 @@ public class ClientBuilderSecurityTest {
     @Test
     public void testNullPasswordThrowsException() {
         ClientBuilder builder = Client.builder("http://localhost:2379");
-
-        org.junit.jupiter.api.Assertions.assertThrows(NullPointerException.class, () -> {
-            builder.password((ByteSequence) null);
-        });
 
         org.junit.jupiter.api.Assertions.assertThrows(NullPointerException.class, () -> {
             builder.password((SecureByteSequence) null);

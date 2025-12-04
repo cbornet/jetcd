@@ -29,6 +29,7 @@ import io.etcd.jetcd.Auth;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.KV;
+import io.etcd.jetcd.SecureByteSequence;
 import io.etcd.jetcd.auth.AuthRoleGetResponse;
 import io.etcd.jetcd.auth.AuthRoleListResponse;
 import io.etcd.jetcd.auth.Permission;
@@ -116,8 +117,8 @@ public class AuthClientTest {
 
         authDisabledAuthClient.authEnable().get();
 
-        final Client userClient = TestUtil.client(cluster).user(user).password(userNewPass).build();
-        final Client rootClient = TestUtil.client(cluster).user(root).password(rootPass).build();
+        final Client userClient = TestUtil.client(cluster).user(SecureByteSequence.from(user.getBytes())).password(SecureByteSequence.from(userNewPass.getBytes())).build();
+        final Client rootClient = TestUtil.client(cluster).user(SecureByteSequence.from(root.getBytes())).password(SecureByteSequence.from(rootPass.getBytes())).build();
 
         userClient.getKVClient().put(rootRoleKey, rootRoleValue).get();
         userClient.getKVClient().put(userRoleKey, userRoleValue).get();
