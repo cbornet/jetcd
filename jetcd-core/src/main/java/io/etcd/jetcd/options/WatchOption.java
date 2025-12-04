@@ -40,11 +40,11 @@ public record WatchOption(
     Duration initialReconnectDelay,
     Duration maxReconnectDelay) {
 
-    public static final WatchOption DEFAULT = builder().build();
-
     public static final int DEFAULT_MAX_RECONNECT_ATTEMPTS = 10;
     public static final Duration DEFAULT_INITIAL_RECONNECT_DELAY = Duration.ofMillis(500);
     public static final Duration DEFAULT_MAX_RECONNECT_DELAY = Duration.ofSeconds(30);
+
+    public static final WatchOption DEFAULT = builder().build();
 
     public Optional<ByteSequence> getEndKey() {
         return Optional.ofNullable(this.endKey);
