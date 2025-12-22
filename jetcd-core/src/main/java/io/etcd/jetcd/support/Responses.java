@@ -56,6 +56,7 @@ import io.etcd.jetcd.lock.UnlockResponse;
 import io.etcd.jetcd.maintenance.AlarmResponse;
 import io.etcd.jetcd.maintenance.DefragmentResponse;
 import io.etcd.jetcd.maintenance.HashKVResponse;
+import io.etcd.jetcd.maintenance.HashResponse;
 import io.etcd.jetcd.maintenance.MoveLeaderResponse;
 import io.etcd.jetcd.maintenance.SnapshotResponse;
 import io.etcd.jetcd.maintenance.StatusResponse;
@@ -254,6 +255,16 @@ public final class Responses {
      */
     public static DefragmentResponse newDefragmentResponse(io.etcd.jetcd.api.DefragmentResponse response) {
         return new DefragmentResponse(response);
+    }
+
+    /**
+     * Creates a HashResponse.
+     *
+     * @param  response the gRPC hash response
+     * @return          the HashResponse
+     */
+    public static HashResponse newHashResponse(io.etcd.jetcd.api.HashResponse response) {
+        return new HashResponse(response);
     }
 
     /**
@@ -692,6 +703,16 @@ public final class Responses {
          */
         public DefragmentResponse newDefragmentResponse(io.etcd.jetcd.api.DefragmentResponse response) {
             return Responses.newDefragmentResponse(response);
+        }
+
+        /**
+         * Creates HashResponse.
+         *
+         * @param  response gRPC response
+         * @return          response wrapper
+         */
+        public HashResponse newHashResponse(io.etcd.jetcd.api.HashResponse response) {
+            return Responses.newHashResponse(response);
         }
 
         /**
