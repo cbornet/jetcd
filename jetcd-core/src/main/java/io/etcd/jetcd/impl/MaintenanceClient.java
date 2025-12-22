@@ -26,6 +26,7 @@ import io.etcd.jetcd.grpc.GrpcService;
 import io.etcd.jetcd.maintenance.AlarmResponse;
 import io.etcd.jetcd.maintenance.DefragmentResponse;
 import io.etcd.jetcd.maintenance.HashKVResponse;
+import io.etcd.jetcd.maintenance.HashResponse;
 import io.etcd.jetcd.maintenance.MoveLeaderResponse;
 import io.etcd.jetcd.maintenance.StatusResponse;
 
@@ -91,6 +92,13 @@ final class MaintenanceClient extends AbstractClient implements Maintenance {
         return completable(
             client.moveLeader(io.etcd.jetcd.api.MoveLeaderRequest.newBuilder().setTargetID(transfereeID).build()),
             MoveLeaderResponse::new);
+    }
+
+    @Override
+    public CompletableFuture<HashResponse> hash(String target) {
+        return completable(
+            client.hash(io.etcd.jetcd.api.HashRequest.getDefaultInstance()),
+            HashResponse::new);
     }
 
     @Override
