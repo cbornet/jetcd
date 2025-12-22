@@ -90,21 +90,17 @@ final class WatchClient extends AbstractClient implements Watch {
             return;
         }
 
-        Exceptions.quietly(() -> {
-            try {
-                CompletableFuture<?> f = CompletableFuture.allOf(
-                    watchers.stream()
-                        .map(Watcher::closeAsync)
-                        .toArray(CompletableFuture[]::new));
-
-                f.get(CLOSE_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException(e);
-            } catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        try {
+            CompletableFuture.allOf(
+                watchers.stream()
+                    .map(Watcher::closeAsync)
+                    .toArray(CompletableFuture[]::new))
+                .get(CLOSE_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            // Swallow - we're closing
+        }
     }
 
     @Override
