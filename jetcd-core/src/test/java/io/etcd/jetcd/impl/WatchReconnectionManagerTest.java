@@ -17,6 +17,11 @@
 package io.etcd.jetcd.impl;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -102,6 +107,7 @@ public class WatchReconnectionManagerTest {
             .withMaxReconnectAttempts(5)
             .withInitialReconnectDelay(Duration.ofMillis(50))
             .withMaxReconnectDelay(Duration.ofMillis(200))
+            .withReconnectJitter(Duration.ofMillis(25))
             .build();
 
         WatchReconnectionManager manager = new WatchReconnectionManager(vertx, option, listener, stateMachine);
@@ -144,6 +150,7 @@ public class WatchReconnectionManagerTest {
             .withMaxReconnectAttempts(3)
             .withInitialReconnectDelay(Duration.ofMillis(50))
             .withMaxReconnectDelay(Duration.ofMillis(100))
+            .withReconnectJitter(Duration.ofMillis(25))
             .build();
 
         WatchReconnectionManager manager = new WatchReconnectionManager(vertx, option, listener, stateMachine);
@@ -180,6 +187,7 @@ public class WatchReconnectionManagerTest {
         });
         WatchOption option = WatchOption.builder()
             .withInitialReconnectDelay(Duration.ofMillis(100))
+            .withReconnectJitter(Duration.ofMillis(50))
             .build();
 
         WatchReconnectionManager manager = new WatchReconnectionManager(vertx, option, listener, stateMachine);
@@ -237,6 +245,7 @@ public class WatchReconnectionManagerTest {
         WatchOption option = WatchOption.builder()
             .withMaxReconnectAttempts(10)
             .withInitialReconnectDelay(Duration.ofMillis(100))
+            .withReconnectJitter(Duration.ofMillis(50))
             .build();
 
         WatchReconnectionManager manager = new WatchReconnectionManager(vertx, option, listener, stateMachine);
@@ -294,6 +303,7 @@ public class WatchReconnectionManagerTest {
         WatchOption option = WatchOption.builder()
             .withMaxReconnectAttempts(10)
             .withInitialReconnectDelay(Duration.ofMillis(50))
+            .withReconnectJitter(Duration.ofMillis(25))
             .build();
 
         WatchReconnectionManager manager = new WatchReconnectionManager(vertx, option, listener, stateMachine);
@@ -341,6 +351,7 @@ public class WatchReconnectionManagerTest {
             .withMaxReconnectAttempts(3)
             .withInitialReconnectDelay(Duration.ofMillis(100))
             .withMaxReconnectDelay(Duration.ofSeconds(5))
+            .withReconnectJitter(Duration.ofMillis(50))
             .build();
 
         WatchReconnectionManager manager = new WatchReconnectionManager(vertx, option, listener, stateMachine);
@@ -395,6 +406,93 @@ public class WatchReconnectionManagerTest {
             public void onStateChange(WatchStateMachine.State oldState, WatchStateMachine.State newState) {
             }
         });
+    }
+
+    @Test
+    public void testReconnectionWithJitter() throws Exception {
+        AtomicInteger retryCount = new AtomicInteger(0);
+        AtomicInteger disconnectAttempts = new AtomicInteger(0);
+        List<Long> retryTimestamps = new CopyOnWriteArrayList<>();
+        CountDownLatch latch = new CountDownLatch(1);
+
+        Watch.Listener listener = createListener(ctx -> {
+            retryTimestamps.add(System.currentTimeMillis());
+            retryCount.incrementAndGet();
+        });
+
+        WatchOption option = WatchOption.builder()
+            .withMaxReconnectAttempts(5)
+            .withInitialReconnectDelay(Duration.ofMillis(100))
+            .withMaxReconnectDelay(Duration.ofMillis(200))
+            .withReconnectJitter(Duration.ofMillis(50))
+            .build();
+
+        WatchReconnectionManager manager = new WatchReconnectionManager(vertx, option, listener, stateMachine);
+
+        manager.attemptReconnection(
+            () -> {
+                int attempt = disconnectAttempts.incrementAndGet();
+                if (attempt < 5) {
+                    throw new RuntimeException("Simulated failure " + attempt);
+                }
+            },
+            new WatchReconnectionManager.ReconnectionCallback() {
+                @Override
+                public void onReconnectSucceeded() {
+                    latch.countDown();
+                }
+
+                @Override
+                public void onReconnectFailed(Throwable error) {
+                    latch.countDown();
+                }
+            });
+
+        assertThat(latch.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(retryTimestamps).hasSizeGreaterThanOrEqualTo(3);
+
+        // Verify jitter is applied - delays should vary
+        List<Long> delays = new ArrayList<>();
+        for (int i = 1; i < retryTimestamps.size(); i++) {
+            delays.add(retryTimestamps.get(i) - retryTimestamps.get(i - 1));
+        }
+
+        // All delays should be within expected range (100ms base + 50ms jitter = 100-150ms range)
+        for (Long delay : delays) {
+            assertThat(delay).isBetween(95L, 250L); // Allow some timing variance
+        }
+
+        // Delays should not all be identical (jitter adds variance)
+        Set<Long> uniqueDelays = new HashSet<>(delays);
+        if (delays.size() >= 3) {
+            assertThat(uniqueDelays.size()).isGreaterThan(1);
+        }
+    }
+
+    @Test
+    public void testCustomJitterConfiguration() {
+        WatchOption optionWithJitter = WatchOption.builder()
+            .withReconnectJitter(Duration.ofMillis(250))
+            .build();
+
+        assertThat(optionWithJitter.reconnectJitter()).isEqualTo(Duration.ofMillis(250));
+    }
+
+    @Test
+    public void testMinimalJitterConfiguration() {
+        Watch.Listener listener = createListener(ctx -> {
+        });
+        WatchOption optionMinimalJitter = WatchOption.builder()
+            .withReconnectJitter(Duration.ofMillis(1))
+            .build();
+
+        assertThat(optionMinimalJitter.reconnectJitter()).isEqualTo(Duration.ofMillis(1));
+
+        // Minimal jitter should still work
+        WatchReconnectionManager manager = new WatchReconnectionManager(
+            vertx, optionMinimalJitter, listener, stateMachine);
+
+        assertThat(manager).isNotNull();
     }
 
     private Watch.Listener createListener(java.util.function.Consumer<RetryContext> onRetry) {

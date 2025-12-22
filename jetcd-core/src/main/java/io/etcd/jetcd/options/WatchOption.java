@@ -38,6 +38,8 @@ import static java.util.Objects.requireNonNull;
  * @param maxReconnectAttempts  maximum number of reconnection attempts
  * @param initialReconnectDelay initial delay before reconnection
  * @param maxReconnectDelay     maximum delay between reconnection attempts
+ * @param reconnectJitter       maximum random variance added to retry delays to prevent
+ *                              synchronized retry storms. Set to Duration.ZERO to disable.
  */
 public record WatchOption(
     ByteSequence endKey,
@@ -51,11 +53,13 @@ public record WatchOption(
     boolean prefix,
     int maxReconnectAttempts,
     Duration initialReconnectDelay,
-    Duration maxReconnectDelay) {
+    Duration maxReconnectDelay,
+    Duration reconnectJitter) {
 
     public static final int DEFAULT_MAX_RECONNECT_ATTEMPTS = 10;
     public static final Duration DEFAULT_INITIAL_RECONNECT_DELAY = Duration.ofMillis(500);
     public static final Duration DEFAULT_MAX_RECONNECT_DELAY = Duration.ofSeconds(30);
+    public static final Duration DEFAULT_RECONNECT_JITTER = Duration.ofMillis(250);
 
     public static final WatchOption DEFAULT = builder().build();
 
@@ -173,6 +177,17 @@ public record WatchOption(
     }
 
     /**
+     * Returns the maximum random variance added to retry delays.
+     * Jitter prevents synchronized retry storms when multiple clients fail simultaneously.
+     *
+     * @return the reconnection jitter duration
+     */
+    @Override
+    public Duration reconnectJitter() {
+        return reconnectJitter;
+    }
+
+    /**
      * Creates a new builder.
      *
      * @return the builder
@@ -197,6 +212,7 @@ public record WatchOption(
         private int maxReconnectAttempts = DEFAULT_MAX_RECONNECT_ATTEMPTS;
         private Duration initialReconnectDelay = DEFAULT_INITIAL_RECONNECT_DELAY;
         private Duration maxReconnectDelay = DEFAULT_MAX_RECONNECT_DELAY;
+        private Duration reconnectJitter = DEFAULT_RECONNECT_JITTER;
 
         private Builder() {
         }
@@ -373,6 +389,18 @@ public record WatchOption(
         }
 
         /**
+         * Sets the maximum random variance added to retry delays.
+         * Jitter prevents synchronized retry storms when multiple clients fail simultaneously.
+         *
+         * @param  jitter maximum random time to add to retry delays (default: 100ms)
+         * @return        builder
+         */
+        public Builder withReconnectJitter(Duration jitter) {
+            this.reconnectJitter = requireNonNull(jitter);
+            return this;
+        }
+
+        /**
          * Builds the WatchOption.
          *
          * @return the watch option
@@ -390,7 +418,8 @@ public record WatchOption(
                 prefix,
                 maxReconnectAttempts,
                 initialReconnectDelay,
-                maxReconnectDelay);
+                maxReconnectDelay,
+                reconnectJitter);
         }
 
     }

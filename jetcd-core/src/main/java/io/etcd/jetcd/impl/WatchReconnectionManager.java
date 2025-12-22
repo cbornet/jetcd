@@ -145,6 +145,7 @@ final class WatchReconnectionManager {
         return RetryPolicy.<Void> builder()
             .withMaxRetries(option.maxReconnectAttempts())
             .withBackoff(option.initialReconnectDelay(), option.maxReconnectDelay())
+            .withJitter(option.reconnectJitter())
             .onRetry(e -> {
                 if (stateMachine.isClosed()) {
                     return;
