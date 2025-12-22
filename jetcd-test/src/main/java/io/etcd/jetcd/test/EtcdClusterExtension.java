@@ -339,6 +339,28 @@ public class EtcdClusterExtension implements BeforeAllCallback, BeforeEachCallba
         }
 
         /**
+         * Enables container log output with a default SLF4J logger.
+         * Container logs will be logged at INFO level for easier debugging.
+         *
+         * @return this builder
+         */
+        public Builder withContainerLogs() {
+            builder.withContainerLogs();
+            return this;
+        }
+
+        /**
+         * Enables container log output with a default SLF4J logger.
+         *
+         * @param  verbose if true, logs STDOUT and STDERR separately; if false, logs all as INFO
+         * @return         this builder
+         */
+        public Builder withContainerLogs(boolean verbose) {
+            builder.withContainerLogs(verbose);
+            return this;
+        }
+
+        /**
          * Adds additional command-line arguments to pass to etcd.
          *
          * @param  additionalArgs collection of additional arguments

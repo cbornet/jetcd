@@ -184,6 +184,7 @@ public final class Etcd {
 
         /**
          * Configure the log consumer for etcd containers.
+         * By default, container logs are sent to SLF4J logger at INFO level.
          *
          * @param  logConsumer the log consumer, or null to disable logging
          * @return             this builder
@@ -191,6 +192,54 @@ public final class Etcd {
         public Builder withLogConsumer(Consumer<OutputFrame> logConsumer) {
             this.logConsumer = logConsumer;
             return this;
+        }
+
+        /**
+         * Enables container log output with a default SLF4J logger.
+         * Container logs will be prefixed with the container name for identification.
+         * This is useful for debugging container startup issues.
+         *
+         * @return this builder
+         */
+        public Builder withContainerLogs() {
+            return withContainerLogs(false);
+        }
+
+        /**
+         * Enables container log output with a default SLF4J logger.
+         * Container logs will be prefixed with the container name for identification.
+         *
+         * @param  verbose if true, logs STDOUT and STDERR separately; if false, logs all as INFO
+         * @return         this builder
+         */
+        public Builder withContainerLogs(boolean verbose) {
+            return withLogConsumer(createDefaultLogConsumer(verbose));
+        }
+
+        private Consumer<OutputFrame> createDefaultLogConsumer(boolean verbose) {
+            org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger("io.etcd.container");
+            return frame -> {
+                String message = frame.getUtf8String().trim();
+                if (message.isEmpty()) {
+                    return;
+                }
+                
+                if (verbose) {
+                    switch (frame.getType()) {
+                        case STDOUT:
+                            log.info("[STDOUT] {}", message);
+                            break;
+                        case STDERR:
+                            log.warn("[STDERR] {}", message);
+                            break;
+                        case END:
+                            // Ignore END frames
+                            break;
+                    }
+                } else {
+                    log.info("{}", message);
+                }
+            };
         }
 
         /**
