@@ -16,8 +16,6 @@
 
 package io.etcd.jetcd.impl;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -124,33 +122,27 @@ public final class Client implements io.etcd.jetcd.Client {
 
     @Override
     public synchronized CompletableFuture<Void> closeAsync() {
-        List<CompletableFuture<Void>> closeFutures = new ArrayList<>();
+        CompletableFuture<?>[] closeFutures = {
+            closeQuietly(authClient),
+            closeQuietly(kvClient),
+            closeQuietly(clusterClient),
+            closeQuietly(maintenanceClient),
+            closeQuietly(leaseClient),
+            closeQuietly(watchClient),
+            closeQuietly(lockClient),
+            closeQuietly(electionClient)
+        };
 
-        closeFutures.add(closeClientSupplier(authClient, "authClient"));
-        closeFutures.add(closeClientSupplier(kvClient, "kvClient"));
-        closeFutures.add(closeClientSupplier(clusterClient, "clusterClient"));
-        closeFutures.add(closeClientSupplier(maintenanceClient, "maintenanceClient"));
-        closeFutures.add(closeClientSupplier(leaseClient, "leaseClient"));
-        closeFutures.add(closeClientSupplier(watchClient, "watchClient"));
-        closeFutures.add(closeClientSupplier(lockClient, "lockClient"));
-        closeFutures.add(closeClientSupplier(electionClient, "electionClient"));
-
-        return CompletableFuture.allOf(closeFutures.toArray(new CompletableFuture[0]))
-            .whenComplete((v, error) -> {
-                try {
-                    grpcService.close().get(10, TimeUnit.SECONDS);
-                } catch (Exception e) {
-                    LOG.error("Error closing grpcService", e);
-                }
-            });
+        return CompletableFuture.allOf(closeFutures)
+            .thenCompose(v -> grpcService.close());
     }
 
-    private CompletableFuture<Void> closeClientSupplier(CloseableSupplier<?> supplier, String name) {
+    private CompletableFuture<Void> closeQuietly(CloseableSupplier<?> supplier) {
         return CompletableFuture.runAsync(() -> {
             try {
                 supplier.close();
             } catch (Exception e) {
-                LOG.warn("Error closing {}", name, e);
+                LOG.warn("Error closing supplier", e);
             }
         });
     }
