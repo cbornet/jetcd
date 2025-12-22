@@ -92,6 +92,16 @@ public interface Maintenance extends CloseableClient {
     CompletableFuture<StatusResponse> statusMember(String target);
 
     /**
+     * returns a hash of the local KV state for consistency checking.
+     * This is designed for testing; do not use this in production when there
+     * are ongoing transactions.
+     *
+     * @param  target the etcd server endpoint.
+     * @return        the response result
+     */
+    CompletableFuture<HashResponse> hash(String target);
+
+    /**
      * returns a hash of the KV state at the time of the RPC.
      * If revision is zero, the hash is computed on all keys. If the revision
      * is non-zero, the hash is computed on all keys at or below the given revision.
