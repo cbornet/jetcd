@@ -160,15 +160,14 @@ public final class GrpcService {
     }
 
     /**
-     * Creates a new temporary client for the given target and executes the consumer.
+     * Creates a new temporary client and executes the consumer.
+     * The client is automatically closed after the consumer completes.
      *
-     * @param  target         the target endpoint
      * @param  clientConsumer the consumer function
      * @param  <R>            the result type
      * @return                a CompletableFuture with the result
      */
     public <R> CompletableFuture<R> withNewClient(
-        String target,
         Function<GrpcClient, CompletableFuture<R>> clientConsumer) {
 
         final GrpcClient client = GrpcClient.client(this.vertx);
