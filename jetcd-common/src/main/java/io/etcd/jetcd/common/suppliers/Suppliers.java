@@ -20,6 +20,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 
+import io.vertx.core.Future;
+
 /**
  * Utility class for creating specialized Supplier implementations.
  */
@@ -64,6 +66,19 @@ public final class Suppliers {
      */
     public static <T> Supplier<Optional<T>> memoizingOptional(Supplier<T> supplier) {
         return new MemorizingOptionalSupplier<>(supplier);
+    }
+
+    /**
+     * Returns a supplier that caches the instance retrieved during the first call to {@code get()}
+     * and returns that value on subsequent calls. The returned supplier is thread-safe and
+     * supports async close operations for types like Vert.x GrpcClient.
+     *
+     * @param  delegate the underlying supplier
+     * @param  <T>      the type of results supplied by this supplier
+     * @return          a memoizing supplier that supports async close
+     */
+    public static <T extends AsyncCloseable> AsyncCloseableSupplier<T> memoizingAsyncCloseable(Supplier<T> delegate) {
+        return new MemorizingAsyncCloseableSupplier<>(delegate);
     }
 
     /**
@@ -180,6 +195,61 @@ public final class Suppliers {
         @Override
         public String toString() {
             return "Suppliers.memoizingOptional(...)";
+        }
+    }
+
+    /**
+     * A supplier that memoizes the result of another supplier and supports async close.
+     * Thread-safe using double-checked locking pattern.
+     *
+     * @param <T> the type of async closeable results supplied
+     */
+    public static class MemorizingAsyncCloseableSupplier<T extends AsyncCloseable> implements AsyncCloseableSupplier<T> {
+        private final Supplier<T> delegate;
+        private volatile boolean initialized;
+        private T value;
+
+        MemorizingAsyncCloseableSupplier(Supplier<T> delegate) {
+            this.delegate = Objects.requireNonNull(delegate);
+        }
+
+        @Override
+        public T get() {
+            if (!initialized) {
+                synchronized (this) {
+                    if (!initialized) {
+                        T t = delegate.get();
+                        value = t;
+                        initialized = true;
+                        return t;
+                    }
+                }
+            }
+            return value;
+        }
+
+        @Override
+        public Future<Void> close() {
+            if (initialized) {
+                synchronized (this) {
+                    if (initialized) {
+                        T v = value;
+                        value = null;
+                        initialized = false;
+                        if (v != null) {
+                            return v.close();
+                        }
+                    }
+                }
+            }
+            return Future.succeededFuture();
+        }
+
+        @Override
+        public String toString() {
+            return "Suppliers.memoizingAsyncCloseable("
+                + (initialized ? "<supplier that returned " + value + ">" : delegate)
+                + ")";
         }
     }
 }
