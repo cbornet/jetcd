@@ -109,38 +109,100 @@ public class EtcdClusterImpl implements EtcdCluster {
 
     @Override
     public void start() {
-        LOG.info("Starting etcd cluster '{}' with {} node(s)", clusterName, containers.size());
+        long clusterStartTime = System.currentTimeMillis();
+        LOG.info("Starting etcd cluster '{}' with {} node(s), timeout: {} {}", 
+            clusterName, containers.size(), startupTimeout, startupTimeoutUnit);
+        LOG.debug("Node names: {}", endpoints);
+        
         ExecutorService executor = Executors.newFixedThreadPool(containers.size());
 
         try {
-            CompletableFuture.allOf(
-                containers.stream()
-                    .map(container -> CompletableFuture.runAsync(container::start, executor))
-                    .toArray(CompletableFuture[]::new))
+            // Create futures with individual tracking
+            CompletableFuture<?>[] futures = containers.stream()
+                .map(container -> CompletableFuture.runAsync(() -> {
+                    String nodeName = container.node();
+                    long nodeStartTime = System.currentTimeMillis();
+                    LOG.info("Starting node '{}' in cluster '{}'", nodeName, clusterName);
+                    try {
+                        container.start();
+                        long nodeDuration = System.currentTimeMillis() - nodeStartTime;
+                        LOG.info("Node '{}' started successfully in {}ms", nodeName, nodeDuration);
+                    } catch (Exception e) {
+                        long nodeDuration = System.currentTimeMillis() - nodeStartTime;
+                        LOG.error("Node '{}' failed to start after {}ms: {}", 
+                            nodeName, nodeDuration, e.getMessage(), e);
+                        throw e;
+                    }
+                }, executor))
+                .toArray(CompletableFuture[]::new);
+            
+            CompletableFuture.allOf(futures)
                 .orTimeout(startupTimeout, startupTimeoutUnit)
                 .join();
 
-            LOG.info("Successfully started etcd cluster '{}'", clusterName);
+            long clusterDuration = System.currentTimeMillis() - clusterStartTime;
+            LOG.info("Successfully started etcd cluster '{}' in {}ms", clusterName, clusterDuration);
 
         } catch (CompletionException e) {
-            LOG.error("Failed to start etcd cluster '{}'", clusterName, e);
+            long clusterDuration = System.currentTimeMillis() - clusterStartTime;
+            LOG.error("Failed to start etcd cluster '{}' after {}ms", clusterName, clusterDuration, e);
+            
+            Throwable cause = e.getCause();
+            
+            // Log which containers succeeded and which failed
+            logContainerStates();
+            
             cleanupAfterFailure();
 
-            Throwable cause = e.getCause();
             if (cause instanceof TimeoutException) {
-                throw new EtcdClusterTimeoutException(
-                    "Cluster startup timed out after " + startupTimeout + " " + startupTimeoutUnit, e);
+                String msg = String.format(
+                    "Cluster '%s' startup timed out after %d %s (%dms elapsed). " +
+                    "Consider increasing timeout with withStartupTimeout()",
+                    clusterName, startupTimeout, startupTimeoutUnit, clusterDuration);
+                LOG.error(msg);
+                throw new EtcdClusterTimeoutException(msg, e);
             }
-            throw new EtcdClusterStartException("Cluster failed to start", e);
+            
+            String msg = String.format(
+                "Cluster '%s' failed to start after %dms: %s",
+                clusterName, clusterDuration, 
+                cause != null ? cause.getMessage() : e.getMessage());
+            throw new EtcdClusterStartException(msg, e);
 
         } catch (CancellationException e) {
-            LOG.warn("Etcd cluster '{}' startup was interrupted", clusterName);
+            long clusterDuration = System.currentTimeMillis() - clusterStartTime;
+            LOG.warn("Etcd cluster '{}' startup was interrupted after {}ms", clusterName, clusterDuration);
             Thread.currentThread().interrupt();
             cleanupAfterFailure();
             throw new EtcdClusterStartException("Interrupted while starting cluster", e);
 
         } finally {
             executor.shutdownNow();
+        }
+    }
+    
+    private void logContainerStates() {
+        LOG.info("Container states for cluster '{}':", clusterName);
+        for (EtcdContainer container : containers) {
+            try {
+                boolean running = container.isRunning();
+                String state = running ? "RUNNING" : "STOPPED/FAILED";
+                LOG.info("  - Node '{}': {}", container.node(), state);
+                
+                if (!running) {
+                    // Try to get failure information
+                    try {
+                        String logs = container.getLogs();
+                        if (logs != null && !logs.isEmpty()) {
+                            LOG.debug("  - Node '{}' logs:\n{}", container.node(), logs);
+                        }
+                    } catch (Exception logEx) {
+                        LOG.debug("  - Could not retrieve logs for node '{}'", container.node());
+                    }
+                }
+            } catch (Exception e) {
+                LOG.warn("  - Node '{}': Unable to determine state", container.node(), e);
+            }
         }
     }
 

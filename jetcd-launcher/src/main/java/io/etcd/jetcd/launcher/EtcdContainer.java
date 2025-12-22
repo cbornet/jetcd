@@ -289,23 +289,55 @@ public class EtcdContainer extends GenericContainer<EtcdContainer> {
 
     @Override
     protected void containerIsStarting(InspectContainerResponse containerInfo) {
+        LOGGER.info("Container {} is starting, ID: {}", node, containerInfo.getId());
 
         try {
             super.containerIsStarting(containerInfo);
 
             if (shouldMountDataDirectory) {
+                LOGGER.debug("Setting permissions on data directory for {}", node);
                 execInContainer("chmod", "770", "-R", Etcd.ETCD_DATA_DIR);
             }
         } catch (IOException | InterruptedException e) {
+            LOGGER.error("Failed to set permissions on data directory for {}", node, e);
             throw new ContainerLaunchException(
                 "Failed to set permissions on data directory for " + node, e);
         }
     }
 
     @Override
+    protected void containerIsStarted(InspectContainerResponse containerInfo) {
+        LOGGER.info("Container {} started successfully, ID: {}", node, containerInfo.getId());
+        super.containerIsStarted(containerInfo);
+    }
+
+    @Override
     public void start() {
-        LOGGER.debug("starting etcd container {} with command: {}", node, String.join(" ", getCommandParts()));
-        super.start();
+        long startTime = System.currentTimeMillis();
+        LOGGER.info("Starting etcd container '{}' with command: {}", node, String.join(" ", getCommandParts()));
+        LOGGER.debug("Container {} configuration: ssl={}, debug={}, shouldMountDataDirectory={}, network={}", 
+            node, ssl, debug, shouldMountDataDirectory, getNetwork());
+        
+        try {
+            super.start();
+            long duration = System.currentTimeMillis() - startTime;
+            LOGGER.info("Container '{}' started successfully in {}ms", node, duration);
+        } catch (Exception e) {
+            long duration = System.currentTimeMillis() - startTime;
+            LOGGER.error("Failed to start container '{}' after {}ms", node, duration, e);
+            
+            // Try to get container logs if available
+            try {
+                String logs = getLogs();
+                if (logs != null && !logs.isEmpty()) {
+                    LOGGER.error("Container '{}' logs:\n{}", node, logs);
+                }
+            } catch (Exception logException) {
+                LOGGER.warn("Could not retrieve logs for failed container '{}'", node, logException);
+            }
+            
+            throw e;
+        }
     }
 
     @Override
