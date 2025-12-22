@@ -116,15 +116,7 @@ public final class Client implements io.etcd.jetcd.Client {
         try {
             closeAsync().get(15, TimeUnit.SECONDS);
         } catch (TimeoutException e) {
-            LOG.warn("Timeout waiting for Client to close, forcing shutdown");
-        } catch (Exception e) {
-            LOG.error("Error closing Client", e);
-        }
-
-        try {
-            grpcService.close().get(15, TimeUnit.SECONDS);
-        } catch (TimeoutException e) {
-            LOG.warn("Timeout waiting for GrpcService to close, forcing shutdown");
+            LOG.warn("Timeout waiting for Client to close");
         } catch (Exception e) {
             LOG.error("Error closing Client", e);
         }
