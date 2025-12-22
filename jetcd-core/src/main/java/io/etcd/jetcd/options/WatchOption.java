@@ -35,6 +35,7 @@ import static java.util.Objects.requireNonNull;
  * @param noDelete              whether to filter delete events
  * @param requireLeader         whether to require leader
  * @param prefix                whether to watch by prefix
+ * @param fragment              whether to enable splitting large revisions into multiple watch responses
  * @param maxReconnectAttempts  maximum number of reconnection attempts
  * @param initialReconnectDelay initial delay before reconnection
  * @param maxReconnectDelay     maximum delay between reconnection attempts
@@ -51,6 +52,7 @@ public record WatchOption(
     boolean noDelete,
     boolean requireLeader,
     boolean prefix,
+    boolean fragment,
     int maxReconnectAttempts,
     Duration initialReconnectDelay,
     Duration maxReconnectDelay,
@@ -177,6 +179,16 @@ public record WatchOption(
     }
 
     /**
+     * Whether fragment is enabled for splitting large revisions into multiple watch responses.
+     *
+     * @return if true, enable fragmenting large watch responses
+     */
+    @Override
+    public boolean fragment() {
+        return fragment;
+    }
+
+    /**
      * Returns the maximum random variance added to retry delays.
      * Jitter prevents synchronized retry storms when multiple clients fail simultaneously.
      *
@@ -209,6 +221,7 @@ public record WatchOption(
         private boolean noDelete = false;
         private boolean requireLeader = false;
         private boolean prefix = false;
+        private boolean fragment = false;
         private int maxReconnectAttempts = DEFAULT_MAX_RECONNECT_ATTEMPTS;
         private Duration initialReconnectDelay = DEFAULT_INITIAL_RECONNECT_DELAY;
         private Duration maxReconnectDelay = DEFAULT_MAX_RECONNECT_DELAY;
@@ -389,6 +402,18 @@ public record WatchOption(
         }
 
         /**
+         * Enables fragmenting large revisions into multiple watch responses.
+         * This prevents timeout issues when dealing with very large revisions.
+         *
+         * @param  fragment whether to enable fragmenting
+         * @return          builder
+         */
+        public Builder withFragment(boolean fragment) {
+            this.fragment = fragment;
+            return this;
+        }
+
+        /**
          * Sets the maximum random variance added to retry delays.
          * Jitter prevents synchronized retry storms when multiple clients fail simultaneously.
          *
@@ -416,6 +441,7 @@ public record WatchOption(
                 noDelete,
                 requireLeader,
                 prefix,
+                fragment,
                 maxReconnectAttempts,
                 initialReconnectDelay,
                 maxReconnectDelay,
