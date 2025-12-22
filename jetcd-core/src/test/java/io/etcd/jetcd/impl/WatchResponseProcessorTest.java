@@ -17,6 +17,7 @@
 package io.etcd.jetcd.impl;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import io.etcd.jetcd.api.Event;
@@ -35,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Unit tests for WatchResponseProcessor state handling.
  */
+@Tag("watch")
 class WatchResponseProcessorTest {
 
     private WatchResponseProcessor processorWithNotifications;

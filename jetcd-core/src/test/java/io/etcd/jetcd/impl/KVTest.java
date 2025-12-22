@@ -29,6 +29,7 @@ import java.util.concurrent.TimeoutException;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -56,6 +57,7 @@ import static io.etcd.jetcd.impl.TestUtil.randomString;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
+@Tag("kv")
 @Timeout(value = 2, unit = TimeUnit.MINUTES)
 public class KVTest {
 

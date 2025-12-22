@@ -26,6 +26,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -44,6 +45,7 @@ import io.etcd.jetcd.test.EtcdClusterExtension;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+@Tag("watch")
 @Timeout(value = 30)
 public class WatchTokenExpireTest {
     // create a cluster with SSL enabled, because otherwise volumes with certificates are not mapped

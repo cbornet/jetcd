@@ -9,25 +9,40 @@ on:
       etcdImage:
         required: true
         type: string
-
+      includeTags:
+        required: false
+        type: string
+        default: ""
+      excludeTags:
+        required: false
+        type: string
+        default: ""
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: 'Checkout'
+      - name: "Checkout"
         uses: actions/checkout@v5
-      - name: 'Set Up Java'
+      - name: "Set Up Java"
         uses: actions/setup-java@v5
         with:
           java-version: ${{ inputs.javaVersion }}
-          distribution: 'temurin'
-          cache: 'gradle'
-      - name: 'Build Project'
+          distribution: "temurin"
+          cache: "gradle"
+      - name: "Build Project"
         env:
           ETCD_IMAGE: ${{ inputs.etcdImage }}
         run: |
           export TC_USER="$(id -u):$(id -g)"
           echo "tc user -> $TC_USER"
 
-          ./gradlew test --info
+          GRADLE_ARGS=""
+          if [ -n "${{ inputs.includeTags }}" ]; then
+            GRADLE_ARGS="$GRADLE_ARGS -PincludeTags=${{ inputs.includeTags }}"
+          fi
+          if [ -n "${{ inputs.excludeTags }}" ]; then
+            GRADLE_ARGS="$GRADLE_ARGS -PexcludeTags=${{ inputs.excludeTags }}"
+          fi
+
+          ./gradlew test $GRADLE_ARGS --info

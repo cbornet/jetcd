@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -54,6 +55,7 @@ import static io.etcd.jetcd.impl.TestUtil.byteStringOf;
 import static io.etcd.jetcd.impl.TestUtil.bytesOf;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Tag("kv")
 @Timeout(value = 30, unit = TimeUnit.SECONDS)
 public class KVNamespaceTest {
     private static final ByteSequence END_KEY = ByteSequence.from(new byte[] { 0 });

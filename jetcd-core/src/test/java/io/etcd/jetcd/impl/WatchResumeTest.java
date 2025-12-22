@@ -19,6 +19,7 @@ package io.etcd.jetcd.impl;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -36,6 +37,7 @@ import io.etcd.jetcd.watch.WatchResponse;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+@Tag("watch")
 @Timeout(value = 180, unit = TimeUnit.SECONDS)
 public class WatchResumeTest {
 

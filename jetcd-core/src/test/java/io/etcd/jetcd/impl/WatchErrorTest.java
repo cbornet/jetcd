@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -37,6 +38,7 @@ import static io.etcd.jetcd.impl.TestUtil.randomByteSequence;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+@Tag("watch")
 @Timeout(value = 30, unit = TimeUnit.SECONDS)
 public class WatchErrorTest {
 

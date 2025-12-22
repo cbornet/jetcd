@@ -21,6 +21,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import io.vertx.core.Vertx;
@@ -30,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Unit tests for WatchStateMachine state transitions.
  */
+@Tag("watch")
 class WatchStateMachineTest {
 
     private Vertx vertx;
