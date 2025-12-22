@@ -25,6 +25,7 @@ import io.etcd.jetcd.resolver.ServiceResolver;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.net.SocketAddress;
 import io.vertx.core.net.endpoint.LoadBalancer;
 import io.vertx.grpc.client.GrpcClient;
 
@@ -109,7 +110,7 @@ public final class GrpcService {
      *
      * @return the service resolver
      */
-    public ServiceResolver<?> getServiceResolver() {
+    public ServiceResolver<SocketAddress> getServiceResolver() {
         if (builder.serviceResolver() == null) {
             throw new IllegalArgumentException("EndpointResolver must be configured");
         }

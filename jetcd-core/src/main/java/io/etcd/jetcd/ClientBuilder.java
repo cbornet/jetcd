@@ -32,6 +32,7 @@ import io.etcd.jetcd.impl.Client;
 import io.etcd.jetcd.resolver.ServiceResolver;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.net.SocketAddress;
 import io.vertx.core.net.endpoint.LoadBalancer;
 
 /**
@@ -39,7 +40,7 @@ import io.vertx.core.net.endpoint.LoadBalancer;
  */
 public final class ClientBuilder implements Cloneable {
 
-    private final ServiceResolver<?> serviceResolver;
+    private final ServiceResolver<SocketAddress> serviceResolver;
     private SecureByteSequence user;
     private SecureByteSequence password;
     private LoadBalancer loadBalancer;
@@ -59,7 +60,7 @@ public final class ClientBuilder implements Cloneable {
     private boolean waitForReady = true;
     private Vertx vertx;
 
-    ClientBuilder(ServiceResolver<?> serviceResolver) {
+    ClientBuilder(ServiceResolver<SocketAddress> serviceResolver) {
         this.serviceResolver = Preconditions.requireNonNull(serviceResolver, "serviceResolver cannot be null");
     }
 
@@ -68,7 +69,7 @@ public final class ClientBuilder implements Cloneable {
      *
      * @return the endpoint resolver.
      */
-    public ServiceResolver<?> serviceResolver() {
+    public ServiceResolver<SocketAddress> serviceResolver() {
         return serviceResolver;
     }
 

@@ -18,7 +18,6 @@ package io.etcd.jetcd.grpc;
 
 import java.util.concurrent.CompletableFuture;
 
-import io.etcd.jetcd.resolver.ServiceResolver;
 import io.etcd.jetcd.support.Util;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
@@ -117,11 +116,9 @@ public final class GrpcAuth implements AutoCloseable {
         checkArgument(!grpcService.builder().user().isEmpty(), "username can not be empty.");
         checkArgument(!grpcService.builder().password().isEmpty(), "password can not be empty.");
 
-        ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();
-
         io.etcd.jetcd.api.AuthGrpcClient authClient = io.etcd.jetcd.api.AuthGrpcClient.create(
             grpcService.getGrpcClient(),
-            serviceResolver.getTarget(SocketAddress.class));
+            grpcService.getServiceResolver().getTarget());
 
         final ByteString user = ByteString.copyFrom(this.grpcService.builder().user().getBytes());
         final ByteString pass = ByteString.copyFrom(this.grpcService.builder().password().getBytes());

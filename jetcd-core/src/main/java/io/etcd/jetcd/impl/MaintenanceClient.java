@@ -42,10 +42,9 @@ final class MaintenanceClient extends AbstractClient implements Maintenance {
     MaintenanceClient(GrpcService grpcService) {
         super(grpcService);
 
-        io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();
         client = io.etcd.jetcd.api.MaintenanceGrpcClient.create(
             grpcService.getAuthenticatedGrpcClient(),
-            serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class));
+            grpcService.getServiceResolver().getTarget());
     }
 
     @Override

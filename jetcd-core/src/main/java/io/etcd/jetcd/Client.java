@@ -22,6 +22,7 @@ import java.util.Collection;
 
 import io.etcd.jetcd.resolver.ServiceResolver;
 import io.etcd.jetcd.resolver.ServiceResolvers;
+import io.vertx.core.net.SocketAddress;
 
 /**
  * Etcd Client.
@@ -143,7 +144,7 @@ public interface Client extends AutoCloseable {
      * @param  serviceResolver custom endpoint resolver
      * @return                 the builder.
      */
-    static ClientBuilder builder(ServiceResolver serviceResolver) {
+    static ClientBuilder builder(ServiceResolver<SocketAddress> serviceResolver) {
         return new ClientBuilder(serviceResolver);
     }
 }

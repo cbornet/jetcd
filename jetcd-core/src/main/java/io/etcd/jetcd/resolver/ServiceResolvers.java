@@ -25,7 +25,6 @@ import java.util.stream.Stream;
 import io.etcd.jetcd.resolver.dnssrv.DnsSrvAddressResolver;
 import io.etcd.jetcd.resolver.dnssrv.DnsSrvClientOptions;
 import io.etcd.jetcd.support.Util;
-import io.vertx.core.net.Address;
 import io.vertx.core.net.AddressResolver;
 import io.vertx.core.net.SocketAddress;
 
@@ -52,7 +51,7 @@ public final class ServiceResolvers {
      * @param  addresses etcd server addresses (e.g., "http://localhost:2379")
      * @return           a service resolver for the specified addresses
      */
-    public static ServiceResolver endpoints(String... addresses) {
+    public static ServiceResolver<SocketAddress> endpoints(String... addresses) {
         List<URI> uris = Stream.of(addresses)
             .map(URI::create)
             .collect(Collectors.toList());
@@ -65,7 +64,7 @@ public final class ServiceResolvers {
      * @param  endpoints etcd server endpoint URIs
      * @return           a service resolver for the specified endpoints
      */
-    public static ServiceResolver endpoints(URI... endpoints) {
+    public static ServiceResolver<SocketAddress> endpoints(URI... endpoints) {
         return Static.create(Arrays.asList(endpoints));
     }
 
@@ -75,7 +74,7 @@ public final class ServiceResolvers {
      * @param  serviceName the DNS SRV service name (e.g., "_etcd._tcp.example.com")
      * @return             a service resolver that uses DNS SRV records
      */
-    public static ServiceResolver dnsSrv(String serviceName) {
+    public static ServiceResolver<SocketAddress> dnsSrv(String serviceName) {
         return DnsSrv.create(serviceName);
     }
 
@@ -87,7 +86,7 @@ public final class ServiceResolvers {
      * @param  dnsPort     the DNS server port (usually 53)
      * @return             a service resolver that uses DNS SRV records
      */
-    public static ServiceResolver dnsSrv(String serviceName, String dnsServer, int dnsPort) {
+    public static ServiceResolver<SocketAddress> dnsSrv(String serviceName, String dnsServer, int dnsPort) {
         return DnsSrv.create(serviceName, dnsServer, dnsPort);
     }
 
@@ -113,12 +112,12 @@ public final class ServiceResolvers {
                 .collect(Collectors.toList());
 
             AddressResolver<SocketAddress> resolver = AddressResolver.mappingResolver(ignored -> addresses);
-            Address target = SocketAddress.inetSocketAddress(2379, "etcd-cluster");
+            SocketAddress target = SocketAddress.inetSocketAddress(2379, "etcd-cluster");
 
             return new Static(resolver, target);
         }
 
-        private Static(AddressResolver<SocketAddress> resolver, Address target) {
+        private Static(AddressResolver<SocketAddress> resolver, SocketAddress target) {
             super(resolver, target);
         }
     }
@@ -152,7 +151,7 @@ public final class ServiceResolvers {
         public static DnsSrv create(String serviceName) {
             DnsSrvClientOptions options = new DnsSrvClientOptions(serviceName);
             DnsSrvAddressResolver resolver = new DnsSrvAddressResolver(options);
-            Address target = SocketAddress.inetSocketAddress(2379, serviceName);
+            SocketAddress target = SocketAddress.inetSocketAddress(2379, serviceName);
 
             return new DnsSrv(resolver, target);
         }
@@ -170,12 +169,12 @@ public final class ServiceResolvers {
                 .setHost(dnsServer)
                 .setPort(dnsPort);
             DnsSrvAddressResolver resolver = new DnsSrvAddressResolver(options);
-            Address target = SocketAddress.inetSocketAddress(2379, serviceName);
+            SocketAddress target = SocketAddress.inetSocketAddress(2379, serviceName);
 
             return new DnsSrv(resolver, target);
         }
 
-        private DnsSrv(AddressResolver<SocketAddress> resolver, Address target) {
+        private DnsSrv(AddressResolver<SocketAddress> resolver, SocketAddress target) {
             super(resolver, target);
         }
     }

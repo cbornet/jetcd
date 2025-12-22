@@ -22,11 +22,11 @@ import io.vertx.core.net.AddressResolver;
 /**
  * Base implementation for service resolvers that holds common resolver and target fields.
  *
- * @param <S> the server address type being resolved
+ * @param <S> the server address type being resolved and the target address type
  */
 public abstract class AbstractServiceResolver<S extends Address> implements ServiceResolver<S> {
     private final AddressResolver<S> resolver;
-    private final Address target;
+    private final S target;
 
     /**
      * Creates a new service resolver.
@@ -34,7 +34,7 @@ public abstract class AbstractServiceResolver<S extends Address> implements Serv
      * @param resolver the address resolver
      * @param target   the target address
      */
-    protected AbstractServiceResolver(AddressResolver<S> resolver, Address target) {
+    protected AbstractServiceResolver(AddressResolver<S> resolver, S target) {
         this.resolver = resolver;
         this.target = target;
     }
@@ -45,7 +45,7 @@ public abstract class AbstractServiceResolver<S extends Address> implements Serv
     }
 
     @Override
-    public Address getTarget() {
+    public S getTarget() {
         return target;
     }
 }

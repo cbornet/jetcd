@@ -21,7 +21,6 @@ import java.util.stream.Collectors;
 import io.etcd.jetcd.launcher.EtcdCluster;
 import io.etcd.jetcd.launcher.EtcdContainer;
 import io.etcd.jetcd.resolver.AbstractServiceResolver;
-import io.vertx.core.net.Address;
 import io.vertx.core.net.AddressResolver;
 import io.vertx.core.net.SocketAddress;
 
@@ -77,12 +76,12 @@ public class EtcdClusterEndpointResolver extends AbstractServiceResolver<SocketA
                 .collect(Collectors.toList());
         });
 
-        Address target = SocketAddress.inetSocketAddress(port, hostname);
+        SocketAddress target = SocketAddress.inetSocketAddress(port, hostname);
 
         return new EtcdClusterEndpointResolver(resolver, target);
     }
 
-    private EtcdClusterEndpointResolver(AddressResolver<SocketAddress> resolver, Address target) {
+    private EtcdClusterEndpointResolver(AddressResolver<SocketAddress> resolver, SocketAddress target) {
         super(resolver, target);
     }
 }

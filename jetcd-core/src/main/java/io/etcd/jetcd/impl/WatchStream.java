@@ -23,7 +23,6 @@ import io.etcd.jetcd.api.WatchRequest;
 import io.etcd.jetcd.api.WatchResponse;
 import io.etcd.jetcd.common.exception.Exceptions;
 import io.etcd.jetcd.grpc.GrpcService;
-import io.etcd.jetcd.resolver.ServiceResolver;
 import io.vertx.core.Future;
 import io.vertx.core.streams.ReadStream;
 import io.vertx.core.streams.WriteStream;
@@ -160,10 +159,8 @@ final class WatchStream {
     }
 
     private WatchGrpcClient createWatchClient() {
-        ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();
-
         return WatchGrpcClient.create(
             grpcService.getAuthenticatedGrpcClient(),
-            serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class));
+            grpcService.getServiceResolver().getTarget());
     }
 }

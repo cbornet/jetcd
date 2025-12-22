@@ -22,7 +22,7 @@ import io.vertx.core.net.AddressResolver;
 /**
  * Encapsulates address resolution logic and the target address for etcd connections.
  *
- * @param <S> the server address type being resolved
+ * @param <S> the server address type being resolved and the target address type
  */
 public interface ServiceResolver<S extends Address> {
     /**
@@ -38,16 +38,5 @@ public interface ServiceResolver<S extends Address> {
      *
      * @return the target address
      */
-    Address getTarget();
-
-    /**
-     * Gets the target address cast to the specified type.
-     *
-     * @param  type the target type
-     * @param  <T>  the type parameter
-     * @return      the target address
-     */
-    default <T> T getTarget(Class<T> type) {
-        return type.cast(getTarget());
-    }
+    S getTarget();
 }

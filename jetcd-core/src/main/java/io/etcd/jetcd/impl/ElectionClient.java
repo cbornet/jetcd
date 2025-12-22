@@ -44,10 +44,9 @@ final class ElectionClient extends AbstractClient implements Election {
     ElectionClient(GrpcService grpcService) {
         super(grpcService);
 
-        io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();
         this.client = io.etcd.jetcd.api.ElectionGrpcClient.create(
             grpcService.getAuthenticatedGrpcClient(),
-            serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class));
+            grpcService.getServiceResolver().getTarget());
         this.namespace = grpcService.getNamespace();
     }
 

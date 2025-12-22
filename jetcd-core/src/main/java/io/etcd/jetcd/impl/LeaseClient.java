@@ -60,10 +60,9 @@ final class LeaseClient extends AbstractClient implements Lease {
     LeaseClient(GrpcService grpcService) {
         super(grpcService);
 
-        io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();
         this.client = io.etcd.jetcd.api.LeaseGrpcClient.create(
             grpcService.getAuthenticatedGrpcClient(),
-            serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class));
+            grpcService.getServiceResolver().getTarget());
         this.keepAlives = new ConcurrentHashMap<>();
         this.keepAlive = new KeepAlive();
         this.deadLine = new DeadLine();

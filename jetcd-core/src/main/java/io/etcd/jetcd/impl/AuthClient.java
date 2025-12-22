@@ -52,10 +52,9 @@ final class AuthClient extends AbstractClient implements Auth {
     AuthClient(GrpcService grpcService) {
         super(grpcService);
 
-        io.etcd.jetcd.resolver.ServiceResolver<?> serviceResolver = grpcService.getServiceResolver();
         this.client = io.etcd.jetcd.api.AuthGrpcClient.create(
             grpcService.getAuthenticatedGrpcClient(),
-            serviceResolver.getTarget(io.vertx.core.net.SocketAddress.class));
+            grpcService.getServiceResolver().getTarget());
     }
 
     @Override
