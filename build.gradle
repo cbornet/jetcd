@@ -53,13 +53,8 @@ subprojects {
     apply plugin: 'org.gradle.test-retry'
 
     configurations.api {
-        exclude group: 'com.google.code.gson', module: 'gson'
-        exclude group: 'com.google.android', module: 'annotations'
         exclude group: 'com.google.j2objc', module: 'j2objc-annotations'
-        exclude group: 'org.codehaus.mojo', module: 'animal-sniffer-annotations'
         exclude group: 'com.google.errorprone', module: 'error_prone_annotations'
-        exclude group: 'com.google.code.findbugs', module: 'jsr305'
-        exclude group: 'org.checkerframework', module: 'checker-compat-qual'
     }
 
     compileJava {
