@@ -101,8 +101,11 @@ final class WatchReconnectionManager {
      *
      * @param disconnectAction action to run before reconnecting (e.g., cleanup)
      * @param callback         callback for reconnection result
+     * @throws NullPointerException if callback is null
      */
     void attemptReconnection(CheckedRunnable disconnectAction, ReconnectionCallback callback) {
+        java.util.Objects.requireNonNull(callback, "callback cannot be null");
+
         if (reconnectFuture != null && !reconnectFuture.isDone()) {
             return;
         }
