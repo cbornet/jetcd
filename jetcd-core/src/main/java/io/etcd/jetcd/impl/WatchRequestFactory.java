@@ -65,6 +65,8 @@ final class WatchRequestFactory {
             builder.addFilters(WatchCreateRequest.FilterType.NOPUT);
         }
 
+        builder.setFragment(option.fragment());
+
         return WatchRequest.newBuilder()
             .setCreateRequest(builder.build())
             .build();
