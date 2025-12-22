@@ -67,6 +67,8 @@ public final class Requests {
             .setValue(ByteString.copyFrom(value.getBytes()))
             .setLease(option.leaseId())
             .setPrevKv(option.prevKV())
+            .setIgnoreValue(option.ignoreValue())
+            .setIgnoreLease(option.ignoreLease())
             .build();
     }
 
