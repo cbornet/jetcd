@@ -35,14 +35,13 @@ implementation "io.etcd:jetcd-core:$jetcdVersion"
 
 ```java
 // Create client
-Client client = Client.builder()
-    .endpoints("http://etcd0:2379", "http://etcd1:2379", "http://etcd2:2379")
+Client client = Client.builder("http://etcd0:2379", "http://etcd1:2379", "http://etcd2:2379")
     .build();
 
 // KV operations
 KV kvClient = client.getKVClient();
-ByteSequence key = ByteSequence.from("test_key".getBytes());
-ByteSequence value = ByteSequence.from("test_value".getBytes());
+ByteSequence key = ByteSequence.from("test_key", StandardCharsets.UTF_8);
+ByteSequence value = ByteSequence.from("test_value", StandardCharsets.UTF_8);
 
 kvClient.put(key, value).get();
 GetResponse response = kvClient.get(key).get();
