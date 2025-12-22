@@ -67,6 +67,13 @@ To build one ssl secured client, refer to [secured client config](docs/SslConfig
 
 For full etcd v3 API, pleases refer to the [official API documentation](https://etcd.io/docs/current/learning/api/).
 
+### Documentation
+
+- **[API Design Patterns](docs/API_DESIGN.md)** - Understand ByteSequence vs String usage and API design principles
+- **[SSL/TLS Configuration](docs/SslConfig.md)** - Secure client configuration
+- **[Watch Operations](docs/Watch.md)** - Watch API usage patterns
+- **[DNS SRV Resolution](docs/DNS_SRV_RESOLUTION.md)** - Dynamic endpoint discovery via DNS
+
 ### Examples
 
 The [jetcd-ctl](https://github.com/etcd-io/jetcd/tree/master/jetcd-ctl) is a standalone projects that show usage of jetcd.
