@@ -40,6 +40,11 @@
   - Prefer standard Java APIs and collections
   - Use Java's built-in functional interfaces and utilities
 
+- **Avoid grpc-java** (io.grpc)
+  - This project uses Vert.x gRPC, not grpc-java
+  - Use `io.vertx.grpc.client.GrpcClient` for gRPC operations
+  - Proto stubs are generated with Vert.x gRPC plugin
+
 ## Public API Design
 
 - **Public methods should use standard Java APIs**
@@ -52,6 +57,90 @@
   - Use standard `CompletableFuture` for async operations in public APIs
   - Convert between Vert.x futures and `CompletableFuture` as needed
   - This maintains flexibility to change implementation without breaking consumers
+
+## Testing
+
+### Running Tests
+
+```bash
+./gradlew test                    # All tests
+./gradlew :jetcd-core:test        # Core module only
+./gradlew test --tests "*.KVTest" # Specific test class
+```
+
+### Using EtcdClusterExtension
+
+Tests use `EtcdClusterExtension` to spin up an etcd cluster via Testcontainers:
+
+```java
+import io.etcd.jetcd.test.EtcdClusterExtension;
+
+@Timeout(value = 30, unit = TimeUnit.SECONDS)
+public class MyTest {
+
+    @RegisterExtension
+    public static final EtcdClusterExtension cluster = EtcdClusterExtension.builder()
+        .withNodes(3)
+        .build();
+
+    private Client client;
+
+    @BeforeEach
+    void setUp() {
+        client = TestUtil.client(cluster).build();
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (client != null) {
+            client.close();
+        }
+    }
+
+    @Test
+    void testSomething() throws Exception {
+        KV kv = client.getKVClient();
+        // ...
+    }
+}
+```
+
+### Key Patterns
+
+- Use `TestUtil.client(cluster)` to create a `ClientBuilder` with the cluster's endpoint resolver
+- Use `TestUtil.bytesOf("string")` for `ByteSequence` creation
+- Use `TestUtil.randomByteSequence()` for unique keys
+- Always close clients in `@AfterEach` or `@AfterAll`
+- Set `@Timeout` to prevent hanging tests
+
+### Test Tags
+
+Tests are tagged for selective execution:
+
+```bash
+./gradlew test -PincludeTags=kv      # KV tests only
+./gradlew test -PincludeTags=watch   # Watch tests only
+```
+
+## Quality Checks
+
+**All checks must pass before committing.**
+
+```bash
+# Run linters and checks
+./gradlew check
+
+# Or run specific checks
+./gradlew spotlessCheck   # Code formatting
+./gradlew pmdMain         # Static analysis
+./gradlew compileJava     # Compilation
+```
+
+Fix formatting issues automatically:
+
+```bash
+./gradlew spotlessApply
+```
 
 ## Best Practices
 
